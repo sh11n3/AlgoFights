@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, ref, watch } from "vue";
+import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { basicSetup, EditorView } from "codemirror";
 import { javascript } from "@codemirror/lang-javascript";
 import { oneDark } from "@codemirror/theme-one-dark";
@@ -43,6 +43,7 @@ const emit = defineEmits<{
   save: [strategy: CustomStrategy];
   remove: [id: string];
   close: [];
+  ready: [];
 }>();
 const host = ref<HTMLElement>(),
   name = ref("Meine Strategie"),
@@ -50,7 +51,13 @@ const host = ref<HTMLElement>(),
   notice = ref(""),
   valid = ref(false),
   checking = ref(false);
+const filename = computed(() => {
+  if (!isRoute) return "nextMove.js";
+  const original = originals.find((s) => `builtin:${s.id}` === selected.value);
+  return original ? `${original.id}.js` : "eigener-algorithmus.js";
+});
 const input = ref<HTMLInputElement>();
+const lineCount = ref(1);
 let editor: EditorView | null = null,
   draft = template,
   generation = 0;
@@ -78,7 +85,8 @@ function select() {
     return;
   }
   const strategy = props.strategies.find((s) => s.id === selected.value);
-  name.value = strategy?.name ?? "Meine Strategie";
+  name.value =
+    strategy?.name ?? (isRoute ? "Mein Algorithmus" : "Meine Strategie");
   replace(strategy?.code ?? template);
 }
 function stopCheck() {
@@ -207,7 +215,7 @@ function saveCopy() {
 function reset() {
   stopCheck();
   selected.value = "";
-  name.value = "Meine Strategie";
+  name.value = isRoute ? "Mein Algorithmus" : "Meine Strategie";
   replace(template);
 }
 function loadExample() {
@@ -289,12 +297,14 @@ onMounted(() => {
         if (update.docChanged) {
           if (checking.value) stopCheck();
           draft = update.state.doc.toString();
+          lineCount.value = update.state.doc.lines;
           clearNotice();
         }
       }),
       EditorView.theme({
         "&": {
-          minHeight: "520px",
+          height: "min(65vh, 700px)",
+          minHeight: "360px",
           fontSize: "13px",
           backgroundColor: "#10151e",
         },
@@ -302,16 +312,18 @@ onMounted(() => {
       }),
     ],
   });
+  lineCount.value = editor.state.doc.lines;
   if (props.sourceId) {
-    selected.value = props.sourceId;
+    selected.value = props.sourceId === "new" ? "" : props.sourceId;
     select();
   }
+  emit("ready");
 });
 watch(
   () => props.sourceId,
   (value) => {
     if (value) {
-      selected.value = value;
+      selected.value = value === "new" ? "" : value;
       select();
     }
   },
@@ -352,8 +364,11 @@ onBeforeUnmount(() => {
         </div>
         <div class="editor-fields">
           <label
-            >Strategie<select v-model="selected" @change="select">
-              <option value="">Neue Strategie</option>
+            >{{ isRoute ? "Algorithmus" : "Strategie"
+            }}<select v-model="selected" @change="select">
+              <option value="">
+                {{ isRoute ? "Eigenen Algorithmus bauen" : "Neue Strategie" }}
+              </option>
               <optgroup label="Eingebaute Algorithmen · als Kopie bearbeiten">
                 <option
                   v-for="s in originals"
@@ -373,8 +388,11 @@ onBeforeUnmount(() => {
         </div>
         <div class="editor-filename">
           <FileCode2 :size="15" />
-          {{ isRoute ? "findRoute.js" : "nextMove.js" }}
-          <span>lokal · isoliert ausgeführt</span>
+          {{ filename }}
+          <span
+            >JavaScript · {{ lineCount }}
+            {{ lineCount === 1 ? "Zeile" : "Zeilen" }}</span
+          >
         </div>
         <div ref="host" class="code-editor"></div>
         <div
@@ -473,6 +491,13 @@ onBeforeUnmount(() => {
           </dd>
           <dt>graph.neighbors(node)</dt>
           <dd>Ausgehende Kanten als { id, from, to, length }.</dd>
+          <dt>graph.createQueue()</dt>
+          <dd>
+            Neue Min-Prioritätswarteschlange: push(node, priority) fügt ein,
+            pop() entnimmt { node, priority } mit kleinster Priorität, peek()
+            liest diesen Eintrag. Leer: null. Mehrfache Einträge sind erlaubt;
+            der Algorithmus überspringt bereits abgeschlossene Knoten.
+          </dd>
           <dt>graph.heuristic(node)</dt>
           <dd>Luftlinie zum Ziel in Metern.</dd>
           <dt>graph.trace(node, edge = -1, side = 0)</dt>
@@ -489,9 +514,9 @@ onBeforeUnmount(() => {
           </dd>
         </dl>
         <p>
-          Originale enthalten Hilfsfunktionen und geben zusätzlich traceNodes,
-          traceEdges, traceSides zurück. Nutze entweder diese Arrays oder
-          graph.trace().
+          Im Editor steht nur das gewählte Verfahren. Die Warteschlange und
+          Luftlinie liefert die API; eigene Datenstrukturen sind ebenfalls
+          erlaubt.
         </p>
         <div class="budget-note">
           50.000 Zeichen Code · 5 Sekunden Laufzeit · höchstens 250.000 Such-
@@ -515,7 +540,7 @@ onBeforeUnmount(() => {
             :href="documentationUrl + '#eigene-wegsuche'"
             target="_blank"
             rel="noopener noreferrer"
-            >Handbuch: eigene Wegsuche und Originalcode bearbeiten</a
+            >Handbuch: Funktionen und Beispiele</a
           >
         </div>
       </aside>
@@ -580,12 +605,7 @@ onBeforeUnmount(() => {
         </details>
         <div class="editor-resources">
           <a :href="documentationUrl" target="_blank" rel="noopener noreferrer"
-            >Handbuch: API, Beispiele und Unterrichtsaufgaben</a
-          ><a
-            :href="documentationUrl + '#unterricht'"
-            target="_blank"
-            rel="noopener noreferrer"
-            >Lehrplan für 45 / 90 Minuten und Bewertungskriterien</a
+            >Handbuch: Funktionen und Beispiele</a
           >
         </div>
       </aside>

@@ -3,31 +3,20 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>AlgoFights – Handbuch für Editor und Unterricht</title>
+    <title>AlgoFights – Editor-Handbuch</title>
     <style>
-      :root {
-        color-scheme: light;
-        font-family:
-          system-ui,
-          -apple-system,
-          "Segoe UI",
-          sans-serif;
-        color: #222;
-        background: #fff;
-        line-height: 1.7;
-      }
       * {
         box-sizing: border-box;
       }
       body {
-        max-width: 1020px;
-        margin: 40px auto;
-        padding: 0 28px 70px;
-      }
-      header {
-        border-bottom: 1px solid #bbb;
-        padding-bottom: 23px;
-        margin-bottom: 28px;
+        margin: 0 auto;
+        padding: 40px 24px 64px;
+        max-width: 1000px;
+        color: #20252b;
+        background: #fff;
+        font:
+          16px/1.7 system-ui,
+          sans-serif;
       }
       h1 {
         font-size: 30px;
@@ -36,505 +25,309 @@
       }
       h2 {
         font-size: 23px;
-        margin-top: 44px;
-        border-bottom: 1px solid #ddd;
-        padding-bottom: 7px;
+        margin: 44px 0 16px;
+        border-bottom: 1px solid #d9dde1;
+        padding-bottom: 8px;
       }
       h3 {
         font-size: 18px;
-        margin-top: 28px;
+        margin: 28px 0 10px;
       }
       p,
+      ul,
+      ol {
+        margin: 12px 0;
+      }
       li {
-        font-size: 14px;
+        margin: 5px 0;
       }
       a {
-        color: #185b83;
+        color: #235970;
+        text-underline-offset: 3px;
       }
       nav {
         display: flex;
         flex-wrap: wrap;
-        gap: 8px 18px;
-        font-size: 13px;
+        gap: 8px 20px;
+        border-bottom: 1px solid #d9dde1;
+        padding: 20px 0;
+      }
+      .intro {
+        color: #56616b;
+      }
+      code {
+        font:
+          0.9em/1.55 ui-monospace,
+          Consolas,
+          monospace;
+        background: #f2f4f6;
+        padding: 2px 4px;
+        border-radius: 3px;
+        overflow-wrap: anywhere;
       }
       pre {
         background: #f3f5f7;
-        border: 1px solid #d8dfe5;
-        padding: 17px;
+        border: 1px solid #dce1e6;
+        border-radius: 5px;
+        padding: 18px;
         overflow: auto;
-        border-radius: 3px;
-        font-size: 12px;
-        line-height: 1.65;
+        line-height: 1.55;
       }
-      code {
-        font-family: ui-monospace, Consolas, monospace;
-        font-size: 0.92em;
+      pre code {
+        padding: 0;
+        background: none;
+        overflow-wrap: normal;
+      }
+      .table {
+        overflow-x: auto;
       }
       table {
         width: 100%;
         border-collapse: collapse;
-        font-size: 13px;
+        font-size: 14px;
       }
       th,
       td {
         text-align: left;
         vertical-align: top;
-        padding: 10px;
-        border-bottom: 1px solid #d9dee4;
+        border-bottom: 1px solid #dce1e6;
+        padding: 11px 10px;
       }
       th {
         background: #f3f5f7;
       }
-      .table {
-        overflow: auto;
+      td:first-child {
+        width: 32%;
       }
       .note {
-        padding: 13px 17px;
-        border-left: 3px solid #6c7c88;
-        background: #f5f7f8;
+        padding: 12px 16px;
+        border-left: 3px solid #aab8c3;
+        background: #f5f7f9;
       }
-      .meta {
-        font-size: 12px;
-        color: #65707c;
-      }
-      .task {
-        margin: 22px 0;
-        padding: 0 0 18px;
-        border-bottom: 1px solid #ddd;
-      }
-      .worksheet {
-        border: 1px solid #aaa;
-        padding: 20px;
-        margin-top: 20px;
-      }
-      .answer {
-        min-height: 60px;
-        border-bottom: 1px dashed #aaa;
-      }
-      .toc {
-        margin-bottom: 30px;
+      :target {
+        scroll-margin-top: 20px;
       }
       @media (max-width: 600px) {
         body {
-          margin-top: 25px;
-          padding: 0 18px 40px;
+          padding: 24px 18px 40px;
+          font-size: 15px;
         }
         h1 {
           font-size: 25px;
         }
         h2 {
-          font-size: 21px;
+          font-size: 20px;
         }
         th,
         td {
-          padding: 8px;
-        }
-        table {
-          min-width: 570px;
+          padding: 9px 7px;
         }
       }
       @media print {
         body {
           max-width: none;
-          margin: 0;
           padding: 0;
           font-size: 10pt;
         }
-        header {
-          padding-bottom: 10px;
-        }
-        nav,
-        .screen-only {
+        nav {
           display: none;
         }
-        h1 {
-          font-size: 22pt;
-        }
-        h2 {
-          font-size: 17pt;
-          break-after: avoid;
-        }
+        h2,
         h3 {
           break-after: avoid;
         }
-        p,
-        li {
-          font-size: 10pt;
+        pre,
+        tr {
+          break-inside: avoid;
         }
         pre {
           white-space: pre-wrap;
-          overflow: visible;
-          break-inside: avoid;
-          font-size: 9pt;
-        }
-        table {
-          min-width: 0;
-          font-size: 9pt;
-        }
-        tr,
-        .task {
-          break-inside: avoid;
         }
         a {
           color: inherit;
-          text-decoration: none;
-        }
-        .worksheet {
-          break-before: page;
-        }
-        .answer {
-          min-height: 80px;
         }
       }
     </style>
   </head>
   <body>
     <header>
-      <h1>AlgoFights: Algorithmen entwickeln, untersuchen und vergleichen</h1>
-      <p>
-        Handbuch für den JavaScript-Editor, Experimente in der Arena und
-        Wegsuche auf realen Straßen. Für selbstständiges Lernen, Unterricht und
-        Vorlesungen.
+      <h1>AlgoFights – Editor-Handbuch</h1>
+      <p class="intro">
+        Algorithmen laden, verändern und ausprobieren. Referenz für die Arena
+        und die Wegsuche in Algo Sim.
       </p>
-      <p class="meta">
-        Dokumentstand: 2. November 2026 · Voraussetzungen: aktueller Browser;
-        für eigene Strategien grundlegende JavaScript-Kenntnisse. Mit Strg/Cmd +
-        P druckbar oder als PDF speicherbar.
-      </p>
-      <nav>
-        <a href="#einstieg">Schnellstart</a><a href="#modell">Spielmodell</a
-        ><a href="#api">API</a><a href="#beispiele">Beispiele</a
-        ><a href="#experimente">Experimente</a><a href="#fehler">Fehler</a
-        ><a href="#wegsuche">Algo Sim</a><a href="#unterricht">Unterricht</a
-        ><a href="#arbeitsblatt">Arbeitsblatt</a>
+      <nav aria-label="Inhalt">
+        <a href="#einstieg">Einstieg</a><a href="#modell">Arena-Regeln</a
+        ><a href="#api">Arena-API</a><a href="#wegsuche">Algo-Sim-API</a
+        ><a href="#beispiele">Beispiele</a
+        ><a href="#speichern">Prüfen und Speichern</a
+        ><a href="#fehler">Fehlerhilfe</a>
       </nav>
     </header>
-
-    <h2 id="einstieg">1. Einstieg in fünf Minuten</h2>
+    <h2 id="einstieg">1. Einstieg</h2>
     <ol>
       <li>
-        <a href="../../">AlgoFights öffnen</a> und den Reiter
-        <strong>Code-Labor</strong> wählen.
+        <strong>Arena:</strong> Öffne „Code-Labor“ oder das Code-Symbol neben
+        einem Teilnehmer. <strong>Algo Sim:</strong> Wähle ein Verfahren und
+        klicke „Code-Editor öffnen“.
       </li>
       <li>
-        Unter „Beispiel laden“ zunächst „Seed-Zufall“ auswählen. Die
-        Beispielwahl ersetzt den aktuellen Entwurf; einen wichtigen Entwurf
-        vorher speichern oder exportieren.
+        Wähle im Editor einen eingebauten Algorithmus. Der Quellcode wird als
+        bearbeitbare Kopie geladen. In Algo Sim steht dort ausschließlich das
+        gewählte Verfahren, etwa <code>astar.js</code> oder <code>bfs.js</code>.
       </li>
       <li>
-        Code lesen, einen Namen vergeben und <strong>Prüfen</strong> wählen. Ein
-        erfolgreicher Probelauf bedeutet: Syntax und grundlegende Rückgaben
-        passen. Er beweist nicht, dass jeder spätere Spielzug korrekt ist.
+        Für einen eigenen Routenalgorithmus wähle
+        <strong>„Eigenen Algorithmus bauen“</strong>. Das Codefeld ist leer;
+        definiere darin <code>function findRoute(graph)</code>. Ein
+        vollständiges Beispiel steht in Abschnitt 5.
       </li>
       <li>
-        <strong>Speichern</strong>. Im Reiter Arena die gespeicherte Strategie
-        für einen Teilnehmer auswählen.
-      </li>
-      <li>
-        Für den ersten Versuch Kreis, 256 × 256, zwei Teilnehmer und Seed
-        <code>UNTERRICHT-01</code> verwenden. Einen Kampf starten; anschließend
-        pausieren, spulen und erneut abspielen.
-      </li>
-      <li>
-        Vor einer Änderung eine Vermutung formulieren. Genau eine Eigenschaft
-        ändern, den Seed beibehalten und erneut vergleichen.
+        Ändere den Code, vergib einen Namen, klicke „Prüfen“ und anschließend
+        „Speichern“. Die Variante ist danach in der passenden Algorithmusauswahl
+        verfügbar.
       </li>
     </ol>
-    <p>
-      Es ist keine Anmeldung nötig. Strategien liegen nur im lokalen Speicher
-      dieses Browsers. „Exportieren“ erzeugt eine JSON-Datei mit Name und Code;
-      „Importieren“ lädt sie als Entwurf. Browserdaten zu löschen oder ein
-      anderes Gerät zu benutzen übernimmt die Bibliothek nicht automatisch. Ein
-      JSON-Export ist daher die geeignete Abgabe oder Sicherung.
+    <p id="originalcode">
+      Eingebaute Originale werden nicht überschrieben. Bei einer gespeicherten
+      Variante aktualisiert „Speichern“ diese Variante; „Als neue Kopie
+      speichern“ legt einen weiteren Eintrag an. Der Wechsel der Code-Auswahl
+      ersetzt den Entwurf: wichtige Änderungen vorher speichern oder
+      exportieren.
     </p>
 
-    <h2 id="modell">2. Das mathematische und spielerische Modell</h2>
-    <p>
-      Die Arena ist ein endlicher Graph: Jede bespielbare Rasterzelle ist ein
-      Knoten. Eine Kante verbindet zwei orthogonal benachbarte Zellen. Diagonale
-      Bewegung ist nicht erlaubt. Die Arenamaske bestimmt, welche Knoten
-      vorhanden sind.
-    </p>
+    <h2 id="modell">2. Regeln der Arena</h2>
     <ul>
       <li>
-        Jeder Teilnehmer steuert genau einen Punkt. Die Startzelle zählt einen
-        Punkt.
+        Jeder Teilnehmer besitzt einen bewegten Punkt. Jede erstmals betretene
+        Zelle gibt einen Punkt, einschließlich der Startzelle.
       </li>
       <li>
-        Ein regulärer Strategieaufruf darf genau einen freien Nachbarn wählen.
-        Jeder neu belegte Knoten zählt einen Punkt und behält seinen Besitzer.
+        Reguläre Züge gehen eine Zelle nach oben, rechts, unten oder links.
+        Belegte Zellen, Hindernisse und Grenzen sind gesperrt. Eingeschlossene
+        Flächen geben keine zusätzlichen Punkte.
       </li>
       <li>
         Alle Teilnehmer entscheiden anhand desselben Zustands vor dem Schritt.
-        Bei identischem freien Ziel gewinnt ein Seed-basierter Zufallsentscheid.
-        Verlierer bleiben stehen und erhalten keine Punkte.
+        Wählen mehrere dieselbe freie Zelle, entscheidet der Seed-Zufall.
+        Verlierer warten diesen Schritt; ihre bereits aktualisierte memory
+        bleibt erhalten.
       </li>
       <li>
-        Ein verlorener Konflikt ist kein Fehler. Der nächste Aufruf sieht die
-        unveränderte Position, aber eine möglicherweise geänderte Umgebung.
-        Bereits aktualisierter eigener Speicher bleibt erhalten.
+        Ohne freien Nachbarn beginnt der Punkt sofort einen automatischen
+        Rücklauf zur nächsten freien Zelle. Er läuft sichtbar über benachbarte
+        belegte Zellen, auch über gegnerische Spuren. Besitzer und Punkte
+        bleiben dabei unverändert; andere Teilnehmer ziehen gleichzeitig weiter.
       </li>
       <li>
-        Ohne freien Nachbarn beginnt dieser Punkt sofort seinen Rücklauf. Die
-        anderen Punkte ziehen gleichzeitig weiter. Der Kern plant mit einer
-        Breitensuche einen Rückweg zur nächstgelegenen freien Zelle. Jeder
-        Rücklaufschritt ist ein tatsächlich gespeicherter, orthogonaler
-        Einzelschritt über bespielbare Zellen.
+        Während eines Rücklaufs wird eigener Code nicht aufgerufen. Danach setzt
+        die Strategie mit ihrem bisherigen Speicher fort. Kein Teleportieren.
       </li>
       <li>
-        <strong
-          >Nur automatische Rückläufe dürfen belegte Zellen – auch gegnerische –
-          überqueren.</strong
-        >
-        Dabei werden weder Farben geändert noch zusätzliche Punkte vergeben.
-        Punkte dürfen sich auf solchen Rückwegen begegnen oder kreuzen. Der
-        gestrichelte Ring am Kopf kennzeichnet den Rücklauf.
-      </li>
-      <li>
-        Während eines Rücklaufs wird <code>nextMove</code> nicht aufgerufen.
-        Danach übernimmt die eigene Strategie wieder. Es gibt keine zufälligen
-        Neustarts und kein Teleportieren.
-      </li>
-      <li>
-        Die eingebauten Arenen sind zusammenhängend und werden vollständig
-        belegt. Bei einer selbst ergänzten, nicht zusammenhängenden Maske ist
-        eine solche Garantie ohne Teleportieren grundsätzlich nicht möglich.
+        Die zusammenhängenden eingebauten Arenen enden bei 100 % Belegung. Die
+        meisten Punkte gewinnen; Gleichstände sind möglich.
       </li>
     </ul>
-    <p>
-      Die Summe aller Punktestände entspricht am Ende exakt der Zahl
-      bespielbarer Zellen. Weil die Gesamtbelegung immer 100 % beträgt, ist für
-      den Wettbewerb der <strong>individuelle Anteil</strong> entscheidend. Die
-      meisten Punkte gewinnen, Gleichstände sind möglich. Starke Strategien
-      können länger Punkte sammeln, während blockierte Gegner warten. Das
-      automatische Rücklaufen ermöglicht anschließend die vollständige Begehung.
-    </p>
-    <div class="note">
-      <strong>Zwei verschiedene Probleme:</strong> In der Arena konkurrieren
-      lokale Begehungsstrategien um freie Zellen. Dijkstra und A* lösen dagegen
-      ein definiertes Start-Ziel-Problem auf einem bekannten Graphen. Dafür ist
-      der separate Reiter „Algo Sim“ vorgesehen. Eine lokale Freiraumsuche in
-      der Arena ist kein vollständiger A*-Algorithmus.
-    </div>
 
-    <h2 id="api">3. Die vollständige Strategie-Schnittstelle</h2>
-    <pre><code>function nextMove(state, memory) {
-  return { direction: "right", memory };
-}</code></pre>
+    <h2 id="api">3. Arena-API: nextMove(state, memory)</h2>
     <p>
-      Der Editor erwartet gewöhnliches, synchrones JavaScript mit einer Funktion
-      namens <code>nextMove</code>. Eigene Hilfsfunktionen, Klassen, Schleifen
-      und Datenstrukturen sind erlaubt. <code>import</code>, externe Pakete,
-      DOM, Netzwerk und Browser-Speicher stehen innerhalb der Strategie nicht
-      zur Verfügung.
+      <code>nextMove</code> entscheidet einen regulären Zug.
+      <code>state</code> beschreibt den aktuellen Zustand;
+      <code>memory</code> ist dein eigener Speicher, anfangs <code>{}</code>.
+      Gib <code>{ direction, memory }</code> zurück. Die Richtung muss gerade
+      erlaubt sein. Lässt du memory weg, bleibt der bisherige Speicher erhalten.
     </p>
     <div class="table">
       <table>
         <thead>
           <tr>
-            <th>Wert</th>
-            <th>Typ und Bedeutung</th>
-            <th>Beispiel</th>
+            <th>Feld / Funktion</th>
+            <th>Bedeutung und Verwendung</th>
           </tr>
         </thead>
         <tbody>
           <tr>
-            <td><code>state.x</code>, <code>state.y</code></td>
             <td>
-              Ganzzahlige Koordinaten, ab 0. Ursprung links oben; x wächst nach
-              rechts, y nach unten.
+              <code>state.x, state.y</code><br /><code>state.position</code>
             </td>
-            <td><code>state.x + 1</code> liegt rechts.</td>
-          </tr>
-          <tr>
-            <td><code>state.position</code></td>
-            <td>Schreibgeschütztes Objekt <code>{ x, y }</code>.</td>
-            <td><code>state.position.y</code></td>
-          </tr>
-          <tr>
-            <td><code>state.width</code>, <code>state.height</code></td>
             <td>
-              Logische Rastergröße; keine Canvas-Pixel oder
-              Bildschirmabmessungen.
+              Eigene Koordinaten ab 0; position ist <code>{ x, y }</code>. x
+              wächst nach rechts, y nach unten.
             </td>
-            <td>Bei 512² jeweils 512.</td>
           </tr>
           <tr>
             <td><code>state.direction</code></td>
             <td>
-              Letzte tatsächliche Bewegungsrichtung: <code>up</code>,
-              <code>right</code>, <code>down</code>, <code>left</code>.
-              Rückläufe ändern sie ebenfalls.
+              Aktuelle Richtung: <code>"up"</code>, <code>"right"</code>,
+              <code>"down"</code> oder <code>"left"</code>.
             </td>
-            <td><code>"right"</code></td>
-          </tr>
-          <tr>
-            <td><code>state.score</code></td>
-            <td>
-              Bisherige eigene Eroberungen einschließlich Startzelle. Rückwege
-              geben keine Punkte.
-            </td>
-            <td><code>27</code></td>
-          </tr>
-          <tr>
-            <td><code>state.step</code></td>
-            <td>
-              Globaler Simulationsschritt. Enthält Warte- und Rücklaufphasen;
-              ist nicht die Zahl eigener Funktionsaufrufe.
-            </td>
-            <td><code>180</code></td>
-          </tr>
-          <tr>
-            <td><code>state.neighbors[d]</code></td>
-            <td>
-              Nachbar in Richtung d: <code>{ x, y, type, free }</code>.
-              <code>free</code> ist ein Boolean.
-            </td>
-            <td><code>state.neighbors.up.free</code></td>
           </tr>
           <tr>
             <td><code>state.availableMoves</code></td>
             <td>
-              Schreibgeschütztes Array erlaubter Richtungen. Reguläre Aufrufe
-              erfolgen nur, wenn mindestens eine Richtung frei ist.
+              Array erlaubter Richtungen, z. B. <code>["up", "left"]</code>.
+              Wähle eine davon, um einen ungültigen Zug zu vermeiden.
             </td>
-            <td><code>["up", "left"]</code></td>
+          </tr>
+          <tr>
+            <td><code>state.neighbors.right</code></td>
+            <td>
+              Direkter Nachbar als <code>{ x, y, type, free }</code>.
+              Entsprechend existieren up, down und left. <code>free</code> ist
+              ein Wahrheitswert.
+            </td>
           </tr>
           <tr>
             <td><code>state.cell(x, y)</code></td>
             <td>
-              Begrenzt abfragbarer Zelltyp: <code>free</code>,
-              <code>wall</code>, <code>self</code>, <code>opponent</code>.
-              Außerhalb oder bei nicht ganzzahligen Koordinaten:
-              <code>wall</code>.
+              Weitere Zellen abfragen: <code>"free"</code>, <code>"wall"</code>,
+              <code>"self"</code> oder <code>"opponent"</code>. Außerhalb gilt
+              wall. Höchstens 512 Abfragen je Aufruf.
             </td>
-            <td><code>state.cell(20, 30)</code></td>
           </tr>
           <tr>
             <td><code>state.random()</code></td>
-            <td>Seed-basierter Zufall in [0, 1), getrennt pro Teilnehmer.</td>
-            <td><code>Math.floor(state.random() * n)</code></td>
-          </tr>
-          <tr>
-            <td><code>state.returnTrips</code></td>
-            <td>Anzahl bisher begonnener automatischer Rückläufe.</td>
-            <td><code>3</code></td>
-          </tr>
-          <tr>
-            <td><code>state.afterReturn</code></td>
             <td>
-              Beim ersten tatsächlichen Strategieaufruf nach beendetem Rücklauf
-              wahr. Eignet sich zum Verwerfen lokaler Pläne.
+              Seed-Zufall von 0 bis kleiner 1. Beispiel für einen Index:
+              <code>Math.floor(state.random() * moves.length)</code>.
             </td>
-            <td><code>if (state.afterReturn) memory = {};</code></td>
           </tr>
           <tr>
-            <td><code>state.returnSteps</code></td>
+            <td><code>state.id, state.score, state.step</code></td>
             <td>
-              Anzahl ausgeführter Bewegungen über bereits belegte Zellen ohne
-              Punkte.
+              Teilnehmernummer ab 0, bisherige Punkte und globaler
+              Simulationsschritt. Ein Schritt ist kein garantierter
+              Punktegewinn.
             </td>
-            <td><code>42</code></td>
           </tr>
           <tr>
-            <td><code>state.restarts</code>, <code>state.restarted</code></td>
+            <td><code>state.width, state.height</code></td>
+            <td>Logische Rastergröße, unabhängig von der Anzeigegröße.</td>
+          </tr>
+          <tr>
             <td>
-              Ältere kompatible Namen für <code>returnTrips</code> und
-              <code>afterReturn</code>. Sie bedeuten keinen Teleport.
+              <code>state.afterReturn</code><br /><code>state.returnTrips</code
+              ><br /><code>state.returnSteps</code>
             </td>
-            <td>Für neue Beispiele die Rücklauf-Namen nutzen.</td>
+            <td>
+              afterReturn ist beim ersten Aufruf nach einem Rücklauf wahr.
+              returnTrips zählt Rückläufe, returnSteps deren Schritte ohne
+              Punkte. Ältere Namen: restarted und restarts.
+            </td>
           </tr>
           <tr>
             <td><code>memory</code></td>
             <td>
-              Eigener persistenter Speicher, anfangs <code>{}</code>. Getrennt
-              pro Teilnehmer und bei jedem neuen Kampf zurückgesetzt.
+              Eigener JSON-kompatibler Speicher bis 64 KiB, getrennt pro
+              Teilnehmer. Keine Funktionen, DOM-Objekte oder zyklischen
+              Referenzen speichern.
             </td>
-            <td><code>{ decisions: 12 }</code></td>
           </tr>
         </tbody>
       </table>
     </div>
-    <p>
-      <code>state</code> und seine bereitgestellten Nachbarobjekte sind
-      schreibgeschützt. Der echte Spielzustand liegt in einem separaten Worker.
-      Eine Rückgabe darf weder Koordinaten direkt setzen noch Punkte vergeben.
-      Bei JSON-Speicher einfache Objekte, Arrays, Zahlen, Strings und Booleans
-      verwenden; <code>Map</code>, <code>Set</code>, Funktionen, zirkuläre
-      Referenzen oder Klasseninstanzen für die persistente Ablage vermeiden.
-    </p>
-    <h3>Rückgabevertrag und Ausführungsgrenzen</h3>
-    <ul>
-      <li>
-        Rückgabe: Objekt mit gültiger <code>direction</code>. Ein String allein,
-        <code>undefined</code>, <code>Promise</code>, diagonale oder belegte
-        Richtungen sind ungültig.
-      </li>
-      <li>
-        <code>memory</code> ist optional. Ohne neue Speicher-Rückgabe bleibt der
-        bisherige Speicher erhalten. Empfehlung: den gewünschten Folgezustand
-        immer explizit zurückgeben.
-      </li>
-      <li>
-        Maximal 512 zusätzliche <code>cell()</code>-Abfragen pro Aufruf. Die
-        bereitgestellten Nachbarinformationen sind bereits vorhanden. Die
-        Budgetgrenze gilt auch bei Abfragen derselben Zelle.
-      </li>
-      <li>
-        Speicher maximal 64 KiB als UTF-8-JSON, Code maximal 50.000 Zeichen. Bis
-        zu 30 lokale Strategien.
-      </li>
-      <li>
-        250 ms Zeitbudget pro Zug; höchstens 45 Sekunden Gesamtvorbereitung mit
-        eigenem Code. Editor-Probeaufrufe haben gemeinsam eine Sekunde Zeit. Für
-        größere Experimente zunächst 256² verwenden.
-      </li>
-      <li>
-        Bei einem Fehler wird die eigene Strategie deaktiviert. Der Kern zeigt
-        die Ursache an und setzt diesen Teilnehmer mit „Geradeaus“ fort. Ein
-        Ergebnis mit Ersatzstrategie darf nicht als Erfolg des fehlerhaften
-        Programms interpretiert werden.
-      </li>
-    </ul>
-
-    <h2 id="beispiele">4. Kommentierte Beispiele</h2>
-    <h3>A. Zufall aus erlaubten Zügen</h3>
-    <pre><code>function nextMove(state, memory) {
-  const moves = state.availableMoves;
-  const index = Math.floor(state.random() * moves.length);
-  return {
-    direction: moves[index],
-    memory: { decisions: (memory.decisions || 0) + 1 }
-  };
-}</code></pre>
-    <p>
-      <code>moves.length</code> begrenzt die Auswahl.
-      <code>Math.floor</code> erzeugt einen gültigen Index.
-      <code>state.random()</code> macht die Folge bei unveränderten
-      Einstellungen reproduzierbar. Der Zähler misst Aufrufe, nicht erfolgreiche
-      Eroberungen: Ein Konflikt kann trotz gültiger Entscheidung verloren gehen.
-    </p>
-    <h3>B. Relative Richtungspriorität</h3>
-    <pre><code>function nextMove(state, memory) {
-  const directions = ["up", "right", "down", "left"];
-  const facing = directions.indexOf(state.direction);
-  for (const turn of [1, 0, 3, 2]) {
-    const direction = directions[(facing + turn) % 4];
-    if (state.availableMoves.includes(direction)) {
-      return { direction, memory };
-    }
-  }
-}</code></pre>
-    <p>
-      Die Offsets stehen für rechts, geradeaus, links und zurück. „Zurück“
-      bedeutet lediglich die entgegengesetzte Richtung; eine belegte Rückzelle
-      bleibt für den regulären Zug gesperrt. Für die Linksregel die Offsets auf
-      <code>[3, 0, 1, 2]</code> ändern. Für Geradeauspriorität
-      <code>[0, 1, 3, 2]</code> testen.
-    </p>
-    <h3>C. Planungsdaten nach einem Rücklauf zurücksetzen</h3>
-    <pre><code>function nextMove(state, memory) {
-  if (state.afterReturn) memory = {};
+    <pre><code>// Geradeaus bleiben; bei einer Sperre einen freien Nachbarn wählen.
+function nextMove(state, memory) {
   const moves = state.availableMoves;
   const direction = moves.includes(state.direction)
     ? state.direction
@@ -545,704 +338,331 @@
   };
 }</code></pre>
     <p>
-      Ein lokaler Plan kann nach einem Rücklauf unpassend sein. Das Zurücksetzen
-      ist eine Entscheidung der Strategie, kein Zwang. Ein lebenslanger eigener
-      Statistikzähler sollte dagegen nicht zurückgesetzt werden.
-    </p>
-    <h3>D. Begrenzte Freiraumsuche</h3>
-    <p>
-      Im Editor ist ein vollständiges Beispiel ladbar: Für jede erlaubte
-      Richtung untersucht eine lokale Breitensuche höchstens 28 freie Zellen.
-      Größere zusammenhängende Bereiche erhalten mehr Gewicht; bei Gleichstand
-      folgen Geradeausbonus und Seed-Zufall.
-    </p>
-    <p>
-      Warum 28? Maximal vier Optionen × 27 expandierte Zellen × vier Nachbarn =
-      432 Zellabfragen. Damit bleibt das Beispiel unter 512. Der Grenzwert
-      betrifft <em>erfasste Zellen</em>, nicht automatisch die Tiefe oder die
-      Anzahl aller möglichen Wege. <code>visited</code> verhindert wiederholtes
-      Einfügen derselben freien Zelle.
-    </p>
-    <p>
-      Eine vollständige Flutfüllung des gesamten Rasters pro Entscheidung wäre
-      deutlich teurer und ist nicht nötig. „Viel lokaler Freiraum“ ist außerdem
-      nur eine Heuristik: Andere Teilnehmer können den Raum später erreichen
-      oder absperren. Das Beispiel garantiert keinen Sieg.
+      Für eine neue Planung nach einem Rücklauf kannst du am Funktionsanfang
+      <code>if (state.afterReturn) memory = {};</code> verwenden. Der Spielkern
+      validiert jeden Zug; eigener Code verändert den echten Spielzustand nicht
+      direkt.
     </p>
 
-    <h2 id="experimente">5. Reproduzierbare Experimente</h2>
-    <ol>
-      <li>
-        Eine überprüfbare Hypothese notieren, etwa: „Geradeauspriorität benötigt
-        weniger Rückläufe als die Rechtsregel.“
-      </li>
-      <li>
-        Nur eine unabhängige Variable verändern: Strategie oder ein Parameter.
-        Arenaform, Auflösung, Teilnehmerreihenfolge und Seed zunächst konstant
-        lassen.
-      </li>
-      <li>
-        Alle Fehler und Ersatzstrategien ausschließen oder separat kennzeichnen.
-        Gleiche Anzahl gültiger Zugmöglichkeiten bedeutet nicht automatisch
-        gleiche Ergebnisse.
-      </li>
-      <li>
-        Die vier Größen unterscheiden: Punkte/Anteil, Rückläufe,
-        Rücklaufschritte und globale Simulationsschritte. Weniger Rückwege und
-        mehr Punkte sind unterschiedliche Ziele.
-      </li>
-      <li>
-        Danach über mindestens zehn vorab festgelegte Seeds wiederholen; bei
-        höheren Ansprüchen deutlich mehr. Mittelwert, Streuung und Ausreißer
-        dokumentieren. Nicht nur den besten Seed berichten.
-      </li>
-      <li>
-        Startplätze beziehungsweise Teilnehmerreihenfolge tauschen. Dieselbe
-        Strategie darf mehrfach antreten; getrennte Zufallsströme und Startlagen
-        können trotzdem verschiedene Ergebnisse liefern.
-      </li>
-      <li>
-        Code und Ergebnisse exportieren. Ein Replay erneut abzuspielen ist kein
-        unabhängiger neuer Versuch.
-      </li>
-    </ol>
-    <p>
-      Die Wiedergabedauer beeinflusst die Darstellung, nicht die berechneten
-      Entscheidungen. Eine Messung „Sekunden bis das Video fertig ist“ ist daher
-      keine Laufzeitmessung des Algorithmus. Die globale Vorbereitung umfasst
-      zusätzlich Worker-Kommunikation, Rücklaufplanung und andere Strategien.
-    </p>
-
-    <h2 id="fehler">6. Fehlersuche und Sicherheitsmodell</h2>
-    <div class="table">
-      <table>
-        <thead>
-          <tr>
-            <th>Beobachtung</th>
-            <th>Wahrscheinliche Ursache</th>
-            <th>Vorgehen</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td>„Erwartet wird … direction …“</td>
-            <td>
-              Fehlendes Objekt, Tippfehler, falscher Name, async-Funktion.
-            </td>
-            <td>Rückgabevertrag prüfen; kleinste Vorlage laden.</td>
-          </tr>
-          <tr>
-            <td>Gewählter Zug ist belegt</td>
-            <td>Fest codierte Richtung oder ein veralteter Speicherplan.</td>
-            <td>
-              Vor jeder Rückgabe
-              <code>availableMoves.includes(direction)</code> prüfen.
-            </td>
-          </tr>
-          <tr>
-            <td>Abfragelimit überschritten</td>
-            <td>Zu große Suche oder wiederholte Abfragen derselben Zellen.</td>
-            <td>
-              Lokalen Cache verwenden und ein explizites Suchbudget einbauen.
-            </td>
-          </tr>
-          <tr>
-            <td>Zeitlimit überschritten</td>
-            <td>
-              Endlosschleife, unbeschränkte Rekursion oder zu teure Vorausschau.
-            </td>
-            <td>
-              Abbrechen, Suchumfang begrenzen, mit kleinerem Raster beginnen.
-            </td>
-          </tr>
-          <tr>
-            <td>Speicher nicht JSON-kompatibel / zu groß</td>
-            <td>
-              Zirkuläre Referenzen, große Rasterkopie, Funktionen, BigInt.
-            </td>
-            <td>Nur benötigte Planungsdaten und einfache Werte speichern.</td>
-          </tr>
-          <tr>
-            <td>Gleicher Seed, anderes Ergebnis</td>
-            <td>
-              Andere Reihenfolge, geänderter Code oder Nutzung von
-              Uhrzeit/Math.random.
-            </td>
-            <td>
-              Alle Eingaben protokollieren und nur
-              <code>state.random()</code> verwenden.
-            </td>
-          </tr>
-          <tr>
-            <td>Punkt bewegt sich, Punktestand bleibt gleich</td>
-            <td>Automatischer Rücklauf auf bereits belegten Zellen.</td>
-            <td>
-              Rücklaufstatus, gestrichelten Ring und Rücklaufschritte
-              beobachten.
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-    <p>
-      Eigener Code läuft in einem separaten Worker innerhalb eines Iframes mit
-      isolierter Herkunft und restriktiver Content Security Policy. Der echte
-      Kern validiert die Ergebnisse in einem anderen Worker. Abbruch beendet die
-      Ausführungsumgebungen. Das schützt die Oberfläche vor gewöhnlichen
-      Laufzeitfehlern und Endlosschleifen, ist jedoch keine vollständige
-      Garantie gegen Browserfehler oder absichtlich extreme Speichernutzung. Nur
-      eigenen oder überprüften Code ausführen. Für eine Klasse Browser und
-      Beispiele vorab auf den tatsächlich verwendeten Geräten testen.
-    </p>
-
-    <h2 id="wegsuche">7. Algo Sim: Dijkstra, A* und reale Straßen</h2>
-    <p>
-      Im Reiter Algo Sim eine Stadt und einen Algorithmus wählen. Per Klick
-      abwechselnd Start und Ziel setzen oder unter „Punkte über Straßennamen
-      wählen“ Knoten auswählen. Die Auswahl wird auf einen realen Straßenknoten
-      gelegt. Ziehen verschiebt die Karte; Mausrad und Schaltflächen zoomen. Auf
-      der fokussierten Karte funktionieren Pfeiltasten sowie +/−. Die Suche
-      lässt sich pausieren, spulen und schrittweise untersuchen.
-    </p>
-    <ul>
-      <li>
-        Ein Knoten entspricht einem OSM-Straßenpunkt. Nicht jeder Knoten ist
-        eine Kreuzung: Kurven benötigen ebenfalls Geometriepunkte.
-      </li>
-      <li>
-        Eine gerichtete Kante verbindet zwei auf derselben Straße
-        aufeinanderfolgende Punkte. Einbahnstraßen besitzen nur die zulässige
-        Richtung. Eine bloße gezeichnete Kreuzung ohne gemeinsamen OSM-Knoten
-        erzeugt keine Verbindung, etwa bei einer Brücke.
-      </li>
-      <li>
-        Gewichte sind geografische Segmentlängen in Metern. Zeit, Kraftstoff,
-        Verkehr und Abbiegeverbote sind nicht Bestandteil dieses vereinfachten
-        Pkw-Modells.
-      </li>
-      <li>
-        Blau zeigt Suchbaum-Kanten der tatsächlich expandierten Knoten. Grün
-        zeigt ausschließlich die zurückverfolgte Ergebnisroute. Die Suche ist
-        kein Fahrzeug, das alle blauen Straßen nacheinander befährt.
-      </li>
-      <li>
-        Ein grüner Punkt fährt anschließend entlang der gefundenen Route. Die
-        Suche und die Route sind getrennte Animationsphasen.
-      </li>
-      <li>
-        Die Daten zeigen echte Innenstadt-Ausschnitte von Berlin und Mannheim,
-        keine erfundenen Stadtpläne und nicht die kompletten Städte. „Kein Weg“
-        kann auch aus der Ausschnittsgrenze oder dem gerichteten Netz entstehen.
-      </li>
-    </ul>
-    <div class="table">
-      <table>
-        <thead>
-          <tr>
-            <th>Verfahren</th>
-            <th>Priorität / Datenstruktur</th>
-            <th>Garantie im Modell</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td>Dijkstra</td>
-            <td>
-              Kleinste bekannte Weglänge <code>g(n)</code>; binärer Min-Heap.
-            </td>
-            <td>Kürzester Weg bei nichtnegativen Gewichten.</td>
-          </tr>
-          <tr>
-            <td>A*</td>
-            <td><code>f(n) = g(n) + h(n)</code>; Luftlinie als Heuristik.</td>
-            <td>
-              Kürzester Weg, weil die verwendete Luftlinie die Straßenlänge
-              nicht überschätzt und konsistent ist.
-            </td>
-          </tr>
-          <tr>
-            <td>Bidirektionaler Dijkstra</td>
-            <td>
-              Zwei Distanzfronten; die Rückwärtssuche benutzt eingehende Kanten.
-            </td>
-            <td>
-              Kürzester Weg. Ein erstes Zusammentreffen allein genügt nicht als
-              Abbruchbedingung.
-            </td>
-          </tr>
-          <tr>
-            <td>BFS</td>
-            <td>FIFO-Warteschlange; schichtweise Suche.</td>
-            <td>Wenigste Kanten, nicht notwendigerweise wenigste Meter.</td>
-          </tr>
-          <tr>
-            <td>DFS</td>
-            <td>LIFO-Stapel; Tiefensuche.</td>
-            <td>Erreichbaren Weg, keine Kürzestweggarantie.</td>
-          </tr>
-          <tr>
-            <td>Greedy Best-First</td>
-            <td>Nur <code>h(n)</code>; bisherige Weglänge ignoriert.</td>
-            <td>Keine Kürzestweggarantie.</td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-    <p>
-      „Alle Algorithmen vergleichen“ verwendet exakt dieselben Endpunkte.
-      Dijkstra, A* und bidirektionaler Dijkstra müssen dieselbe kürzeste Distanz
-      liefern, müssen aber bei gleich langen Alternativen nicht dieselbe Route
-      wählen. Unterschiedliche Expansionszahlen zeigen den Einfluss der
-      Suchstrategie. Einzelne Millisekundenwerte sind stark vom Rechner und
-      Browser abhängig und kein belastbarer Benchmark.
-    </p>
-    <h3>Pseudocode: Relaxation und Vorgänger</h3>
-    <pre><code>dist[start] = 0; alle anderen Distanzen = unendlich
-solange die Prioritätswarteschlange nicht leer ist:
-    u = Knoten mit kleinster Priorität entnehmen
-    falls u bereits abgeschlossen: überspringen
-    u abschließen und Expansion protokollieren
-    für jede ausgehende Kante u → v mit Gewicht w:
-        falls dist[u] + w kleiner als dist[v]:
-            dist[v] = dist[u] + w
-            vorgänger[v] = diese Kante
-            Priorität aktualisieren / neuen Heap-Eintrag hinzufügen
-vom Ziel über die Vorgänger den Weg rekonstruieren
-
-Dijkstra: Priorität = dist[v]
-A*:       Priorität = dist[v] + Luftlinie(v, ziel)</code></pre>
-    <p>
-      Mit binärem Heap liegt Dijkstra typischerweise bei O((V + E) log V), BFS
-      und DFS bei O(V + E). Die konkrete Implementierung erlaubt mehrfach
-      eingestellte Heap-Einträge und verwirft bereits abgeschlossene Knoten beim
-      Entnehmen. A* kann mit guter Heuristik weniger Knoten expandieren, hat
-      jedoch keine allgemeine lineare Laufzeitgarantie.
-    </p>
-
-    <h3 id="originalcode">Originalcode öffnen und verändern</h3>
-    <p>
-      Beide Editoren bieten im Feld „Strategie“ alle eingebauten Algorithmen
-      unter „Eingebaute Algorithmen · als Kopie bearbeiten“ an. Algo Sim hat
-      zusätzlich „Originalcode öffnen / eigene Version“ direkt unter der
-      Algorithmusauswahl. Der geladene JavaScript-Code stammt aus derselben
-      Implementierung wie das eingebaute Verfahren, einschließlich seiner
-      Hilfsfunktionen. Speichern legt eine eigene Kopie an. Die eingebauten
-      Originale bleiben unverändert. Eigene gespeicherte Varianten lassen sich
-      aktualisieren oder über „Als neue Kopie speichern“ erneut verzweigen.
-    </p>
-    <p>
-      In der Arena übersetzt ein Adapter die begrenzte Editor-API in die
-      gemeinsame Entscheidungsfunktion <code>chooseBuiltin</code>. Der Adapter
-      puffert Zellabfragen. Der eigentliche Algorithmus steht darunter; seine
-      Auswahl steht im Adapter in <code>player.strategy</code>.
-      <code>state.id</code> ist die Teilnehmernummer ab 0. Bei der Wegsuche ruft
-      <code>findRoute</code> die mitgelieferte Funktion
-      <code>searchGraph</code> auf. Der letzte Parameter wählt das Verfahren;
-      die zugehörigen Prioritäten und Abbruchregeln stehen im Funktionskörper.
-      Alle Hilfsfunktionen sind editierbar und dürfen durch eine eigene
-      Implementierung ersetzt werden.
-    </p>
-    <p>
-      Aufgabe: Kopiere A*, ändere ausschließlich die Priorität von
-      <code>candidate + h</code> in <code>candidate + 2 * h</code> und
-      vergleiche Suchaufwand und Streckenlänge bei identischen Endpunkten.
-      Begründe, weshalb die ursprüngliche Optimalitätsgarantie dann nicht mehr
-      gilt. Bewahre eine unveränderte eigene Kopie als Kontrollgruppe auf.
-    </p>
-    <h3 id="eigene-wegsuche">Eigene Algorithmen in Algo Sim</h3>
-    <p>
-      Ein Routenalgorithmus definiert <code>function findRoute(graph)</code> und
-      wird einmal pro Suche synchron aufgerufen. Der gesamte gerichtete Graph
-      wird einmal an seine isolierte Ausführung übergeben, ohne neue Kopie bei
-      jeder Expansion. Zustände, Prioritätswarteschlangen und Vorgängerlisten
-      können im Funktionsaufruf frei angelegt werden. Es gibt hier keinen
-      persistenten Arena-Speicher.
+    <h2 id="wegsuche">4. Algo-Sim-API: findRoute(graph)</h2>
+    <p id="eigene-wegsuche">
+      <code>findRoute</code> berechnet eine ganze Suche in einem synchronen
+      Aufruf. Der gerichtete Straßengraph wird einmal als schreibgeschützte
+      Kopie übergeben. Eigene Arrays, Maps, Klassen und Hilfsfunktionen sind
+      erlaubt.
     </p>
     <div class="table">
       <table>
         <thead>
           <tr>
             <th>Feld / Funktion</th>
-            <th>Bedeutung</th>
+            <th>Bedeutung und Verwendung</th>
           </tr>
         </thead>
         <tbody>
           <tr>
-            <td><code>graph.start, graph.target</code></td>
-            <td>Ausgewählte Knoten als Array-Indizes, beginnend bei 0.</td>
-          </tr>
-          <tr>
-            <td><code>graph.nodeCount</code></td>
-            <td>Anzahl der Knoten; geeignet für Typed Arrays.</td>
+            <td>
+              <code>graph.start, graph.target</code><br /><code
+                >graph.nodeCount</code
+              >
+            </td>
+            <td>
+              Start und Ziel als Knoten-Indizes ab 0 sowie Anzahl der Knoten.
+            </td>
           </tr>
           <tr>
             <td><code>graph.nodes[v]</code></td>
             <td>
-              <code>{ id, lat, lon }</code>. id ist die originale OSM-ID, nicht
-              der Index v.
+              Koordinaten <code>{ id, lat, lon }</code>. Achtung: id ist die
+              originale OSM-ID; v ist der für die Suche verwendete Array-Index.
             </td>
           </tr>
           <tr>
             <td><code>graph.arcs[e]</code></td>
             <td>
-              <code>{ from, to, length }</code>. e ist die Kanten-ID, length die
-              Länge in Metern.
+              Gerichtete Kante <code>{ from, to, length }</code>. e ist die
+              Kanten-ID, from/to sind Knoten-Indizes, length ist die Länge in
+              Metern.
             </td>
           </tr>
           <tr>
-            <td><code>graph.outgoing[v], graph.incoming[v]</code></td>
             <td>
-              Arrays mit ausgehenden bzw. eingehenden Kanten-IDs. Einbahnstraßen
-              besitzen nur ihre erlaubte Richtung.
+              <code>graph.outgoing[v]</code><br /><code>graph.incoming[v]</code>
+            </td>
+            <td>
+              Arrays von ausgehenden bzw. eingehenden Kanten-IDs. Vorwärtssuche
+              nutzt outgoing; Rückwärtssuche nutzt incoming und folgt jeweils
+              arc.from.
             </td>
           </tr>
           <tr>
             <td><code>graph.neighbors(v)</code></td>
             <td>
-              Ausgehende Kanten als Objekte
-              <code>{ id, from, to, length }</code>. Gleichwertig ist der
-              direkte Zugriff über outgoing und arcs.
+              Ausgehende Kanten direkt als Objekte
+              <code>{ id, from, to, length }</code>. Alternative zum Zugriff
+              über outgoing und arcs.
             </td>
           </tr>
           <tr>
             <td><code>graph.heuristic(v)</code></td>
             <td>
-              Luftlinie von v zum Ziel in Metern. Direkte Graph-Daten sind
-              schreibgeschützt.
+              Luftlinie von v zum Ziel in Metern. A* priorisiert
+              <code>Entfernung vom Start + Luftlinie</code>; Greedy nutzt nur
+              die Luftlinie.
+            </td>
+          </tr>
+          <tr>
+            <td><code>graph.createQueue()</code></td>
+            <td>
+              Erzeugt eine leere Min-Prioritätswarteschlange.
+              <code>q.push(v, p)</code> fügt Knoten v mit Priorität p ein.
+              <code>q.pop()</code> entnimmt den kleinsten Eintrag als
+              <code>{ node, priority }</code>; <code>q.peek()</code> liest ihn.
+              Beide geben bei leerer Schlange null zurück. Mehrfache Einträge
+              sind erlaubt: abgeschlossene Knoten beim Entnehmen überspringen.
             </td>
           </tr>
           <tr>
             <td><code>graph.trace(v, e = -1, side = 0)</code></td>
             <td>
-              Expansion für die Wiedergabe aufzeichnen. Vorwärtssuche: e endet
-              an v. Rückwärtssuche (side=1): e beginnt an v und führt zur
-              rückwärtigen Vorgängerposition. -1 protokolliert nur den Knoten.
-              side ist 0 oder 1.
+              Eine Expansion für die blaue Suchspur aufzeichnen. e ist die zum
+              Knoten v führende Vorgängerkante; -1 zeichnet keine Kante. Bei
+              Rückwärtssuche gilt side=1: e führt von v zur rückwärtigen
+              Vorgängerposition.
             </td>
           </tr>
           <tr>
             <td><code>return { path: [...] }</code></td>
             <td>
-              Kanten-IDs in Fahrtrichtung vom Start bis zum Ziel, keine
-              Knoten-IDs. Ein leeres Array ist nur bei Start = Ziel ein gültiger
-              Weg.
+              Kanten-IDs in Reihenfolge vom Start zum Ziel,
+              <strong>keine Knoten-IDs</strong>. Ein leeres Array ist nur bei
+              Start = Ziel gültig.
             </td>
           </tr>
           <tr>
             <td><code>return { path: null }</code></td>
             <td>
-              Der eigene Algorithmus hat keinen Weg gefunden. Dies ist seine
-              Aussage, kein unabhängiger Unerreichbarkeitsbeweis.
+              Der Algorithmus hat keinen Weg gefunden. Das ist seine Aussage und
+              kein unabhängiger Beweis für Unerreichbarkeit.
             </td>
           </tr>
         </tbody>
       </table>
     </div>
-    <pre><code>// Kleinste vollständige Lösung für einen direkten Nachbarn:
-function findRoute(graph) {
-  graph.trace(graph.start);
-  if (graph.start === graph.target) return { path: [] };
-  for (const edge of graph.outgoing[graph.start]) {
-    if (graph.arcs[edge].to === graph.target) {
-      graph.trace(graph.target, edge);
-      return { path: [edge] };
+    <p>
+      Der Kern prüft Kantenrichtung, Zusammenhang und Zielerreichung und
+      berechnet die Strecke selbst. Ohne trace-Aufrufe erscheint nur die grüne
+      Route; die Zahl expandierter Knoten bleibt 0. Ältere Strategien dürfen
+      stattdessen die gleich langen Arrays traceNodes, traceEdges und traceSides
+      zurückgeben; diese haben Vorrang vor trace-Aufrufen.
+    </p>
+    <p>
+      Die sechs Originale verwenden dieselbe API wie eigener Code: Dijkstra, A*
+      und bidirektionaler Dijkstra minimieren Meter; BFS minimiert Kanten. DFS
+      und Greedy garantieren keine kürzeste Strecke. Für die
+      Prioritätswarteschlange kannst du auch eine eigene Implementierung
+      schreiben.
+    </p>
+
+    <h2 id="beispiele">5. Beispiele für eigene Wegsuchen</h2>
+    <h3>Breitensuche: wenige Kanten</h3>
+    <p>
+      Die Warteschlange wird von vorn gelesen. Jeder neu entdeckte Knoten
+      bekommt eine Vorgängerkante. Am Ziel werden diese Kanten rückwärts
+      gesammelt und anschließend umgedreht.
+    </p>
+    <pre><code>function findRoute(graph) {
+  const queue = [graph.start];
+  const seen = new Set(queue);
+  const previous = new Map();
+
+  for (let i = 0; i &lt; queue.length; i++) {
+    const node = queue[i];
+    graph.trace(node, previous.get(node) ?? -1);
+    if (node === graph.target) {
+      const path = [];
+      for (let v = node; v !== graph.start;) {
+        const edge = previous.get(v);
+        path.push(edge);
+        v = graph.arcs[edge].from;
+      }
+      return { path: path.reverse() };
+    }
+    for (const edge of graph.outgoing[node]) {
+      const next = graph.arcs[edge].to;
+      if (seen.has(next)) continue;
+      seen.add(next);
+      previous.set(next, edge);
+      queue.push(next);
     }
   }
-  return { path: null }; // Nur direkte Verbindungen geprüft!
+  return { path: null };
 }</code></pre>
+    <h3>Prioritäten verändern: Dijkstra und A*</h3>
     <p>
-      „Auf Vorlage zurücksetzen“ lädt eine vollständige, kommentierte
-      Breitensuche. Die Originale geben das Suchprotokoll als gleich lange
-      Arrays <code>traceNodes</code>, <code>traceEdges</code> und
-      <code>traceSides</code> zurück. Alternativ nutzt eigener Code
-      <code>graph.trace()</code>; beide Formen werden unterstützt. Verwende eine
-      der beiden Protokollformen, weil explizite Arrays Vorrang vor den
-      graph.trace-Aufrufen haben. Ohne Protokoll erscheint nur die grüne Route;
-      die Zahl expandierter Knoten bleibt dann 0.
+      Öffne Dijkstra im Editor. Seine Warteschlange bevorzugt den kleinsten
+      bisher bekannten Weg <code>candidate</code>. Mit dieser Änderung erhältst
+      du die A*-Priorität:
     </p>
+    <pre><code>// Dijkstra:
+queue.push(arc.to, candidate);
+
+// A*: bisheriger Weg plus geschätzter Restweg:
+queue.push(arc.to, candidate + graph.heuristic(arc.to));</code></pre>
     <p>
-      Prüfen verwendet einen kleinen gerichteten Graphen mit zwei Wegen. Eine
-      gültige Rückgabe belegt weder Vollständigkeit noch Optimalität. Speichern
-      macht die Variante in der Algorithmusauswahl von Algo Sim verfügbar. Nach
-      einer eigenen Suche ergänzt „Mit eingebauten vergleichen“ deren Ergebnis
-      um die sechs eingebauten Verfahren mit denselben Endpunkten. Der eigene
-      Name bedeutet keine Optimalitätsgarantie.
-    </p>
-    <p>
-      Eigene Wegsuchen und Arena-Strategien werden in getrennten lokalen
-      Bibliotheken gespeichert (je bis zu 30 Einträge). JSON-Import und -Export
-      verwenden verschiedene Formate: <code>algofights-route-v1</code> und
-      <code>algofights-strategy-v1</code>. Eine Routenfunktion ist deshalb nicht
-      versehentlich als Arena-Strategie importierbar.
-    </p>
-    <p>
-      Grenzen: 50.000 Zeichen Code, 5 Sekunden Ausführungszeit, höchstens
-      250.000 Protokoll- und Routeneinträge. neighbors/heuristic erlauben
-      zusammen bis zu 2.000.000 Aufrufe; direkte Array-Zugriffe unterliegen dem
-      Zeitlimit. Die UI zeigt Berechnung und Abbruch an. Abbruch, Schließen des
-      Editors und ein Zeitlimit beenden die isolierte Ausführung; danach kann
-      sofort eine neue Suche gestartet werden. Der getrennte Kern prüft
-      Knoten-IDs, Kantenrichtung, Zusammenhang und Zielerreichung und berechnet
-      die Strecke selbst neu. Ungültiger Code erzeugt eine Fehlermeldung unter
-      seinem Namen und keine Ersatzroute. Die Isolation hat dieselben Grenzen
-      bei Browserfehlern und extremer Speichernutzung wie der Arena-Editor. Nur
-      eigenen oder vertrauten lokalen Code verwenden.
+      Die Luftlinie überschätzt die verbleibende Straßenlänge nicht. Ein
+      größerer Faktor vor der Heuristik kann die Suche stärker zum Ziel lenken,
+      nimmt ihr aber diese Optimalitätsgarantie. Speichere Experimente unter
+      eigenen Namen und behalte die Originale als Vergleich.
     </p>
 
-    <h2 id="unterricht">8. Unterricht und Vorlesung</h2>
-    <h3>Lernziele</h3>
+    <h2 id="speichern">6. Prüfen, speichern und ausführen</h2>
     <ul>
-      <li>Regeln als Zustandsübergänge auf einem Graphen erklären.</li>
       <li>
-        Eine Strategie als Entscheidungsfunktion mit persistentem Speicher
-        implementieren.
+        <strong>Prüfen:</strong> Arena-Code erhält drei Probeaufrufe;
+        Routen-Code einen kleinen gerichteten Probegraphen. Das findet Syntax-
+        und grundlegende Rückgabefehler, beweist aber keine allgemeine
+        Korrektheit.
       </li>
       <li>
-        Lokale Heuristik, vollständige Suche und Kürzestwegverfahren
-        unterscheiden.
+        <strong>Speichern:</strong> Prüft den Code und legt ihn lokal in der
+        passenden Bibliothek ab. In der Arena danach als Teilnehmer wählen; in
+        Algo Sim wird die gespeicherte Variante ausgewählt. Vor dem Spielen auf
+        „Suche starten“ bzw. „Neuen Kampf starten“ klicken.
       </li>
       <li>
-        Kontrollierte Experimente durchführen und Ergebnis, Laufzeit,
-        Darstellung und Zufall trennen.
+        <strong>Import / Export:</strong> Sichert Name und Code als JSON. Arena
+        und Algo Sim verwenden getrennte Formate. Browser-Speicher ist keine
+        Sicherung; zum Gerätewechsel exportieren.
       </li>
-      <li>Komplexität, Optimalität und Grenzen eines Modells begründen.</li>
+      <li>
+        <strong>Auf Vorlage zurücksetzen:</strong> Arena lädt das
+        Zufallsbeispiel; Algo Sim leert das Codefeld für einen neuen
+        Algorithmus.
+      </li>
+      <li>
+        <strong>Abbrechen:</strong> Stoppt eine Prüfung oder laufende
+        Berechnung. Danach kann sofort neu gestartet werden. Pause und Spulen
+        betreffen nur die Wiedergabe.
+      </li>
     </ul>
-    <h3>45 Minuten: Einstieg in Schule oder Grundkurs</h3>
     <div class="table">
       <table>
-        <tr>
-          <th>Zeit</th>
-          <th>Aktivität</th>
-          <th>Ergebnis</th>
-        </tr>
-        <tr>
-          <td>5 min</td>
-          <td>Arena zeigen, Bewegung und Punkte gemeinsam vorhersagen.</td>
-          <td>Regeln und Koordinaten klären.</td>
-        </tr>
-        <tr>
-          <td>10 min</td>
-          <td>Zufallsbeispiel lesen und kommentieren.</td>
-          <td>Array, Index, Funktion und Rückgabe zuordnen.</td>
-        </tr>
-        <tr>
-          <td>20 min</td>
-          <td>
-            In Paaren Rechtsregel zu Geradeauspriorität ändern; drei feste Seeds
-            testen.
-          </td>
-          <td>Hypothese und kleine Ergebnistabelle.</td>
-        </tr>
-        <tr>
-          <td>10 min</td>
-          <td>
-            Unterschiede, Fehler und Zufall diskutieren; Code exportieren.
-          </td>
-          <td>Kurze begründete Auswertung.</td>
-        </tr>
+        <thead>
+          <tr>
+            <th>Grenze</th>
+            <th>Arena</th>
+            <th>Algo Sim</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Code / Bibliothek</td>
+            <td>50.000 Zeichen, 30 Einträge</td>
+            <td>50.000 Zeichen, 30 Einträge</td>
+          </tr>
+          <tr>
+            <td>Laufzeit</td>
+            <td>250 ms je Zug; 45 s Rundenbudget</td>
+            <td>5 s je Suche</td>
+          </tr>
+          <tr>
+            <td>Datenbudget</td>
+            <td>512 cell-Abfragen je Aufruf; 64 KiB memory</td>
+            <td>
+              250.000 Such- und Routeneinträge; zusammen 2 Millionen
+              neighbors-/heuristic-Aufrufe
+            </td>
+          </tr>
+          <tr>
+            <td>Bei einem Fehler</td>
+            <td>Fehlermeldung; „Geradeaus“ übernimmt sichtbar</td>
+            <td>Fehlermeldung; keine Ersatzroute</td>
+          </tr>
+        </tbody>
       </table>
     </div>
-    <h3>90 Minuten: Hochschule oder vertiefender Kurs</h3>
+
+    <h2 id="fehler">7. Fehlerhilfe und reproduzierbare Ergebnisse</h2>
     <div class="table">
       <table>
-        <tr>
-          <th>Zeit</th>
-          <th>Aktivität</th>
-        </tr>
-        <tr>
-          <td>15 min</td>
-          <td>
-            Graphmodell, Kostenfunktion, Rücklauf-Ausnahme und
-            Reproduzierbarkeit formalisieren.
-          </td>
-        </tr>
-        <tr>
-          <td>20 min</td>
-          <td>
-            Freiraumsuche analysieren; Budgetnachweis erbringen; eine
-            Bewertungsfunktion verändern.
-          </td>
-        </tr>
-        <tr>
-          <td>20 min</td>
-          <td>
-            Messreihe mit festgelegten Seeds und vertauschten Startplätzen
-            planen und durchführen.
-          </td>
-        </tr>
-        <tr>
-          <td>20 min</td>
-          <td>
-            Algo Sim: Dijkstra, A*, BFS und Greedy auf denselben Endpunkten
-            vergleichen.
-          </td>
-        </tr>
-        <tr>
-          <td>15 min</td>
-          <td>
-            Optimalität, Expansionszahlen, Laufzeitmessung und Modellgrenzen
-            erklären.
-          </td>
-        </tr>
+        <thead>
+          <tr>
+            <th>Meldung / Beobachtung</th>
+            <th>Prüfe zuerst</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Funktion fehlt / Syntaxfehler</td>
+            <td>
+              Heißt sie nextMove bzw. findRoute? Stimmen Klammern und
+              Anführungszeichen? Kein import oder await verwenden.
+            </td>
+          </tr>
+          <tr>
+            <td>Ungültige Richtung</td>
+            <td>
+              direction aus state.availableMoves wählen; nicht ungeprüft eine
+              feste Richtung zurückgeben.
+            </td>
+          </tr>
+          <tr>
+            <td>Unverbundene oder falsch gerichtete Kante</td>
+            <td>
+              path muss Kanten-IDs enthalten. Die erste Kante beginnt am Start;
+              jede folgende am Ende der vorherigen; die letzte endet am Ziel.
+            </td>
+          </tr>
+          <tr>
+            <td>Ziel nicht erreicht / leeres path</td>
+            <td>
+              Leeres Array nur bei Start = Ziel. Für „kein Weg gefunden“
+              path:null zurückgeben.
+            </td>
+          </tr>
+          <tr>
+            <td>Keine blaue Suchspur</td>
+            <td>
+              graph.trace beim Expandieren aufrufen und die Vorgängerkante
+              mitgeben.
+            </td>
+          </tr>
+          <tr>
+            <td>Zeitlimit</td>
+            <td>
+              Endlosschleifen, fehlende seen-/closed-Prüfung oder wiederholte
+              Vollsuchen vermeiden. Nach Abbruch mit kleinerem Beispiel prüfen.
+            </td>
+          </tr>
+          <tr>
+            <td>Änderung wird nicht verwendet</td>
+            <td>
+              Speichern, gespeicherte Variante auswählen und eine neue
+              Berechnung starten. Ein vorhandenes Replay ändert sich nicht.
+            </td>
+          </tr>
+        </tbody>
       </table>
     </div>
-    <h3>Aufgaben mit steigender Schwierigkeit</h3>
-    <div class="task">
-      <strong>1 · Einstieg:</strong> Implementiere „geradeaus, rechts, links,
-      zurück“. Begründe, warum die Rückgabe immer erlaubt sein muss.
-      <em>Erwartet:</em> Prüfung über availableMoves, kein Betreten der eigenen
-      Spur im regulären Zug.
-    </div>
-    <div class="task">
-      <strong>2 · Speicher:</strong> Zähle Funktionsaufrufe und
-      Richtungswechsel. Warum ist die Aufrufzahl nicht identisch mit score oder
-      step? <em>Erwartet:</em> Startpunkt, Konflikte, Wartephasen und Rückläufe
-      berücksichtigen.
-    </div>
-    <div class="task">
-      <strong>3 · Heuristik:</strong> Verändere das Freiraumgewicht oder die
-      Suchgrenze. Leite zuerst eine sichere Obergrenze der cell()-Aufrufe her.
-      <em>Erwartet:</em> Begrenzte Suche und systematischer Vergleich; mehr
-      Vorausschau garantiert keinen Sieg.
-    </div>
-    <div class="task">
-      <strong>4 · Fairness:</strong> Lass dieselbe Strategie viermal antreten.
-      Tausche Teilnehmerreihenfolge und Seeds. <em>Erwartet:</em> Startlage,
-      Konflikte und separate Zufallsströme als Einflussgrößen benennen.
-    </div>
-    <div class="task">
-      <strong>5 · Rücklauf:</strong> Erkläre anhand eines Replays, wie ein Punkt
-      über eine andersfarbige Zelle zurückläuft, ohne deren Besitzer zu ändern.
-      <em>Erwartet:</em> Exploration und Transport unterscheiden; keine
-      Zusatzpunkte.
-    </div>
-    <div class="task">
-      <strong>6 · Kürzester Weg:</strong> Suche ein Start-Ziel-Paar in Mannheim,
-      bei dem BFS länger als Dijkstra ist. Warum ist das kein Fehler?
-      <em>Erwartet:</em> Kantenanzahl und Summe der Kantenlängen sind
-      verschiedene Zielfunktionen.
-    </div>
-    <div class="task">
-      <strong>7 · A*:</strong> Begründe die Zulässigkeit und Konsistenz der
-      Luftlinienheuristik mit der Dreiecksungleichung. Was wäre bei h = 0
-      beziehungsweise 2 × Luftlinie zu erwarten? <em>Erwartet:</em> h = 0
-      entspricht Dijkstra; eine überschätzende Heuristik kann Optimalität
-      verlieren. Die Anwendung nutzt keine künstlich verdoppelte Heuristik.
-    </div>
-    <div class="task">
-      <strong>8 · Bidirektional:</strong> Warum sucht man vom Ziel über
-      eingehende Kanten? Warum reicht die erste Berührung nicht?
-      <em>Erwartet:</em> Gerichtete Straßen, beste bisherige Verbindung μ und
-      Abbruch erst bei min(Qf) + min(Qb) ≥ μ.
-    </div>
-    <h3>Vorschlag für Bewertung und Abgabe</h3>
-    <ul>
-      <li>
-        30 % Korrektheit: gültige Züge, saubere Rückgabe, keine Fehler oder
-        Budgetüberschreitungen.
-      </li>
-      <li>
-        25 % Erklärung: Idee, Zustandsgrößen, Speicher und zentrale
-        Programmteile nachvollziehbar beschreiben.
-      </li>
-      <li>
-        30 % Experiment: Hypothese, kontrollierte Eingaben, mehrere Seeds,
-        nachvollziehbare Tabelle und kritische Interpretation.
-      </li>
-      <li>
-        15 % Reflexion: Grenzen, Komplexität, Fairness und mögliche
-        Verbesserungen.
-      </li>
-    </ul>
-    <p>
-      Abgabe: exportierte Strategie-JSON, Ergebnisdateien oder Tabelle,
-      dokumentierte Einstellungen und eine kurze Auswertung. Ein hoher
-      Punktestand allein ist kein ausreichendes Bewertungskriterium.
+    <p id="experimente">
+      Für reproduzierbare Arena-Vergleiche Seed, Form, Auflösung,
+      Teilnehmerreihenfolge und Code beibehalten; nur state.random() als Zufall
+      verwenden. In Algo Sim dieselbe Stadt und dieselben Endpunkte verwenden.
+      Einzellaufzeiten schwanken mit Rechner und Browser.
     </p>
-
-    <section class="worksheet" id="arbeitsblatt">
-      <h2>Arbeitsblatt: Mein Algorithmus</h2>
-      <p>
-        Name / Gruppe: ____________________ &nbsp; Datum: ____________________
-      </p>
-      <h3>Hypothese</h3>
-      <div class="answer"></div>
-      <h3>Strategieidee und veränderter Parameter</h3>
-      <div class="answer"></div>
-      <h3>Kontrollierte Einstellungen</h3>
-      <p>
-        Arena: __________ Raster: __________ Gegner / Reihenfolge:
-        ____________________
-      </p>
-      <div class="table">
-        <table>
-          <tr>
-            <th>Seed</th>
-            <th>Strategie</th>
-            <th>Punkte / Anteil</th>
-            <th>Rückläufe / Schritte</th>
-            <th>Fehler?</th>
-          </tr>
-          <tr>
-            <td>________</td>
-            <td>________</td>
-            <td>________</td>
-            <td>________</td>
-            <td>________</td>
-          </tr>
-          <tr>
-            <td>________</td>
-            <td>________</td>
-            <td>________</td>
-            <td>________</td>
-            <td>________</td>
-          </tr>
-          <tr>
-            <td>________</td>
-            <td>________</td>
-            <td>________</td>
-            <td>________</td>
-            <td>________</td>
-          </tr>
-        </table>
-      </div>
-      <h3>Ergebnis und alternative Erklärung</h3>
-      <div class="answer"></div>
-      <h3>Nächster sinnvoller Versuch</h3>
-      <div class="answer"></div>
-    </section>
-
-    <h2>9. Quellen, Daten und technische Vertiefung</h2>
-    <ul>
-      <li>
-        <a href="https://algs4.cs.princeton.edu/44sp/index.php"
-          >Princeton Algorithms: Shortest Paths</a
-        >
-        – gewichtete Graphen und Dijkstra.
-      </li>
-      <li>
-        <a href="https://www.cs.cmu.edu/~15281/coursenotes/search/"
-          >Carnegie Mellon University: A* Search</a
-        >
-        – heuristische Suche.
-      </li>
-      <li>
-        <a href="https://www.openstreetmap.org/copyright"
-          >OpenStreetMap-Mitwirkende, Datenlizenz ODbL</a
-        >
-        – Herkunft der realen Straßen.
-      </li>
-      <li>
-        <a href="https://github.com/sh11n3/AlgoFights"
-          >Quellcode von AlgoFights</a
-        >
-        – insbesondere src/core/, src/routing/ und src/workers/.
-      </li>
-    </ul>
-    <p class="meta">
-      Die Stadtkarte ist ein Lehrmodell, keine Navigationshilfe. Für Unterricht
-      ausschließlich eigenen oder geprüften Code verwenden. Dieses Handbuch darf
-      als Unterrichtsmaterial ausgedruckt werden.
+    <p class="note">
+      Eigener Code läuft außerhalb der Oberfläche in einem Worker unter
+      isolierter Herkunft, ohne Netzwerk- oder Browser-Speicherzugriff.
+      Zeitlimit und Abbruch beenden die Ausführung. Browserfehler oder
+      absichtlich extreme Speichernutzung sind damit nicht vollständig
+      ausgeschlossen. Verwende eigenen oder vertrauten lokalen Code.
+    </p>
+    <p class="intro">
+      Algo Sim nutzt reale OpenStreetMap-Innenstadtausschnitte und ein
+      vereinfachtes Pkw-Modell: Einbahnstraßen und gesperrte Wege, aber keine
+      Abbiegeverbote oder Live-Verkehrsdaten. Es ist eine Simulation, keine
+      Navigationsanwendung.
     </p>
   </body>
 </html>

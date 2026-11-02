@@ -1,6 +1,6 @@
 # AlgoFights
 
-Beide Code-Editoren öffnen die Originalimplementierungen der eingebauten Verfahren als editierbare Kopie. Eigene Varianten lassen sich benennen, prüfen, lokal speichern, importieren und exportieren. Algo Sim verwendet `findRoute(graph)` mit gerichteten Kanten, Längen, Luftlinien-Heuristik und aufgezeichneten Expansionen. Ein eigener Worker unter isolierter Herkunft beendet Endlosschleifen nach fünf Sekunden; ein getrennter Kern validiert die zurückgegebene Route. Die vollständige API und Unterrichtsaufgaben stehen im [Editor-Handbuch](public/docs/editor-handbuch.html#eigene-wegsuche).
+Beide Code-Editoren öffnen die Originalimplementierungen der eingebauten Verfahren als editierbare Kopie. Eigene Varianten lassen sich benennen, prüfen, lokal speichern, importieren und exportieren. Algo Sim verwendet `findRoute(graph)` mit gerichteten Kanten, Längen, Luftlinien-Heuristik und aufgezeichneten Expansionen. Ein eigener Worker unter isolierter Herkunft beendet Endlosschleifen nach fünf Sekunden; ein getrennter Kern validiert die zurückgegebene Route. Die API und lauffähige Beispiele stehen im [Editor-Handbuch](public/docs/editor-handbuch.html#eigene-wegsuche).
 
 Browser-Labor für Algorithmusexperimente: eine deterministische Raster-Arena für zwei bis vier Strategien und ein separater Wegsuche-Simulator auf echten Straßen. Vue 3, Composition API, TypeScript, Vite, Canvas 2D und Web Worker. Eigene Strategien werden im integrierten JavaScript-Editor entwickelt.
 
@@ -45,9 +45,9 @@ Die Runde wird vorab im Worker berechnet und über zehn bis fünfzehn Sekunden a
 
 Der Canvas trennt logische Auflösung und Anzeigegröße, berücksichtigt Display-Pixeldichte und zeichnet keine Gitterlinien. Ein dezenter Saum verbessert die Lesbarkeit feiner Spuren, erzeugt aber keine Punkte. Köpfe verwenden vorberechnete Glow-Sprites; ein gestrichelter Ring zeigt den automatischen Rücklauf.
 
-## Eigene Strategien und Unterricht
+## Eigene Strategien und Editor
 
-Das [vollständige, druckbare Handbuch](public/docs/editor-handbuch.html) ist im Code-Labor verlinkt und [direkt online lesbar](https://algofights.de/docs/editor-handbuch.html). Es enthält API-Referenz, kommentierte Beispiele, Fehlerdiagnose, Versuchsprotokolle, Lernziele, Unterrichtspläne für 45 und 90 Minuten, acht abgestufte Aufgaben, Bewertungskriterien und ein Arbeitsblatt. Vier Beispiele lassen sich direkt in den Editor laden.
+Das [Editor-Handbuch](public/docs/editor-handbuch.html) ist in beiden Editoren verlinkt und [direkt online lesbar](https://algofights.de/docs/editor-handbuch.html). Es erklärt beide APIs, Ein- und Rückgaben, Beispiele, Speichern und Fehlersuche. Algo Sim öffnet nur den Quellcode des ausgewählten Verfahrens; „Eigenen Algorithmus bauen“ beginnt mit einem leeren Codefeld. Vier zusätzliche Arena-Beispiele lassen sich direkt laden.
 
 ```js
 function nextMove(state, memory) {
@@ -92,8 +92,8 @@ src/render/      Arena- und Straßenkarten-Renderer
 src/content/     Ladbare Beispiele und unveränderte Originalquellen für die Editoren
 src/services/    Worker-Lebenszyklus, Sandbox und lokale Speicherung
 src/components/ Arena, Code-Editor und Algo Sim
-public/docs/    Druckbares Handbuch und Unterrichtsmaterial
+public/docs/    Editor-Handbuch mit Funktionsreferenz und Beispielen
 public/maps/    Reale OSM-Datenschnappschüsse und Lizenznachweis
 ```
 
-Neue Arenaformen werden als Maskenfunktionen ergänzt. Routing-Algorithmen verwenden dieselben Graphen und dieselbe Kostenfunktion, damit Vergleiche fachlich nachvollziehbar bleiben. Die portablen JavaScript-Dateien `builtin-arena.js` und `builtin-routing.js` sind die gemeinsame Originalimplementierung für Worker und Editor; TypeScript-Deklarationen halten ihre Kern-Schnittstellen typisiert. Die Editoren laden diese Dateien als Rohtext mit einem kleinen API-Adapter. Sie pflegen keine abweichenden Beispielkopien der Originale.
+Neue Arenaformen werden als Maskenfunktionen ergänzt. Routing-Algorithmen verwenden dieselben Graphen und dieselbe Kostenfunktion, damit Vergleiche fachlich nachvollziehbar bleiben. Die Arena verwendet `builtin-arena.js`; die sechs Routing-Verfahren liegen einzeln in `src/routing/algorithms/`. Worker und Editor nutzen dieselben Originaldateien. Die Editoransicht lädt genau das gewählte Verfahren als Rohtext, ohne Importzeile. `graph.createQueue()` stellt einen binären Min-Heap bereit; eigene Datenstrukturen sind ebenfalls möglich. TypeScript-Deklarationen typisieren die Schnittstellen.

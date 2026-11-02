@@ -25,6 +25,7 @@
       arcs: freeze(arcs),
       outgoing: freeze(outgoing),
       incoming: freeze(incoming),
+      createQueue,
       neighbors(id) {
         if (++queries > 2000000)
           throw new Error("Mehr als 2.000.000 Graph-Abfragen.");

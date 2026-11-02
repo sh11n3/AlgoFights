@@ -1,5 +1,10 @@
 import arenaSource from "../core/builtin-arena.js?raw";
-import routingSource from "../routing/builtin-routing.js?raw";
+import dijkstraSource from "../routing/algorithms/dijkstra.js?raw";
+import astarSource from "../routing/algorithms/astar.js?raw";
+import bidirectionalSource from "../routing/algorithms/bidirectional.js?raw";
+import bfsSource from "../routing/algorithms/bfs.js?raw";
+import dfsSource from "../routing/algorithms/dfs.js?raw";
+import greedySource from "../routing/algorithms/greedy.js?raw";
 import { LABELS } from "../core/types";
 import { ROUTE_ALGORITHMS } from "../routing/types";
 
@@ -33,43 +38,22 @@ function nextMove(state, memory) {
 ${editable(arenaSource)}`,
 }));
 
+const routeSources = {
+  dijkstra: dijkstraSource,
+  astar: astarSource,
+  bidirectional: bidirectionalSource,
+  bfs: bfsSource,
+  dfs: dfsSource,
+  greedy: greedySource,
+};
 export const ROUTING_SOURCES = Object.entries(ROUTE_ALGORITHMS).map(
   ([id, info]) => ({
     id,
     name: info.name,
-    code: `// Original: ${info.name}. Alle Hilfsfunktionen sind mit enthalten.
-// Wähle unten in searchGraph eigene Prioritäten, Abbruchregeln oder Datenstrukturen.
-function findRoute(graph) {
-  return searchGraph(graph, graph.start, graph.target, ${JSON.stringify(id)});
-}
-
-${editable(routingSource)}`,
+    code: routeSources[id as keyof typeof routeSources].replace(
+      /^export default /m,
+      "",
+    ),
   }),
 );
-export const ROUTING_TEMPLATE = `// Breitensuche: zuerst Wege mit wenigen Kanten untersuchen.
-function findRoute(graph) {
-  const queue = [graph.start];
-  const seen = new Set(queue);
-  const previous = new Map();
-  for (let i = 0; i < queue.length; i++) {
-    const node = queue[i];
-    graph.trace(node, previous.get(node) ?? -1);
-    if (node === graph.target) {
-      const path = [];
-      for (let v = node; v !== graph.start;) {
-        const edge = previous.get(v);
-        path.push(edge);
-        v = graph.arcs[edge].from;
-      }
-      return { path: path.reverse() };
-    }
-    for (const edge of graph.outgoing[node]) {
-      const next = graph.arcs[edge].to;
-      if (seen.has(next)) continue;
-      seen.add(next);
-      previous.set(next, edge);
-      queue.push(next);
-    }
-  }
-  return { path: null };
-}`;
+export const ROUTING_TEMPLATE = "";

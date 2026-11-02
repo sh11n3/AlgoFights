@@ -18,6 +18,7 @@ import {
   Maximize2,
   ArrowLeftRight,
   Download,
+  CodeXml,
   SkipForward,
   LoaderCircle,
 } from "lucide-vue-next";
@@ -97,11 +98,16 @@ const routeInfo = computed(
         "Optimalität hängt vom eigenen Code ab; keine automatische Ersatzroute.",
     },
 );
+function selectedSource() {
+  return algorithm.value === "new"
+    ? "new"
+    : custom.value
+      ? algorithm.value
+      : `builtin:${algorithm.value}`;
+}
 async function openEditor() {
   pause();
-  editorSource.value = custom.value
-    ? algorithm.value
-    : `builtin:${algorithm.value}`;
+  editorSource.value = selectedSource();
   editorShown.value = true;
   await nextTick();
   editorHost.value?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -308,6 +314,10 @@ function load() {
 }
 async function run() {
   if (!graph.value || !worker) return;
+  if (algorithm.value === "new") {
+    clearRoute();
+    return;
+  }
   customRun?.abort();
   customRun = null;
   pause();
@@ -518,7 +528,11 @@ function visibility() {
   if (document.hidden) pause();
 }
 watch(city, load);
-watch(algorithm, clearRoute);
+watch(algorithm, () => {
+  clearRoute();
+  if (algorithm.value === "new") openEditor();
+  else if (editorShown.value) editorSource.value = selectedSource();
+});
 watch(duration, () => {
   pause();
 });
@@ -683,6 +697,7 @@ onBeforeUnmount(() => {
         >
         <label
           >Algorithmus<select v-model="algorithm">
+            <option value="new">Eigenen Algorithmus bauen</option>
             <optgroup label="Eingebaute Algorithmen">
               <option
                 v-for="(info, key) in ROUTE_ALGORITHMS"
@@ -699,12 +714,8 @@ onBeforeUnmount(() => {
             </optgroup>
           </select></label
         >
-        <button class="text-button" @click="openEditor">
-          {{
-            custom
-              ? "Eigenen Code bearbeiten"
-              : "Originalcode öffnen / eigene Version"
-          }}
+        <button class="primary-button sim-editor-button" @click="openEditor">
+          <CodeXml :size="18" /> Code-Editor öffnen
         </button>
         <div class="endpoint-actions">
           <button
@@ -767,7 +778,7 @@ onBeforeUnmount(() => {
         /></label>
         <button
           class="primary-button"
-          :disabled="!graph || computing || loading"
+          :disabled="!graph || computing || loading || algorithm === 'new'"
           @click="run"
         >
           <LoaderCircle v-if="computing" class="spin" :size="16" /><Play
@@ -862,10 +873,13 @@ onBeforeUnmount(() => {
         @save="saveStrategy"
         @remove="removeStrategy"
         @close="editorShown = false"
+        @ready="
+          editorHost?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+        "
       />
     </div>
     <details class="sim-notes panel">
-      <summary>Kartendaten, Modell und Unterricht</summary>
+      <summary>Kartendaten und Modell</summary>
       <p v-if="graph">
         {{ graph.name }} · {{ integer.format(graph.nodes.length) }} Knoten ·
         {{ integer.format(graph.arcs.length) }} gerichtete Kanten · OSM-Stand
@@ -887,14 +901,6 @@ onBeforeUnmount(() => {
         nutzt die Luftlinie als zulässige Heuristik. Vergleiche Dijkstra und A*:
         gleiche kürzeste Strecke, meist verschieden viele untersuchte Knoten.
         Teste danach BFS: wenige Kanten bedeuten nicht automatisch wenige Meter.
-      </p>
-      <p>
-        <a
-          :href="`${dataBase}docs/editor-handbuch.html#wegsuche`"
-          target="_blank"
-          rel="noopener noreferrer"
-          >Unterrichtsaufgaben zur Wegsuche und Algorithmusvergleich</a
-        >
       </p>
     </details>
   </section>
