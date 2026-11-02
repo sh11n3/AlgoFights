@@ -75,6 +75,8 @@ Der Reiter simuliert **Dijkstra, A\*, bidirektionalen Dijkstra, BFS, DFS und Gre
 
 Ein Worker lädt den lokalen Datenschnappschuss, erzeugt den gerichteten Graphen und berechnet Suchspur und Route. Canvas zeichnet die reale Segmentgeometrie: Grundnetz dunkel, expandierte Suchbaum-Kanten blau, rekonstruierte Route grün. Die anschließende Fahrt entlang der Route ist proportional zur zurückgelegten Strecke.
 
+Am Ende von Algo Sim vergleicht eine dauerhaft sichtbare Tabelle alle sechs eingebauten und alle lokal gespeicherten Routenalgorithmen automatisch mit identischen Endpunkten. Sie zeigt Rechenzeit, Strecke, Mehrweg gegenüber Dijkstra, tatsächlich erreichte kürzeste Strecke, Expansionen und Status. Die allgemeine Optimalitätsgarantie steht getrennt unter dem Namen. Änderungen an Karte, Punkten oder Code verwerfen alte Werte. Eigener Code läuft nacheinander isoliert mit fünf Sekunden Zeitlimit; der Vergleich ist abbrechbar und als JSON exportierbar. Einzellaufzeiten sind Richtwerte, keine belastbaren Benchmarks.
+
 - Kostenfunktion: geografische Segmentlänge in Metern. Gemeinsame OSM-Knoten definieren Verbindungen; reine Bildkreuzungen erzeugen keine künstlichen Kreuzungen.
 - Vereinfachtes Pkw-Modell: Einbahnrichtungen, Kreisverkehre und gesperrte/private Straßen werden ausgewertet. Keine Abbiegerelationen, Ampelzeiten, Baustellen oder Live-Verkehrsdaten. Keine Navigationsanwendung.
 - Dijkstra und A* verwenden einen binären Min-Heap. A* nutzt die konsistente Luftlinie als zulässige Heuristik. Bidirektionaler Dijkstra sucht auf eingehenden Kanten rückwärts und stoppt erst bei einer abgesicherten besten Verbindung.

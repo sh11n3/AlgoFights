@@ -65,6 +65,17 @@ export interface RouteResult {
   path: Uint32Array;
   milliseconds: number;
 }
+export interface RouteComparisonRow {
+  algorithm: string;
+  name: string;
+  custom: boolean;
+  state: "waiting" | "running" | "done" | "error" | "cancelled";
+  found: boolean | null;
+  distance: number | null;
+  expanded: number | null;
+  milliseconds: number | null;
+  error?: string;
+}
 export const ROUTE_ALGORITHMS: Record<
   RouteAlgorithm,
   { name: string; description: string; guarantee: string }

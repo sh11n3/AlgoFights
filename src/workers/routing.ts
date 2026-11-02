@@ -19,7 +19,10 @@ scope.onmessage = async ({ data }) => {
         );
       graph = buildGraph((await response.json()) as CitySnapshot);
       scope.postMessage({ type: "loaded", graph });
-    } else if (data.type === "validate-custom") {
+    } else if (
+      data.type === "validate-custom" ||
+      data.type === "compare-custom"
+    ) {
       if (!graph) throw new Error("Bitte zuerst eine Karte laden.");
       const result = validateRouteOutput(
         graph,
@@ -27,7 +30,17 @@ scope.onmessage = async ({ data }) => {
         data.target,
         data.output,
       );
-      scope.postMessage({ type: "result", id: data.id, result });
+      if (data.type === "compare-custom")
+        scope.postMessage({
+          type: "comparison-row",
+          row: {
+            found: result.found,
+            distance: result.found ? result.distance : null,
+            expanded: result.traceNodes.length,
+            milliseconds: result.milliseconds,
+          },
+        });
+      else scope.postMessage({ type: "result", id: data.id, result });
     } else if (data.type === "route") {
       if (!graph) throw new Error("Bitte zuerst eine Karte laden.");
       const result = findRoute(graph, data.start, data.target, data.algorithm);
@@ -38,6 +51,7 @@ scope.onmessage = async ({ data }) => {
         result.path.buffer,
       ]);
     } else if (data.type === "compare") {
+      if (data.graph) graph = data.graph;
       if (!graph) throw new Error("Bitte zuerst eine Karte laden.");
       const rows = Object.keys(ROUTE_ALGORITHMS).map((algorithm) => {
         const r = findRoute(

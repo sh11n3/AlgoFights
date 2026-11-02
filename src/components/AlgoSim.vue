@@ -29,6 +29,7 @@ import {
   type RoadGraph,
   type RouteAlgorithm,
   type RouteResult,
+  type RouteComparisonRow,
 } from "../routing/types";
 import "../routing/style.css";
 import { readStrategies, store } from "../services/storage";
@@ -36,6 +37,9 @@ import { runRouteCode } from "../services/route-sandbox";
 import type { CustomStrategy } from "../core/types";
 const StrategyEditor = defineAsyncComponent(
   () => import("./StrategyEditor.vue"),
+);
+const RouteComparison = defineAsyncComponent(
+  () => import("./RouteComparison.vue"),
 );
 const customStrategies = ref(readStrategies("routes", "route:"));
 const editorShown = ref(false),
@@ -60,16 +64,7 @@ const progress = ref(0),
   playing = ref(false),
   duration = ref(12),
   canvas = ref<HTMLCanvasElement>();
-const comparison = ref<
-  Array<{
-    algorithm: string;
-    name?: string;
-    found: boolean;
-    distance: number;
-    expanded: number;
-    milliseconds: number;
-  }>
->([]);
+const comparison = ref<RouteComparisonRow[]>([]);
 let worker: Worker | null = null,
   renderer: CityMapRenderer | null = null,
   observer: ResizeObserver | null = null,
@@ -216,7 +211,6 @@ function clearRoute() {
   request++;
   computing.value = false;
   result.value = null;
-  comparison.value = [];
   progress.value = 0;
   renderer?.setResult(null);
   renderer?.setEndpoints(start.value, target.value);
@@ -271,19 +265,6 @@ function createWorker() {
       renderer?.setResult(data.result);
       play();
     }
-    if (data.type === "comparison") {
-      comparison.value = data.rows;
-      if (custom.value && result.value?.algorithm === "custom")
-        comparison.value.push({
-          algorithm: custom.value.id,
-          name: custom.value.name,
-          found: result.value.found,
-          distance: result.value.distance,
-          expanded: result.value.traceNodes.length,
-          milliseconds: result.value.milliseconds,
-        });
-      computing.value = false;
-    }
     if (data.type === "error") {
       error.value = `${routeInfo.value.name}: ${data.error}`;
       loading.value = false;
@@ -299,7 +280,6 @@ function load() {
   error.value = "";
   graph.value = null;
   result.value = null;
-  comparison.value = [];
   loading.value = true;
   computing.value = false;
   renderer = null;
@@ -324,7 +304,6 @@ async function run() {
   error.value = "";
   hint.value = "";
   computing.value = true;
-  comparison.value = [];
   progress.value = 0;
   result.value = null;
   renderer?.setResult(null);
@@ -369,18 +348,6 @@ function cancelSearch() {
   clearRoute();
   hint.value =
     "Berechnung abgebrochen. Eine neue Suche kann sofort gestartet werden.";
-}
-function compare() {
-  if (!graph.value || !worker) return;
-  pause();
-  computing.value = true;
-  error.value = "";
-  worker.postMessage({
-    type: "compare",
-    id: ++request,
-    start: start.value,
-    target: target.value,
-  });
 }
 function swap() {
   const s = start.value;
@@ -790,17 +757,7 @@ onBeforeUnmount(() => {
         <button v-if="computing" class="secondary-button" @click="cancelSearch">
           Berechnung abbrechen
         </button>
-        <button
-          class="secondary-button"
-          :disabled="!graph || computing"
-          @click="compare"
-        >
-          {{
-            custom && result
-              ? "Mit eingebauten vergleichen"
-              : "Eingebaute Algorithmen vergleichen"
-          }}
-        </button>
+
         <button class="text-button" :disabled="!result" @click="saveResult">
           <Download :size="14" /> Ergebnis exportieren
         </button>
@@ -822,48 +779,6 @@ onBeforeUnmount(() => {
           <dd>{{ result.milliseconds.toFixed(2) }} ms</dd>
         </dl>
       </aside>
-    </div>
-    <div v-if="comparison.length" class="comparison-panel panel">
-      <h2>Vergleich mit identischem Start und Ziel</h2>
-      <div class="table-scroll">
-        <table>
-          <thead>
-            <tr>
-              <th>Algorithmus</th>
-              <th>Strecke</th>
-              <th>Expandiert</th>
-              <th>Rechenzeit</th>
-              <th>Optimalität</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="row in comparison" :key="row.algorithm">
-              <td>
-                {{
-                  row.name ||
-                  ROUTE_ALGORITHMS[row.algorithm as RouteAlgorithm]?.name
-                }}
-              </td>
-              <td>{{ row.found ? km(row.distance) : "kein Weg" }}</td>
-              <td>{{ integer.format(row.expanded) }}</td>
-              <td>{{ row.milliseconds.toFixed(2) }} ms</td>
-              <td>
-                {{
-                  ["dijkstra", "astar", "bidirectional"].includes(row.algorithm)
-                    ? "kürzeste Strecke"
-                    : row.algorithm === "bfs"
-                      ? "wenigste Kanten"
-                      : "nicht garantiert"
-                }}
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-      <p>
-        Einzellaufzeiten hängen von Rechner und Browser ab; sie sind kein
-        belastbarer Performance-Benchmark.
-      </p>
     </div>
     <div v-if="editorShown" ref="editorHost" class="sim-editor">
       <StrategyEditor
@@ -903,5 +818,12 @@ onBeforeUnmount(() => {
         Teste danach BFS: wenige Kanten bedeuten nicht automatisch wenige Meter.
       </p>
     </details>
+    <RouteComparison
+      :graph="graph"
+      :start="start"
+      :target="target"
+      :strategies="customStrategies"
+      @update="comparison = $event"
+    />
   </section>
 </template>

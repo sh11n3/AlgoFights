@@ -318,6 +318,70 @@ td:last-child {
   margin-top: 17px;
   line-height: 1.7;
 }
+.comparison-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+.comparison-heading h2 {
+  margin-bottom: 6px;
+}
+.comparison-heading p {
+  color: #91a1b4;
+  font-size: 11px;
+  line-height: 1.7;
+}
+.comparison-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.comparison-actions .secondary-button {
+  width: auto;
+  padding: 9px 12px;
+  font-size: 11px;
+}
+.comparison-reference strong {
+  color: #d4dee9;
+  font-weight: 500;
+}
+.comparison-panel > .comparison-progress {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.comparison-table tbody th {
+  color: #d3dce6;
+  font-size: 12px;
+  min-width: 180px;
+}
+.comparison-table th > small {
+  display: block;
+  margin-top: 4px;
+  color: #8191a4;
+  font-size: 9px;
+  font-weight: 400;
+}
+.comparison-table th span small {
+  color: #8191a4;
+  font-size: 9px;
+}
+.comparison-table .comparison-state {
+  min-width: 150px;
+}
+.comparison-state small {
+  display: block;
+  max-width: 260px;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  font-size: 10px;
+  line-height: 1.6;
+  margin-top: 5px;
+}
 .sim-notes {
   margin-top: 20px;
   padding: 18px 22px;
