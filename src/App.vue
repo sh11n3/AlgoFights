@@ -831,8 +831,9 @@ onBeforeUnmount(() => {
     <footer class="site-footer">
       <span
         >AlgoFIghts <span>© {{ new Date().getFullYear() }}</span></span
-      ><span>CODE IS THE COMPETITION.</span
-      ><a
+      ><span>CODE IS THE COMPETITION.</span>
+      <button class="text-button footer-rules" @click="help = true">Spielregeln</button>
+      <a
         href="https://github.com/sh11n3/AlgoFights"
         target="_blank"
         rel="noopener noreferrer"

@@ -48,7 +48,8 @@ process.stdin.on("data", async (chunk) => {
           ),
         );
       }
-      process.exit(0);
+      process.exitCode = 0;
+      return;
     }
     let fingerprint;
     sftp = new SftpClient();
@@ -146,7 +147,9 @@ process.stdin.on("data", async (chunk) => {
     process.exitCode = 1;
   } finally {
     if (sftp) await sftp.end();
-    process.exit(process.exitCode || 0);
+    if (process.stdin.isTTY) process.stdin.setRawMode(false);
+    process.stdin.pause();
+    process.stdin.unref?.();
   }
 });
 function githubToken() {

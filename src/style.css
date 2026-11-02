@@ -1172,6 +1172,10 @@ h1 > span {
   gap: 6px;
   align-items: center;
 }
+.site-footer .footer-rules {
+  font-size: 9px;
+  color: #8292a6;
+}
 .preparation-overlay {
   position: absolute;
   inset: 0;
