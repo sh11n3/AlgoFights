@@ -104,6 +104,8 @@ Die Sandbox ist für eigenen, vertrauten lokalen Code gedacht. Browser-Sicherhei
 
 ## Quellstruktur
 
+Die Oberfläche verwendet Systemschriften und neutrale Bedienelemente; Teilnehmerfarben sind für Spielzustand und Messwerte reserviert. Weitere Regeln stehen in [docs/ui-guidelines.md](docs/ui-guidelines.md).
+
 ```text
 src/core/        Spielregeln, Strategien, Arenamasken, Seed-Zufall und Replay-Typen
 src/workers/     Hintergrundsimulation und Zeitlimits

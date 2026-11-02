@@ -12,23 +12,17 @@ import {
 import {
   ArrowDownToLine,
   ArrowRight,
-  AudioLines,
-  Braces,
   Check,
   CircleHelp,
   Copy,
   Github,
-  Hexagon,
   LoaderCircle,
   Maximize2,
   Pause,
   Play,
   Plus,
   RotateCcw,
-  Settings2,
   Shuffle,
-  Swords,
-  Trophy,
   X,
 } from "lucide-vue-next";
 import ArenaCanvas from "./components/ArenaCanvas.vue";
@@ -137,6 +131,9 @@ watch(
   },
   { deep: true },
 );
+watch(help, (open) => {
+  document.body.style.overflow = open ? "hidden" : "";
+});
 function notify(message: string) {
   toast.value = message;
   clearTimeout(toastTimer);
@@ -328,6 +325,7 @@ onMounted(() => {
   start();
 });
 onBeforeUnmount(() => {
+  document.body.style.overflow = "";
   pause();
   clearTimeout(toastTimer);
   removeEventListener("keydown", onKey);
@@ -343,15 +341,13 @@ onBeforeUnmount(() => {
         href="#"
         aria-label="AlgoFights Startseite"
         @click.prevent="tab = 'arena'"
-        ><span class="brand-mark"
-          ><Swords :size="21" :stroke-width="2.3" /></span
         ><span>AlgoFights</span></a
       >
       <nav class="main-nav" aria-label="Hauptnavigation">
         <button :class="{ selected: tab === 'arena' }" @click="tab = 'arena'">
-          <Hexagon :size="16" /> Arena</button
+          Arena</button
         ><button :class="{ selected: tab === 'code' }" @click="openLab">
-          <Braces :size="17" /> Code-Labor <span class="nav-badge">JS</span>
+          Code-Labor
         </button>
       </nav>
       <div class="header-right">
@@ -438,14 +434,13 @@ onBeforeUnmount(() => {
               </div>
             </div>
             <div v-if="!replay && !preparing" class="empty-arena">
-              <Hexagon :size="44" />
-              <p>Dein nächster Kampf wartet.</p>
+              <p>Keine Simulation geladen.</p>
               <button class="primary-button" @click="start">
                 <Play :size="16" /> Kampf starten
               </button>
             </div>
             <span class="stage-seed"
-              >SEED <b>{{ currentSettings.seed }}</b
+              >Seed <b>{{ currentSettings.seed }}</b
               ><button aria-label="Seed kopieren" @click="copySeed">
                 <Copy :size="11" /></button
             ></span>
@@ -485,15 +480,12 @@ onBeforeUnmount(() => {
                 @input="seek"
               />
             </div>
-            <span class="replay-label">REPLAY</span
-            ><span class="frame-counter"
-              >{{ number.format(frame) }} <span>STEPS</span></span
+            <span class="frame-counter"
+              >{{ number.format(frame) }} <span>Schritte</span></span
             >
           </div>
           <div class="arena-footer">
-            <span
-              ><span class="mini-dot"></span>
-              {{ number.format(playable) }} bespielbare Zellen</span
+            <span>{{ number.format(playable) }} bespielbare Zellen</span
             ><span
               >Deterministisch <span class="dot-divider">·</span> Seed-basiert
               <span class="desktop-only dot-divider">·</span>
@@ -505,10 +497,9 @@ onBeforeUnmount(() => {
         <aside class="setup-column">
           <section class="settings-panel panel">
             <div class="section-heading compact">
-              <h2><Settings2 :size="17" /> Kampf konfigurieren</h2>
-              <span class="small-label">NÄCHSTE RUNDE</span>
+              <h2>Kampf konfigurieren</h2>
             </div>
-            <label class="field-label">ARENAFORM</label>
+            <label class="field-label">Arenaform</label>
             <div class="shape-options">
               <button
                 v-for="(label, shape) in SHAPES"
@@ -522,13 +513,13 @@ onBeforeUnmount(() => {
             </div>
             <div class="settings-row">
               <label
-                >RASTERAUFLÖSUNG<select v-model.number="settings.resolution">
+                >Rasterauflösung<select v-model.number="settings.resolution">
                   <option :value="256">256 × 256</option>
                   <option :value="512">512 × 512</option>
                   <option :value="1024">1.024 × 1.024</option>
                 </select></label
               ><label
-                >SEED
+                >Seed
                 <div class="seed-input">
                   <input
                     v-model="settings.seed"
@@ -545,7 +536,7 @@ onBeforeUnmount(() => {
               ></label>
             </div>
             <div class="duration-label">
-              <label for="duration">WIEDERGABEDAUER</label
+              <label for="duration">Wiedergabedauer</label
               ><span>{{ settings.duration }} <span>Sekunden</span></span>
             </div>
             <input
@@ -560,18 +551,17 @@ onBeforeUnmount(() => {
             />
             <div class="range-labels"><span>10 s</span><span>15 s</span></div>
             <div class="settings-hint">
-              <Check :size="13" />
               {{
                 changed
-                  ? "Änderungen gelten für den nächsten Kampf."
-                  : "Gleicher Seed. Gleiche Strategien. Gleiches Ergebnis."
+                  ? "Einstellungen geändert. Gilt ab dem nächsten Kampf."
+                  : "Einstellungen gelten ab dem nächsten Kampf."
               }}
             </div>
           </section>
 
           <section class="participants-panel panel">
             <div class="section-heading compact">
-              <h2><Swords :size="17" /> Teilnehmer</h2>
+              <h2>Teilnehmer</h2>
               <span class="count-badge"
                 >{{ settings.participants.length }} / 4</span
               >
@@ -583,9 +573,7 @@ onBeforeUnmount(() => {
                 class="participant-setup"
                 :style="{ '--player-color': p.color }"
               >
-                <span class="participant-number">{{
-                  String(id + 1).padStart(2, "0")
-                }}</span
+                <span class="participant-number">{{ id + 1 }}</span
                 ><span class="color-dot"></span
                 ><select
                   v-model="p.strategy"
@@ -626,11 +614,11 @@ onBeforeUnmount(() => {
             >
               <Plus :size="14" /> Teilnehmer hinzufügen</button
             ><button class="create-strategy" @click="openLab">
-              <Braces :size="15" /> Eigene Strategie entwickeln
+              Eigene Strategie entwickeln
               <ArrowRight :size="14" />
             </button>
             <button class="start-button" :disabled="preparing" @click="start">
-              <LoaderCircle v-if="preparing" class="spin" :size="18" /><Swords
+              <LoaderCircle v-if="preparing" class="spin" :size="18" /><Play
                 v-else
                 :size="18"
               />
@@ -641,7 +629,6 @@ onBeforeUnmount(() => {
                     ? "Neuen Kampf starten"
                     : "Kampf starten"
               }}
-              <span v-if="!preparing"><ArrowRight :size="17" /></span>
             </button>
           </section>
         </aside>
@@ -650,11 +637,9 @@ onBeforeUnmount(() => {
       <section v-show="tab === 'arena'" class="results-section">
         <div class="results-title">
           <h2>
-            <AudioLines :size="17" />
             {{ finished ? "Das Ergebnis" : "Live-Rangliste" }}
           </h2>
           <div v-if="finished" class="finished-note">
-            <Trophy :size="14" />
             {{
               ranked.filter((p) => p.currentScore === ranked[0]?.currentScore)
                 .length > 1
@@ -689,23 +674,16 @@ onBeforeUnmount(() => {
                   errorAt: -1,
                 }))"
             :key="p.id"
-            class="score-card panel"
+            class="score-card"
             :style="{ '--player-color': p.color }"
           >
             <div class="score-card-top">
               <span class="score-player"
                 ><span class="color-dot"></span>{{ p.name }}</span
-              ><span class="rank">{{
-                String(index + 1).padStart(2, "0")
-              }}</span>
+              ><span class="rank">{{ index + 1 }}</span>
             </div>
             <div class="score-value">
-              {{ number.format(p.currentScore) }}<span>Zellen</span
-              ><Trophy
-                v-if="finished && p.currentScore === ranked[0]?.currentScore"
-                class="winner-icon"
-                :size="22"
-              />
+              {{ number.format(p.currentScore) }}<span>Zellen</span>
             </div>
             <div class="score-track">
               <span
@@ -727,7 +705,6 @@ onBeforeUnmount(() => {
               ><span
                 class="player-status"
                 :class="{ error: p.errorAt >= 0 && frame >= p.errorAt }"
-                ><i></i
                 >{{
                   p.errorAt >= 0 && frame >= p.errorAt
                     ? finished
@@ -757,7 +734,6 @@ onBeforeUnmount(() => {
         </div>
         <div class="occupancy-panel panel">
           <div class="occupancy-summary">
-            <span class="occupancy-icon"><Hexagon :size="18" /></span>
             <div>
               <strong>Arenabelegung</strong
               ><span

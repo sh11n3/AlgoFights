@@ -243,7 +243,7 @@ onBeforeUnmount(() => {
   <section class="code-lab panel" aria-label="Strategie-Editor">
     <div class="section-heading">
       <div>
-        <h2>Strategie-Editor <span class="tag">JAVASCRIPT</span></h2>
+        <h2>Strategie-Editor</h2>
       </div>
       <button
         class="icon-button"
