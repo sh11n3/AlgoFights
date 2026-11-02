@@ -43,6 +43,7 @@ export interface Player extends ParticipantConfig {
   fallback: boolean;
   restarts: number;
   lastRestartAt: number;
+  returnSteps: number;
 }
 export interface Arena {
   width: number;
@@ -73,6 +74,7 @@ export interface CustomRequest {
   delta: Uint32Array;
   restarts: number;
   restarted: boolean;
+  returnSteps: number;
 }
 export interface CustomAnswer {
   direction?: Direction;
@@ -107,10 +109,12 @@ export const DESCRIPTIONS: Record<string, string> = {
   edge: "Bevorzugt freie Zellen entlang bestehender Grenzen.",
   invasion: "Steuert auf die Spuren anderer Teilnehmer zu.",
 };
-// The high bit records an explicit relocation. Cell indices use at most 20 bits.
-export const RELOCATION_FLAG = 0x80000000;
+// Movement events retain every adjacent return step, without changing ownership.
+export const TRANSIT_FLAG = 0x80000000;
+export const RETURN_START_FLAG = 0x40000000;
+export const RETURN_END_FLAG = 0x20000000;
 export function eventCell(event: number): number {
-  return (event & 0x7fffffff) >>> 2;
+  return (event & 0x1fffffff) >>> 2;
 }
 export const SHAPES: Record<ArenaShape, string> = {
   circle: "Kreis",

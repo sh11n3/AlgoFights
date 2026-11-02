@@ -3,7 +3,9 @@ import { hashSeed, random } from "./random";
 import { chooseBuiltin, legalMoves, neighbor } from "./strategies";
 import {
   DIRECTIONS,
-  RELOCATION_FLAG,
+  TRANSIT_FLAG,
+  RETURN_START_FLAG,
+  RETURN_END_FLAG,
   type Arena,
   type CustomAnswer,
   type CustomChoose,
@@ -22,12 +24,14 @@ export class Simulation {
   readonly offsets: number[] = [0];
   readonly rng: () => number;
   readonly playerRng: Array<() => number>;
-  private readonly restartRng: () => number;
-  private readonly freeCells: Uint32Array;
-  private readonly freeIndex: Int32Array;
-  private freeCount: number;
-  private readonly frontiers: number[][];
-  private readonly relocations = new Map<number, number>();
+  private routes = new Map<number, number[]>();
+  private freshRoutes = new Set<number>();
+  private returned = new Set<number>();
+  private transitTargets = new Map<number, number>();
+  private seen: Uint32Array;
+  private previous: Int32Array;
+  private queue: Uint32Array;
+  private searchId = 0;
   step = 0;
   occupied = 0;
   finished = false;
@@ -44,23 +48,15 @@ export class Simulation {
       starts ??
       startPositions(this.arena, settings.participants.length, settings.seed);
     this.board = new Int8Array(this.arena.mask.length);
-    this.freeCells = new Uint32Array(this.arena.playable);
-    this.freeIndex = new Int32Array(this.board.length).fill(-1);
-    this.freeCount = this.arena.playable;
-    let cursor = 0;
-    for (let i = 0; i < this.board.length; i++) {
+    for (let i = 0; i < this.board.length; i++)
       this.board[i] = this.arena.mask[i] ? -1 : -2;
-      if (this.arena.mask[i]) {
-        this.freeCells[cursor] = i;
-        this.freeIndex[i] = cursor++;
-      }
-    }
+    this.seen = new Uint32Array(this.board.length);
+    this.previous = new Int32Array(this.board.length);
+    this.queue = new Uint32Array(this.board.length);
     this.rng = random(hashSeed(settings.seed + ":conflicts"));
-    this.restartRng = random(hashSeed(settings.seed + ":relocations"));
     this.playerRng = settings.participants.map((_, i) =>
       random(hashSeed(settings.seed + ":player:" + i)),
     );
-    this.frontiers = settings.participants.map(() => []);
     this.players = settings.participants.map((p, id) => {
       const position = this.starts[id]!;
       if (
@@ -82,38 +78,53 @@ export class Simulation {
         fallback: false,
         restarts: 0,
         lastRestartAt: -1,
+        returnSteps: 0,
       };
     });
     this.offsets.push(this.events.length);
-    this.finished = this.freeCount === 0;
+    this.finished = this.occupied === this.arena.playable;
     if (this.finished) this.finish();
   }
 
-  private claim(cell: number, id: number, relocated = false) {
+  private claim(cell: number, id: number) {
     this.board[cell] = id;
-    const index = this.freeIndex[cell]!;
-    const last = this.freeCells[--this.freeCount]!;
-    this.freeCells[index] = last;
-    this.freeIndex[last] = index;
-    this.freeIndex[cell] = -1;
     this.occupied++;
-    this.events.push(
-      ((cell << 2) | id | (relocated ? RELOCATION_FLAG : 0)) >>> 0,
-    );
-    for (const direction of DIRECTIONS) {
-      const n = neighbor(cell, direction, this.arena.width, this.arena.height);
-      if (n >= 0 && this.board[n] === -1) this.frontiers[id]!.push(n);
-    }
+    this.events.push((cell << 2) | id);
   }
 
-  private restartTarget(p: Player): number {
-    const frontier = this.frontiers[p.id]!;
-    while (frontier.length) {
-      const cell = frontier.pop()!;
-      if (this.board[cell] === -1) return cell;
+  // Breadth-first search on occupied cells, ending at the nearest free cell.
+  // Search buffers are reused; no full-array clearing or flood fill per normal move.
+  private routeToFree(start: number): number[] | null {
+    if (++this.searchId === 0xffffffff) {
+      this.seen.fill(0);
+      this.searchId = 1;
     }
-    // Dense free-cell pool makes isolated pockets reachable in constant time.
-    return this.freeCells[Math.floor(this.restartRng() * this.freeCount)]!;
+    let head = 0,
+      tail = 1;
+    this.queue[0] = start;
+    this.seen[start] = this.searchId;
+    while (head < tail) {
+      const cell = this.queue[head++]!;
+      for (const d of DIRECTIONS) {
+        const n = neighbor(cell, d, this.arena.width, this.arena.height);
+        if (n < 0 || this.board[n] === -2 || this.seen[n] === this.searchId)
+          continue;
+        this.seen[n] = this.searchId;
+        this.previous[n] = cell;
+        if (this.board[n] === -1) {
+          const path: number[] = [];
+          for (
+            let cursor = n;
+            cursor !== start;
+            cursor = this.previous[cursor]!
+          )
+            path.push(cursor);
+          return path;
+        }
+        this.queue[tail++] = n;
+      }
+    }
+    return null;
   }
 
   private useFallback(p: Player, error: string) {
@@ -123,31 +134,12 @@ export class Simulation {
       p.fallback = true;
     }
   }
-
   private finish() {
     for (const p of this.players) {
       p.status = p.fallback ? "error" : "blocked";
       p.stoppedAt = this.step;
     }
   }
-
-  private prepare(): Map<number, Direction[]> {
-    this.step++;
-    this.relocations.clear();
-    const legal = new Map<number, Direction[]>();
-    // No mutations: every decision, including a relocation, sees the same board.
-    for (const p of this.players) {
-      const moves = legalMoves(p, this.board, this.arena);
-      if (moves.length) legal.set(p.id, moves);
-    }
-    // Start a new pass only after every head is blocked. Strong strategies can
-    // keep scoring while trapped opponents wait, preserving meaningful rankings.
-    if (!legal.size)
-      for (const p of this.players)
-        this.relocations.set(p.id, this.restartTarget(p));
-    return legal;
-  }
-
   private builtin(p: Player, legal: Direction[]): Direction {
     return chooseBuiltin(
       p.fallback ? { ...p, strategy: "straight" } : p,
@@ -158,14 +150,78 @@ export class Simulation {
     );
   }
 
+  private prepare(): Map<number, Direction[]> {
+    this.step++;
+    this.transitTargets.clear();
+    const legal = new Map<number, Direction[]>();
+    for (const p of this.players)
+      if (!this.routes.has(p.id)) {
+        const moves = legalMoves(p, this.board, this.arena);
+        if (moves.length) legal.set(p.id, moves);
+      }
+    if (!legal.size && !this.routes.size) {
+      for (const p of this.players) {
+        const route = this.routeToFree(p.position);
+        if (route) {
+          this.routes.set(p.id, route);
+          this.freshRoutes.add(p.id);
+        }
+      }
+      if (!this.routes.size)
+        throw new Error(
+          "Die Arenamaske enthält unerreichbare, getrennte Bereiche. Ohne Teleportieren sind diese nicht vollständig begehbar.",
+        );
+    }
+    for (const [id, route] of this.routes)
+      this.transitTargets.set(id, route[route.length - 1]!);
+    return legal;
+  }
+
+  private directionTo(from: number, to: number): Direction {
+    return DIRECTIONS.find(
+      (d) => neighbor(from, d, this.arena.width, this.arena.height) === to,
+    )!;
+  }
+
+  private moveTransit(p: Player, target: number, conquer: boolean) {
+    const route = this.routes.get(p.id)!;
+    const first = this.freshRoutes.delete(p.id);
+    if (first) p.restarts++;
+    p.direction = this.directionTo(p.position, target);
+    p.position = target;
+    route.pop();
+    const end = conquer || !route.length;
+    if (conquer) {
+      p.score++;
+      this.claim(target, p.id);
+    } else {
+      p.returnSteps++;
+      this.events.push(
+        ((target << 2) |
+          p.id |
+          TRANSIT_FLAG |
+          (first ? RETURN_START_FLAG : 0) |
+          (end ? RETURN_END_FLAG : 0)) >>>
+          0,
+      );
+    }
+    if (end) {
+      this.routes.delete(p.id);
+      this.returned.add(p.id);
+      p.lastRestartAt = this.step;
+    }
+  }
+
   private resolve(
     choices: Map<number, CustomAnswer>,
     legal: Map<number, Direction[]>,
   ) {
-    const targets = new Map<number, Player[]>();
-    const directions = new Map<number, Direction>();
+    const targets = new Map<number, Player[]>(),
+      directions = new Map<number, Direction>();
+    // Ordinary moves and free return targets compete on the unchanged pre-step board.
     for (const p of this.players) {
-      let target = this.relocations.get(p.id);
+      let target = this.transitTargets.get(p.id);
+      if (target !== undefined && this.board[target] !== -1) continue;
       if (target === undefined) {
         const moves = legal.get(p.id);
         if (!moves) continue;
@@ -194,22 +250,25 @@ export class Simulation {
       contenders.push(p);
       targets.set(target, contenders);
     }
+    // Transit over already occupied cells may cross other heads; ownership stays unchanged.
+    for (const [id, target] of this.transitTargets)
+      if (this.board[target] !== -1)
+        this.moveTransit(this.players[id]!, target, false);
     for (const [target, contenders] of targets) {
-      const winner =
+      const p =
         contenders.length === 1
           ? contenders[0]!
           : contenders[Math.floor(this.rng() * contenders.length)]!;
-      const relocated = this.relocations.has(winner.id);
-      winner.position = target;
-      if (relocated) {
-        winner.restarts++;
-        winner.lastRestartAt = this.step;
-      } else winner.direction = directions.get(winner.id)!;
-      winner.score++;
-      this.claim(target, winner.id, relocated);
+      if (this.transitTargets.has(p.id)) this.moveTransit(p, target, true);
+      else {
+        p.position = target;
+        p.direction = directions.get(p.id)!;
+        p.score++;
+        this.claim(target, p.id);
+      }
     }
     this.offsets.push(this.events.length);
-    this.finished = this.freeCount === 0;
+    this.finished = this.occupied === this.arena.playable;
     if (this.finished) this.finish();
   }
 
@@ -245,7 +304,8 @@ export class Simulation {
                 step: this.step,
                 delta,
                 restarts: p.restarts,
-                restarted: p.lastRestartAt === this.step - 1,
+                restarted: this.returned.has(p.id),
+                returnSteps: p.returnSteps,
               });
             } catch (e) {
               choice = {
@@ -253,6 +313,7 @@ export class Simulation {
                   e instanceof Error ? e.message : "Ausführung fehlgeschlagen.",
               };
             }
+            this.returned.delete(p.id);
           } else choice = { direction: this.builtin(p, legal.get(p.id)!) };
           choices.set(p.id, choice);
         }),

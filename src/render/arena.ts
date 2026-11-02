@@ -1,10 +1,18 @@
-import { eventCell, RELOCATION_FLAG, type Replay } from "../core/types";
+import {
+  eventCell,
+  TRANSIT_FLAG,
+  RETURN_START_FLAG,
+  RETURN_END_FLAG,
+  type Replay,
+} from "../core/types";
 
 export interface FrameStats {
   scores: number[];
   positions: number[];
   restarts: number[];
   blocked: boolean[];
+  traveling: boolean[];
+  returnSteps: number[];
   occupied: number;
 }
 export class ArenaRenderer {
@@ -18,6 +26,8 @@ export class ArenaRenderer {
   private positions: number[];
   private owners: Int8Array;
   private restarts: number[];
+  private traveling: boolean[];
+  private returnSteps: number[];
   constructor(
     private canvas: HTMLCanvasElement,
     readonly replay: Replay,
@@ -46,6 +56,8 @@ export class ArenaRenderer {
     this.scores = replay.players.map(() => 0);
     this.positions = [...replay.starts];
     this.restarts = replay.players.map(() => 0);
+    this.traveling = replay.players.map(() => false);
+    this.returnSteps = replay.players.map(() => 0);
     this.reset();
   }
   private reset() {
@@ -75,6 +87,8 @@ export class ArenaRenderer {
     this.frame = -1;
     this.scores.fill(0);
     this.restarts.fill(0);
+    this.traveling.fill(false);
+    this.returnSteps.fill(0);
     this.positions = [...this.replay.starts];
   }
   seek(frame: number): FrameStats {
@@ -85,6 +99,15 @@ export class ArenaRenderer {
       const packed = this.replay.events[this.cursor++]!,
         cell = eventCell(packed),
         id = packed & 3;
+      this.positions[id] = cell;
+      if (packed & TRANSIT_FLAG) {
+        this.returnSteps[id] = this.returnSteps[id]! + 1;
+        if (packed & RETURN_START_FLAG)
+          this.restarts[id] = this.restarts[id]! + 1;
+        this.traveling[id] = !(packed & RETURN_END_FLAG);
+        continue;
+      }
+      this.traveling[id] = false;
       const color = this.colors[id]!;
       this.owners[cell] = id;
       // A one-cell colored shoulder emphasizes narrow paths visually.
@@ -119,8 +142,6 @@ export class ArenaRenderer {
         }
       this.pixels.data.set([color[0]!, color[1]!, color[2]!, 255], cell * 4);
       this.scores[id] = this.scores[id]! + 1;
-      this.positions[id] = cell;
-      if (packed & RELOCATION_FLAG) this.restarts[id] = this.restarts[id]! + 1;
     }
     this.frame = frame;
     this.buffer.getContext("2d")!.putImageData(this.pixels, 0, 0);
@@ -129,8 +150,10 @@ export class ArenaRenderer {
       scores: [...this.scores],
       positions: [...this.positions],
       restarts: [...this.restarts],
+      traveling: [...this.traveling],
+      returnSteps: [...this.returnSteps],
       blocked: this.positions.map((position) => this.isBlocked(position)),
-      occupied: this.cursor,
+      occupied: this.scores.reduce((sum, score) => sum + score, 0),
     };
   }
   private isBlocked(position: number): boolean {
@@ -171,7 +194,7 @@ export class ArenaRenderer {
     this.positions.forEach((position, id) => {
       const player = this.replay.players[id]!;
       const active =
-        !this.isBlocked(position) &&
+        (this.traveling[id] || !this.isBlocked(position)) &&
         (player.stoppedAt < 0 || this.frame < player.stoppedAt);
       const x =
         padding +
@@ -191,6 +214,15 @@ export class ArenaRenderer {
       context.arc(x, y, active ? 2.6 : 1.7, 0, Math.PI * 2);
       context.fillStyle = active ? "#f7ffff" : player.color;
       context.fill();
+      if (active && this.traveling[id]) {
+        context.beginPath();
+        context.arc(x, y, 5, 0, Math.PI * 2);
+        context.setLineDash([2, 2]);
+        context.strokeStyle = player.color;
+        context.lineWidth = 1;
+        context.stroke();
+        context.setLineDash([]);
+      }
     });
   }
 }

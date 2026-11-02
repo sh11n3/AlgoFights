@@ -1,6 +1,10 @@
 # Apache / Hetzner Webhosting: leave a provider's existing index.htm untouched.
 DirectoryIndex index.html index.htm
 
+<IfModule mod_deflate.c>
+  AddOutputFilterByType DEFLATE text/html text/css application/javascript application/json
+</IfModule>
+
 <IfModule mod_headers.c>
   Header always set X-Content-Type-Options "nosniff"
   Header always set Referrer-Policy "strict-origin-when-cross-origin"

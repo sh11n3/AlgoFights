@@ -52,6 +52,7 @@ const {
 const StrategyEditor = defineAsyncComponent(
   () => import("./components/StrategyEditor.vue"),
 );
+const AlgoSim = defineAsyncComponent(() => import("./components/AlgoSim.vue"));
 const tab = ref("arena"),
   help = ref(false),
   toast = ref("");
@@ -63,6 +64,8 @@ const playing = ref(false),
     restarts: [],
     blocked: [],
     occupied: 0,
+    traveling: [],
+    returnSteps: [],
   });
 const arenaPanel = ref<HTMLElement>(),
   labPanel = ref<HTMLElement>();
@@ -134,6 +137,9 @@ watch(
 watch(help, (open) => {
   document.body.style.overflow = open ? "hidden" : "";
 });
+watch(tab, (value) => {
+  if (value !== "arena") pause();
+});
 function notify(message: string) {
   toast.value = message;
   clearTimeout(toastTimer);
@@ -148,7 +154,7 @@ function advance(time: number) {
   playback.value = Math.min(
     1,
     playback.value +
-      (time - lastTime) / (replay.value.settings.duration * 1000),
+      Math.max(0, time - lastTime) / (replay.value.settings.duration * 1000),
   );
   lastTime = time;
   if (playback.value >= 1) {
@@ -171,7 +177,7 @@ function togglePlay() {
 function restartReplay() {
   pause();
   playback.value = 0;
-  play();
+  if (tab.value === "arena") play();
 }
 function seek(event: Event) {
   pause();
@@ -242,7 +248,7 @@ async function start() {
   if (!result) return;
   playback.value = 0;
   await nextTick();
-  play();
+  if (tab.value === "arena") play();
 }
 function cancelPreparation() {
   abort();
@@ -297,6 +303,8 @@ function exportResult() {
         status: p.status,
         error: p.error,
         restarts: p.restarts,
+        returnTrips: p.restarts,
+        returnSteps: p.returnSteps,
         fallback: p.fallback,
       })),
   };
@@ -348,6 +356,12 @@ onBeforeUnmount(() => {
           Arena</button
         ><button :class="{ selected: tab === 'code' }" @click="openLab">
           Code-Labor
+        </button>
+        <button
+          :class="{ selected: tab === 'algosim' }"
+          @click="tab = 'algosim'"
+        >
+          Algo Sim
         </button>
       </nav>
       <div class="header-right">
@@ -489,7 +503,7 @@ onBeforeUnmount(() => {
             ><span
               >Deterministisch <span class="dot-divider">·</span> Seed-basiert
               <span class="desktop-only dot-divider">·</span>
-              <span class="desktop-only">Kein Zurück</span></span
+              <span class="desktop-only">Rücklauf ohne Punkte</span></span
             >
           </div>
         </section>
@@ -709,14 +723,18 @@ onBeforeUnmount(() => {
                   p.errorAt >= 0 && frame >= p.errorAt
                     ? finished
                       ? "Beendet · Ersatz"
-                      : stats.blocked[p.id]
-                        ? "Ersatz · blockiert"
-                        : "Ersatz aktiv"
+                      : stats.traveling[p.id]
+                        ? "Ersatz · Rücklauf"
+                        : stats.blocked[p.id]
+                          ? "Ersatz · blockiert"
+                          : "Ersatz aktiv"
                     : finished
                       ? "Beendet"
-                      : stats.blocked[p.id]
-                        ? "Blockiert"
-                        : "Aktiv"
+                      : stats.traveling[p.id]
+                        ? "Rücklauf"
+                        : stats.blocked[p.id]
+                          ? "Blockiert"
+                          : "Aktiv"
                 }}</span
               >
             </div>
@@ -728,7 +746,9 @@ onBeforeUnmount(() => {
               {{ p.error }} Fortsetzung mit der Ersatzstrategie „Geradeaus“.
             </p>
             <p v-if="(stats.restarts[p.id] ?? 0) > 0" class="restart-count">
-              {{ number.format(stats.restarts[p.id]!) }} Fortsetzungen
+              {{ number.format(stats.restarts[p.id]!) }} Rückläufe ·
+              {{ number.format(stats.returnSteps[p.id] ?? 0) }} Schritte ohne
+              Punkte
             </p>
           </article>
         </div>
@@ -773,6 +793,7 @@ onBeforeUnmount(() => {
           @close="tab = 'arena'"
         />
       </div>
+      <AlgoSim v-if="tab === 'algosim'" />
     </main>
     <footer class="site-footer">
       <span
@@ -831,10 +852,10 @@ onBeforeUnmount(() => {
           </li>
           <li>
             Ohne freien Nachbarn wartet ein Algorithmus. Sind alle blockiert,
-            beginnt ein neuer Durchlauf: Jeder setzt an einer freien Zelle am
-            Rand seines Gebiets fort. Gibt es dort keinen freien Rand mehr, wird
-            eine freie Zelle in einem Restbereich gewählt. Auch dieser Schritt
-            erobert genau eine Zelle. Bestehende Spuren bleiben gesperrt.
+            führt der Kern die Punkte Schritt für Schritt über belegte Zellen
+            zum nächsten freien Bereich zurück. Diese Rückläufe verändern weder
+            Farben noch Punkte. Es gibt kein Teleportieren. Nur während des
+            automatischen Rücklaufs dürfen bestehende Spuren überquert werden.
           </li>
           <li>
             Der Kampf endet erst, wenn alle bespielbaren Zellen belegt sind. Bei

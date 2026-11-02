@@ -18,6 +18,9 @@ import {
 import { TEMPLATE } from "../services/storage";
 import { createSandbox } from "../services/sandbox";
 import type { CustomStrategy } from "../core/types";
+import { STRATEGY_EXAMPLES } from "../content/strategy-examples";
+const documentationUrl = `${import.meta.env.BASE_URL}docs/editor-handbuch.html`;
+const example = ref("");
 
 const props = defineProps<{ strategies: CustomStrategy[] }>();
 const emit = defineEmits<{
@@ -160,6 +163,14 @@ function reset() {
   name.value = "Meine Strategie";
   replace(TEMPLATE);
 }
+function loadExample() {
+  const item = STRATEGY_EXAMPLES.find((item) => item.name === example.value);
+  if (!item) return;
+  stopCheck();
+  selected.value = "";
+  name.value = item.name;
+  replace(item.code);
+}
 function exportCode() {
   const file = new Blob(
     [
@@ -255,6 +266,19 @@ onBeforeUnmount(() => {
     </div>
     <div class="editor-layout">
       <div class="editor-main">
+        <div class="example-picker">
+          <label for="example">Beispiel laden</label
+          ><select id="example" v-model="example" @change="loadExample">
+            <option value="" disabled>Beispiel auswählen …</option>
+            <option
+              v-for="item in STRATEGY_EXAMPLES"
+              :key="item.name"
+              :value="item.name"
+            >
+              {{ item.name }}
+            </option>
+          </select>
+        </div>
         <div class="editor-fields">
           <label
             >Strategie<select v-model="selected" @change="select">
@@ -352,11 +376,14 @@ onBeforeUnmount(() => {
             Eigener JSON-Speicher, anfangs {}. Bis zu 64 KB. Getrennt für jeden
             Teilnehmer.
           </dd>
-          <dt>state.restarts · restarted</dt>
+          <dt>state.returnTrips · afterReturn</dt>
           <dd>
-            Anzahl der Fortsetzungen und ob der letzte Schritt eine Fortsetzung
-            an einer anderen Position war. memory bleibt erhalten.
+            Anzahl der automatischen Rückläufe; afterReturn ist beim ersten
+            Strategieaufruf danach wahr. memory bleibt erhalten.
+            restarts/restarted sind kompatible ältere Namen.
           </dd>
+          <dt>state.returnSteps</dt>
+          <dd>Bereits ausgeführte Rücklaufschritte ohne zusätzliche Punkte.</dd>
         </dl>
         <div class="budget-note">
           Eigene Hilfsfunktionen, Klassen und Datenstrukturen sind erlaubt.
@@ -375,6 +402,16 @@ onBeforeUnmount(() => {
             Strategien nur state.random(), kein Math.random() oder Date.
           </p>
         </details>
+        <div class="editor-resources">
+          <a :href="documentationUrl" target="_blank" rel="noopener noreferrer"
+            >Handbuch: API, Beispiele und Unterrichtsaufgaben</a
+          ><a
+            :href="documentationUrl + '#unterricht'"
+            target="_blank"
+            rel="noopener noreferrer"
+            >Lehrplan für 45 / 90 Minuten und Bewertungskriterien</a
+          >
+        </div>
       </aside>
     </div>
   </section>

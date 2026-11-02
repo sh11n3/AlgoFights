@@ -7,7 +7,7 @@
     const board = new Int8Array(mask.length);
     for (let i = 0; i < mask.length; i++) board[i] = mask[i] ? -1 : -2;
     for (const packed of initial)
-      board[(packed & 0x7fffffff) >>> 2] = packed & 3;
+      board[(packed & 0x1fffffff) >>> 2] = packed & 3;
     let memory = {},
       stateSeed = seed >>> 0,
       decide;
@@ -47,8 +47,8 @@
     send({ ready: true });
     port.onmessage = ({ data: request }) => {
       try {
-        for (const packed of request.delta)
-          board[(packed & 0x7fffffff) >>> 2] = packed & 3;
+        for (const packed of request.delta) if (!(packed & 0x80000000))
+          board[(packed & 0x1fffffff) >>> 2] = packed & 3;
         let queries = 0;
         const cell = (x, y) => {
           if (++queries > 512)
@@ -99,6 +99,9 @@
           step: request.step,
           restarts: request.restarts ?? 0,
           restarted: request.restarted ?? false,
+          returnTrips: request.restarts ?? 0,
+          afterReturn: request.restarted ?? false,
+          returnSteps: request.returnSteps ?? 0,
           neighbors: Object.freeze(neighbors),
           availableMoves: Object.freeze(
             directions.filter((d) => neighbors[d].free),

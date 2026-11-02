@@ -1835,3 +1835,76 @@ kbd {
 .score-card:last-child {
   border-right: 0;
 }
+
+.main-nav {
+  margin-left: 30px;
+}
+.main-nav button {
+  padding-left: 15px;
+  padding-right: 15px;
+}
+@media (max-width: 620px) {
+  .topbar {
+    height: auto;
+    min-height: 95px;
+    flex-wrap: wrap;
+    gap: 0;
+    padding: 16px 18px 0;
+  }
+  .brand {
+    font-size: 21px;
+  }
+  .main-nav {
+    margin: 13px 0 0;
+    width: 100%;
+    height: 37px;
+    gap: 12px;
+  }
+  .main-nav button {
+    height: 37px;
+    padding: 0 6px;
+    font-size: 12px;
+  }
+  .main-nav button.selected:after {
+    left: 6px;
+    right: 6px;
+  }
+}
+
+.editor-resources {
+  border-top: 1px solid var(--border);
+  padding-top: 17px;
+  margin-top: 18px;
+}
+.editor-resources a {
+  display: block;
+  color: #c1cedd;
+  font-size: 11px;
+  line-height: 1.7;
+  text-decoration: underline;
+}
+.example-picker {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+.example-picker label {
+  font-size: 11px;
+  white-space: nowrap;
+  color: #9baabe;
+}
+.example-picker select {
+  max-width: 320px;
+}
+
+@media (max-width: 620px) {
+  .example-picker {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .example-picker select {
+    max-width: none;
+  }
+}

@@ -1,10 +1,10 @@
 # AlgoFights
 
-Deterministische Raster-Simulation für zwei bis vier konkurrierende Algorithmen. Implementiert mit Vue 3, Composition API, TypeScript, Vite, Canvas 2D und Web Workern. Eigene Strategien lassen sich im integrierten JavaScript-Editor entwickeln.
+Browser-Labor für Algorithmusexperimente: eine deterministische Raster-Arena für zwei bis vier Strategien und ein separater Wegsuche-Simulator auf echten Straßen. Vue 3, Composition API, TypeScript, Vite, Canvas 2D und Web Worker. Eigene Strategien werden im integrierten JavaScript-Editor entwickelt.
 
 ## Entwicklung
 
-Voraussetzung: Node.js 22.12+ oder 24 und npm.
+Node.js 22.12+ oder 24 und npm:
 
 ```sh
 npm ci
@@ -12,107 +12,86 @@ npm run dev
 ```
 
 ```sh
-npm run build   # TypeScript-Prüfung und Produktionsbuild
-npm run preview # Lokale Vorschau des Builds
+npm run build   # TypeScript-Prüfung und statischer Produktionsbuild
+npm run preview # Vorschau des fertigen Builds
 ```
 
-Der Build in `dist/` besteht ausschließlich aus statischen Dateien. Relative Assetpfade erlauben auch ein Unterverzeichnis. Die Anwendung benötigt HTTP(S), JavaScript, Web Worker und sandboxed Iframes. Es gibt kein Backend und kein serverseitiges Routing.
+`dist/` enthält ausschließlich statische Dateien. Relative Assetpfade erlauben ein Unterverzeichnis. Die Anwendung benötigt HTTP(S), JavaScript, Web Worker und sandboxed Iframes; kein Backend und kein serverseitiges Routing. Kartendaten liegen lokal im Build, ohne externe Karten- oder Routing-Anfragen während einer Vorführung.
 
-## Spielregeln
+## Arena und Spielregeln
 
-- Jeder Teilnehmer besitzt einen bewegten Punkt. Startzellen und jede neu eroberte Zelle geben jeweils einen Punkt.
-- Reguläre Züge erfolgen eine Rasterzelle nach oben, rechts, unten oder links. Grenzen, Hindernisse und belegte Zellen sind gesperrt, einschließlich der eigenen Spur.
-- Alle Teilnehmer entscheiden anhand desselben Zustands vor dem Schritt. Wählen mehrere dieselbe freie Zelle, gewinnt genau einer durch Seed-Zufall. Die anderen warten diesen Schritt.
-- Hat ein Punkt keinen freien Nachbarn, wartet er. Erst wenn alle Punkte blockiert sind, beginnt ein neuer Durchlauf: Jeder setzt an einer freien Zelle am Rand des eigenen Gebiets fort. Ist dort keine verfügbar, wählt der Kern Seed-basiert eine freie Zelle in einem Restbereich. Die Fortsetzung ist ein eigener Schritt und erobert genau eine Zelle. Es wird keine Fläche pauschal eingefärbt. Leistungsfähigere Strategien können so länger punkten, während eingeschlossene Gegner warten.
-- Auch getrennte, zuvor eingeschlossene Restbereiche werden so besucht. Die Runde endet ausschließlich bei **100 % Belegung aller bespielbaren Zellen**.
-- Ungültige Züge, Laufzeitfehler oder Zeitüberschreitungen eigener Strategien werden angezeigt. Für diesen Teilnehmer übernimmt die eingebaute Ersatzstrategie „Geradeaus“. Dadurch beendet auch ein Kampf mit ausschließlich fehlerhaften Teilnehmern die Arena vollständig.
-- Die meisten Punkte gewinnen; Gleichstände sind möglich. Jedes Ergebnis enthält genau so viele Punkte wie bespielbare Zellen.
+- Jeder Teilnehmer steuert einen bewegten Punkt. Die Startzelle und jede neu eroberte Zelle geben jeweils einen Punkt.
+- Reguläre Züge bewegen den Punkt genau eine Zelle nach oben, rechts, unten oder links. Grenzen, Hindernisse und belegte Zellen einschließlich der eigenen Spur sind gesperrt.
+- Alle Teilnehmer entscheiden anhand desselben Zustands vor dem Schritt. Bei identischem freien Ziel gewinnt genau einer durch Seed-Zufall. Die anderen warten diesen Schritt.
+- Ohne freien Nachbarn wartet ein Punkt. Sind alle blockiert, plant der Kern mit BFS Rückwege zur jeweils nächsten freien Zelle. Die Punkte gehen diese Wege sichtbar, ausschließlich über benachbarte bespielbare Zellen. **Kein Teleportieren und keine zufälligen Neustarts.**
+- Nur diese automatischen Rückläufe dürfen belegte, auch gegnerische Zellen überqueren. Besitzer und Farben bleiben unverändert; Rücklaufschritte geben keine Punkte. Rücklaufende Punkte dürfen sich begegnen und kreuzen. Danach übernimmt die eigene Strategie wieder.
+- Alle eingebauten Arenen sind zusammenhängend und enden bei **100 % Belegung**. Nicht zusammenhängende eigene Masken können unerreichbare Bereiche enthalten; der Kern meldet dies, statt zu teleportieren oder endlos zu rechnen.
+- Fehlerhafter eigener Code wird mit Ursache angezeigt und deaktiviert; die Ersatzstrategie „Geradeaus“ übernimmt diesen Teilnehmer. Die Punktezahl entspricht weiterhin exakt der Zahl eigener Zellen.
+- Die meisten Punkte gewinnen; Gleichstände sind möglich. Die Summe aller Endpunktestände entspricht der Zahl bespielbarer Zellen. Es gibt keine automatische Flächeneroberung.
 
-Kreis, Quadrat, Ring und verbundene Kammern sind als Masken verfügbar. Rasterauflösungen: 256², 512² und 1.024², Standard 512². Startpositionen liegen auf Seed-rotierten, gleichmäßig verteilten Winkeln und werden auf die nächste gültige Zelle projiziert. Geometrie und diskretes Raster können weiterhin Vor- und Nachteile erzeugen.
+Kreis, Quadrat, Ring und verbundene Kammern stehen mit 256², 512² und 1.024² zur Auswahl. Standard: 512², vier Teilnehmer und zwölf Sekunden Wiedergabe. Startpositionen liegen auf Seed-rotierten Winkeln und werden auf gültige Zellen projiziert. Geometrie und Raster können Vor- und Nachteile erzeugen; für Vergleiche mehrere Seeds und vertauschte Startplätze verwenden.
 
-## Eingebaute Strategien
-
-| Strategie        | Entscheidung                                                               |
-| ---------------- | -------------------------------------------------------------------------- |
-| Rechtsorientiert | Rechts, geradeaus, links, zurück relativ zur Bewegungsrichtung             |
-| Linksorientiert  | Links, geradeaus, rechts, zurück                                           |
-| Lookahead        | Begrenzte lokale Erreichbarkeit, höchstens 40 untersuchte Zellen je Option |
-| Zufall           | Seed-basierte Wahl aus erlaubten Zügen                                     |
-| Geradeaus        | Hält die Richtung bis zu einem Hindernis                                   |
-| Zickzack         | Wechselt zwischen horizontalen und vertikalen Zügen                        |
-| Zeilenläufer     | Wechselnde horizontale Bahnen nach Zeilenparität                           |
-| Spirale          | Nach außen wachsende rechtwinklige Spirale, angepasst an Hindernisse       |
-| Kantenläufer     | Bevorzugt Zellen entlang belegter Bereiche und Arenagrenzen                |
-| Invasion         | Sucht gegnerische Spuren über begrenzte Sichtlinien                        |
-
-Jede Strategie darf mehrfach teilnehmen. Zufallsströme für Entscheidungen, Zellkonflikte und Fortsetzungen sind voneinander getrennt. Identische Einstellungen und deterministische Strategien erzeugen dasselbe Ergebnis.
+Eingebaute Strategien: Rechtsorientiert, Linksorientiert, Lookahead, Zufall, Geradeaus, Zickzack, Zeilenläufer, Spirale, Kantenläufer und Invasion. Jede darf mehrfach teilnehmen. Lookahead untersucht höchstens 40 lokale Zellen pro Zugoption; normale Entscheidungen benötigen keine vollständige Flutfüllung.
 
 ## Spielkern und Replay
 
-`src/core/` verwendet keine Vue- oder DOM-APIs. Die Arenamaske ist ein `Uint8Array`, die Besitzerkarte ein `Int8Array`. Ein dichter Pool freier Zellen ermöglicht Zugriffe und Entfernen in O(1). Teilnehmer sammeln freie Randkandidaten beim Erobern; belegte Kandidaten werden bei Bedarf verworfen. Weder Fortsetzungen noch gewöhnliche Strategien benötigen eine vollständige Flutfüllung pro Zug.
+`src/core/` ist unabhängig von Vue und DOM. Masken verwenden `Uint8Array`, Besitzer `Int8Array`. Automatische Rücklauf-BFS verwendet wiederverwendete Suchpuffer. Seed-Zufallsströme für Entscheidungen und Konflikte sind getrennt; Rücklaufplanung ist deterministisch.
 
-Die Simulation läuft vorab in einem Worker. Das Replay speichert pro eroberter Zelle ein 32-Bit-Ereignis mit Zellindex, Teilnehmer und einem Bit für Fortsetzungen, dazu Schrittoffsets und Fehlerzeitpunkte. Es enthält jede einzelne Eroberung und keine künstliche Abschlussfüllung.
+Das Replay speichert **jede Kopfbewegung** als 32-Bit-Ereignis mit Zellindex, Teilnehmer und Markierungen für Rücklauf, Rücklaufbeginn und -ende. Nur Eroberungen verändern Besitzerkarte und Punktestand; Rücklaufereignisse verändern ausschließlich Position und Bewegungsstatistik. Schrittoffsets und Fehlerzeitpunkte erlauben korrektes Spulen.
 
-Die Wiedergabe dauert unabhängig von der Berechnungszeit zehn bis fünfzehn Sekunden, standardmäßig zwölf. Zwischen Bildern werden alle fälligen Ereignisse angewendet. Pause, Fortsetzen, Spulen und Wiederholen ändern das Ergebnis nicht. Einstellungen gelten erst für die nächste Runde. Ein Wechsel in einen anderen Browser-Tab pausiert das Replay.
+Die Runde wird vorab im Worker berechnet und über zehn bis fünfzehn Sekunden abgespielt. Pause, Spulen und Wiederholen beeinflussen das Ergebnis nicht. Änderungen gelten ab dem nächsten Kampf. Der Wechsel in einen anderen Browser-Tab pausiert die Wiedergabe.
 
-Der Renderer trennt logische Rastergröße und Canvas-Anzeigegröße, berücksichtigt die Display-Pixeldichte und verwendet keine sichtbaren Rasterlinien. Ein dezenter farbiger Saum macht schmale Spuren besser erkennbar. Er ist ausschließlich eine Darstellungshilfe, erzeugt keine Punkte und übermalt keine belegten Zellen anderer Teilnehmer. Aktive Köpfe verwenden vorberechnete Glow-Sprites.
+Der Canvas trennt logische Auflösung und Anzeigegröße, berücksichtigt Display-Pixeldichte und zeichnet keine Gitterlinien. Ein dezenter Saum verbessert die Lesbarkeit feiner Spuren, erzeugt aber keine Punkte. Köpfe verwenden vorberechnete Glow-Sprites; ein gestrichelter Ring zeigt den automatischen Rücklauf.
 
-## Eigene Algorithmen
+## Eigene Strategien und Unterricht
 
-Der CodeMirror-Editor unterstützt JavaScript-Syntaxhervorhebung, eigene Hilfsfunktionen, Klassen und Datenstrukturen. Strategien und Einstellungen werden lokal im Browser gespeichert. Benennen, Prüfen, Speichern, Löschen, Zurücksetzen und JSON-Import/-Export sind integriert. Grenzen: 30 Strategien mit jeweils 50.000 Zeichen Code.
+Das [vollständige, druckbare Handbuch](public/docs/editor-handbuch.html) ist im Code-Labor verlinkt und [direkt online lesbar](https://algofights.de/docs/editor-handbuch.html). Es enthält API-Referenz, kommentierte Beispiele, Fehlerdiagnose, Versuchsprotokolle, Lernziele, Unterrichtspläne für 45 und 90 Minuten, acht abgestufte Aufgaben, Bewertungskriterien und ein Arbeitsblatt. Vier Beispiele lassen sich direkt in den Editor laden.
 
 ```js
 function nextMove(state, memory) {
-  const moves = state.availableMoves;
-  const direction = moves[Math.floor(state.random() * moves.length)];
+  const choices = state.availableMoves;
   return {
-    direction,
-    memory: { turns: (memory.turns || 0) + 1 },
+    direction: choices[Math.floor(state.random() * choices.length)],
+    memory: { decisions: (memory.decisions || 0) + 1 }
   };
 }
 ```
 
-| Wert                                   | Bedeutung                                                                                    |
-| -------------------------------------- | -------------------------------------------------------------------------------------------- |
-| `state.x`, `state.y`, `state.position` | Eigene Position; `position` ist `{ x, y }`, Koordinaten ab 0                                 |
-| `state.width`, `state.height`          | Logische Rastergröße                                                                         |
-| `state.direction`                      | `up`, `right`, `down` oder `left`                                                            |
-| `state.score`, `state.step`            | Eigene Punkte und Simulationsschritt                                                         |
-| `state.neighbors[direction]`           | `{ x, y, type, free }` je Richtung                                                           |
-| `state.availableMoves`                 | Erlaubte Richtungen als Array                                                                |
-| `state.cell(x, y)`                     | `free`, `wall`, `self` oder `opponent`; maximal 512 Abfragen je Zug; außerhalb ergibt `wall` |
-| `state.random()`                       | Reproduzierbarer Zufall in `[0, 1)`                                                          |
-| `state.restarts`                       | Anzahl bisheriger Fortsetzungen an einer anderen Position                                    |
-| `state.restarted`                      | Ob im vorherigen Schritt eine solche Fortsetzung stattfand                                   |
-| `memory`                               | JSON-kompatibler Speicher, anfangs `{}`, maximal 64 KiB UTF-8-JSON; getrennt pro Teilnehmer  |
+`state` liefert Position, Richtung, Score, Simulationsschritt, Rastergröße, Nachbarn, erlaubte Züge, `cell(x,y)` und Seed-Zufall. `returnTrips`, `afterReturn` und `returnSteps` beschreiben automatische Rückläufe; `restarts`/`restarted` bleiben kompatible ältere Namen. Während Rückläufen wird eigener Code nicht aufgerufen. Die Rasterkopie wird beim nächsten Aufruf mit allen seitdem entstandenen Eroberungen aktualisiert. Speicher bleibt erhalten.
 
-`nextMove` ist synchron. Die Rückgabe muss ein Objekt mit gültiger `direction` sein. `memory` ist optional; ohne Rückgabe bleibt der bisherige Speicher bestehen. Er bleibt auch nach verlorenen Konflikten und Fortsetzungen erhalten. Einen Neustart der gesamten Runde beginnt jeder Teilnehmer mit frischem Speicher.
+CodeMirror bietet Syntaxhervorhebung. Eigene Hilfsfunktionen, Klassen und Datenstrukturen sind erlaubt. Strategien und Einstellungen liegen lokal im Browser; JSON-Import/-Export dient zum Sichern und Teilen eigenen Codes. Grenzen: 30 Strategien, je 50.000 Zeichen Code, 512 Zellabfragen pro Aufruf und 64 KiB UTF-8-JSON-Speicher. `nextMove` ist synchron und muss eine erlaubte Richtung zurückgeben.
 
-Eigener Code entscheidet nur reguläre Züge. Fortsetzungen übernimmt der Kern; dafür wird `nextMove` nicht aufgerufen. Beim nächsten Aufruf wird die Rasterkopie mit allen seit dem letzten Aufruf entstandenen Belegungen synchronisiert. `restarts` ermöglicht es, eigene Planungsdaten bei Bedarf zurückzusetzen.
+Jede eigene Strategie läuft in einem separaten Blob-Worker innerhalb eines Iframes mit `sandbox="allow-scripts"`, ohne `allow-same-origin`. Die CSP blockiert Netzwerk und externe Ressourcen. Der echte Spielkern liegt in einem anderen Worker und validiert alle Entscheidungen. Private MessagePorts übertragen das Raster einmal und danach nur Änderungen und kompakte Zustände.
 
-Drei Probeaufrufe prüfen Syntax und grundlegende Rückgaben vor dem Speichern. Im Kampf validiert der Spielkern jeden Zug erneut. Für Reproduzierbarkeit ausschließlich `state.random()` nutzen; `Math.random()`, Uhrzeit und ähnliche Quellen sind nicht deterministisch.
+Budgets: 250 ms pro Zug, 45 Sekunden Vorbereitung mit eigenem Code und eine Sekunde für die drei Editor-Probezüge. Überschreitungen beenden den Worker; Abbrechen beendet alle Ausführungsumgebungen der Runde. Die Sandbox ist für eigenen, geprüften lokalen Code gedacht, keine vollständige Garantie gegen Browserfehler oder absichtliche extreme Speichernutzung. DOM, Netzwerk, Browser-Speicher und externe Module stehen nicht zur Verfügung.
 
-### Isolation und Ausführungsgrenzen
+## Algo Sim: Wegsuche auf realen Straßen
 
-Jede eigene Strategie läuft in einem separaten Blob-Worker innerhalb eines Iframes mit `sandbox="allow-scripts"`, ohne `allow-same-origin`. Eine CSP blockiert Netzwerkzugriffe und externe Ressourcen. Der vertrauenswürdige Spielkern läuft in einem anderen Worker und besitzt das echte Raster.
+Der Reiter simuliert **Dijkstra, A*, bidirektionalen Dijkstra, BFS, DFS und Greedy Best-First** auf realen OpenStreetMap-Innenstadtausschnitten von Mannheim mit den Quadraten und Berlin-Mitte. Start und Ziel werden per Kartenklick auf einen nahegelegenen Straßenknoten gesetzt oder über Straßennamen gewählt. Verschieben, Zoomen, Pause, Einzelschritte, Spulen, Vergleich aller Verfahren und JSON-Ergebnisexport sind integriert.
 
-Private MessagePorts übertragen den Raster-Startzustand einmal und anschließend ausschließlich kompakte Zustände und alle neu belegten Zellen seit dem letzten Aufruf. Benutzercode kann den echten Spielzustand nicht direkt verändern.
+Ein Worker lädt den lokalen Datenschnappschuss, erzeugt den gerichteten Graphen und berechnet Suchspur und Route. Canvas zeichnet die reale Segmentgeometrie: Grundnetz dunkel, expandierte Suchbaum-Kanten blau, rekonstruierte Route grün. Die anschließende Fahrt entlang der Route ist proportional zur zurückgelegten Strecke.
 
-Budgets: 250 ms je Zug, 45 Sekunden Vorbereitung für eigenen Code, eine Sekunde für Editor-Probezüge. Bei einer Überschreitung wird der betreffende Worker beendet und die Ersatzstrategie übernimmt. Abbrechen beendet alle Worker der Runde; Neustart erstellt neue Ausführungsumgebungen.
-
-Die Sandbox ist für eigenen, vertrauten lokalen Code gedacht. Browser-Sicherheitslücken oder absichtliche extreme Speichernutzung lassen sich damit nicht vollständig ausschließen. Externe Module, DOM-Zugriffe, Netzwerk und Browser-Speicher sind innerhalb der Strategie nicht verfügbar.
+- Kostenfunktion: geografische Segmentlänge in Metern. Gemeinsame OSM-Knoten definieren Verbindungen; reine Bildkreuzungen erzeugen keine künstlichen Kreuzungen.
+- Vereinfachtes Pkw-Modell: Einbahnrichtungen, Kreisverkehre und gesperrte/private Straßen werden ausgewertet. Keine Abbiegerelationen, Ampelzeiten, Baustellen oder Live-Verkehrsdaten. Keine Navigationsanwendung.
+- Dijkstra und A* verwenden einen binären Min-Heap. A* nutzt die konsistente Luftlinie als zulässige Heuristik. Bidirektionaler Dijkstra sucht auf eingehenden Kanten rückwärts und stoppt erst bei einer abgesicherten besten Verbindung.
+- BFS minimiert Kanten statt Meter; DFS und Greedy besitzen keine Kürzestweggarantie. Die Vergleichstabelle zeigt Distanz, Expansionen und einzelne Rechenzeiten ohne daraus belastbare Benchmarks abzuleiten.
+- Es sind reale Stadt-Ausschnitte, nicht die kompletten Städte. Wasser-/Parkkonturen sind vereinfachte Orientierung. Ausschnittsgrenzen können Verbindungen abschneiden.
+- Datenschnappschüsse stehen unter `public/maps/` mit Bounding Box und Zeitstempeln. Copyright und ODbL: [public/maps/LICENSE.md](public/maps/LICENSE.md). Die Rohdaten sind direkt herunterladbar. `node scripts/fetch-city-maps.mjs` aktualisiert sie bewusst manuell; normale Builds laden keine externen Kartendaten.
 
 ## Quellstruktur
 
-Die Oberfläche verwendet Systemschriften und neutrale Bedienelemente; Teilnehmerfarben sind für Spielzustand und Messwerte reserviert. Weitere Regeln stehen in [docs/ui-guidelines.md](docs/ui-guidelines.md).
+Die UI verwendet Systemschriften und neutrale Bedienelemente. Farben kennzeichnen Daten und Zustände; Regeln: [docs/ui-guidelines.md](docs/ui-guidelines.md).
 
 ```text
-src/core/        Spielregeln, Strategien, Arenamasken, Seed-Zufall und Replay-Typen
-src/workers/     Hintergrundsimulation und Zeitlimits
-src/render/      Canvas-Renderer und Glow-Sprites
+src/core/        Arenaregeln, Strategien, Masken, Seed-Zufall und Replay-Typen
+src/routing/     OSM-Graph, Entfernungen und sechs echte Suchalgorithmen
+src/workers/     Simulation, Wegsuche und Ausführungsbudgets
+src/render/      Arena- und Straßenkarten-Renderer
+src/content/     Ladbare Strategiebeispiele
 src/services/    Worker-Lebenszyklus, Sandbox und lokale Speicherung
-src/components/ Arena-Canvas und bei Bedarf geladener Code-Editor
-public/         Isolierter Strategie-Runner und statische Ressourcen
+src/components/ Arena, Code-Editor und Algo Sim
+public/docs/    Druckbares Handbuch und Unterrichtsmaterial
+public/maps/    Reale OSM-Datenschnappschüsse und Lizenznachweis
 ```
 
-Neue Arenen lassen sich als normalisierte Maskenfunktion in `src/core/arena.ts` ergänzen. Eingebaute Strategien werden über `src/core/strategies.ts` und die Beschreibungen in `src/core/types.ts` erweitert.
+Neue Arenaformen werden als Maskenfunktionen ergänzt. Routing-Algorithmen verwenden dieselben Graphen und dieselbe Kostenfunktion, damit Vergleiche fachlich nachvollziehbar bleiben.

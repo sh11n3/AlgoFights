@@ -1,5 +1,10 @@
 import { Simulation } from "../core/engine";
-import type { CustomAnswer, CustomRequest, Settings } from "../core/types";
+import {
+  TRANSIT_FLAG,
+  type CustomAnswer,
+  type CustomRequest,
+  type Settings,
+} from "../core/types";
 
 const scope = self as unknown as DedicatedWorkerGlobalScope;
 scope.onmessage = async ({ data }) => {
@@ -73,7 +78,9 @@ scope.onmessage = async ({ data }) => {
       if (sim.players.some((p) => p.code !== undefined && !p.fallback)) {
         await sim.tickCustom((p, request) => {
           request.delta = Uint32Array.from(
-            sim.events.slice(eventCursors[p.id]),
+            sim.events
+              .slice(eventCursors[p.id])
+              .filter((event) => !(event & TRANSIT_FLAG)),
           );
           eventCursors[p.id] = sim.events.length;
           return waitFor(p.id, request);
