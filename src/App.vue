@@ -15,6 +15,7 @@ import {
   Check,
   CircleHelp,
   Copy,
+  CodeXml,
   Github,
   LoaderCircle,
   Maximize2,
@@ -54,6 +55,7 @@ const StrategyEditor = defineAsyncComponent(
 );
 const AlgoSim = defineAsyncComponent(() => import("./components/AlgoSim.vue"));
 const tab = ref("arena"),
+  editorSource = ref(""),
   help = ref(false),
   toast = ref("");
 const playing = ref(false),
@@ -613,6 +615,18 @@ onBeforeUnmount(() => {
                   </optgroup></select
                 ><button
                   class="remove-participant"
+                  :aria-label="`Code von Teilnehmer ${id + 1} öffnen`"
+                  title="Originalcode öffnen / eigene Version"
+                  @click="
+                    editorSource = p.strategy.startsWith('custom:')
+                      ? p.strategy
+                      : `builtin:${p.strategy}`;
+                    openLab();
+                  "
+                >
+                  <CodeXml :size="14" /></button
+                ><button
+                  class="remove-participant"
                   :disabled="settings.participants.length <= 2"
                   :aria-label="`Teilnehmer ${id + 1} entfernen`"
                   @click="removeParticipant(id)"
@@ -787,6 +801,7 @@ onBeforeUnmount(() => {
 
       <div v-if="tab === 'code'" ref="labPanel" class="lab-wrapper">
         <StrategyEditor
+          :source-id="editorSource"
           :strategies="strategies"
           @save="saveStrategy"
           @remove="removeStrategy"
@@ -851,11 +866,12 @@ onBeforeUnmount(() => {
             warten diesen Schritt.
           </li>
           <li>
-            Ohne freien Nachbarn wartet ein Algorithmus. Sind alle blockiert,
-            führt der Kern die Punkte Schritt für Schritt über belegte Zellen
-            zum nächsten freien Bereich zurück. Diese Rückläufe verändern weder
-            Farben noch Punkte. Es gibt kein Teleportieren. Nur während des
-            automatischen Rücklaufs dürfen bestehende Spuren überquert werden.
+            Ohne freien Nachbarn beginnt dieser Algorithmus sofort einen
+            Rücklauf, während die anderen weiterziehen. Der Kern führt ihn
+            Schritt für Schritt über belegte Zellen zum nächsten freien Bereich
+            zurück. Diese Rückläufe verändern weder Farben noch Punkte. Es gibt
+            kein Teleportieren. Nur während des automatischen Rücklaufs dürfen
+            bestehende Spuren überquert werden.
           </li>
           <li>
             Der Kampf endet erst, wenn alle bespielbaren Zellen belegt sind. Bei

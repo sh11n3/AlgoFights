@@ -17,6 +17,8 @@ export interface FrameStats {
 }
 export class ArenaRenderer {
   private buffer = document.createElement("canvas");
+  private trailBuffer = document.createElement("canvas");
+  private trailPixels: ImageData;
   private pixels: ImageData;
   private colors: number[][];
   private sprites: HTMLCanvasElement[];
@@ -35,6 +37,9 @@ export class ArenaRenderer {
     const { width, height } = replay.arena;
     this.buffer.width = width;
     this.buffer.height = height;
+    this.trailBuffer.width = width;
+    this.trailBuffer.height = height;
+    this.trailPixels = new ImageData(width, height);
     this.pixels = new ImageData(width, height);
     this.owners = new Int8Array(width * height).fill(-1);
     this.colors = replay.players.map((p) =>
@@ -63,6 +68,7 @@ export class ArenaRenderer {
   private reset() {
     const { mask, width, height } = this.replay.arena;
     this.pixels.data.fill(0);
+    this.trailPixels.data.fill(0);
     this.owners.fill(-1);
     for (let i = 0; i < mask.length; i++)
       if (mask[i]) {
@@ -129,7 +135,7 @@ export class ArenaRenderer {
             this.owners[n] !== -1
           )
             continue;
-          const strength = dx && dy ? 0.18 : 0.38;
+          const strength = dx && dy ? 0.28 : 0.55;
           this.pixels.data.set(
             [
               Math.round(22 + (color[0]! - 22) * strength),
@@ -141,10 +147,15 @@ export class ArenaRenderer {
           );
         }
       this.pixels.data.set([color[0]!, color[1]!, color[2]!, 255], cell * 4);
+      this.trailPixels.data.set(
+        [color[0]!, color[1]!, color[2]!, 255],
+        cell * 4,
+      );
       this.scores[id] = this.scores[id]! + 1;
     }
     this.frame = frame;
     this.buffer.getContext("2d")!.putImageData(this.pixels, 0, 0);
+    this.trailBuffer.getContext("2d")!.putImageData(this.trailPixels, 0, 0);
     this.draw();
     return {
       scores: [...this.scores],
@@ -191,6 +202,13 @@ export class ArenaRenderer {
       inner = size - padding * 2;
     context.imageSmoothingEnabled = false;
     context.drawImage(this.buffer, padding, padding, inner, inner);
+    // One composited glow pass for all claimed cells, never a shadow per cell.
+    context.save();
+    context.globalAlpha = 0.18;
+    context.globalCompositeOperation = "screen";
+    context.filter = "blur(1.4px)";
+    context.drawImage(this.trailBuffer, padding, padding, inner, inner);
+    context.restore();
     this.positions.forEach((position, id) => {
       const player = this.replay.players[id]!;
       const active =

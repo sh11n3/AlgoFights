@@ -89,6 +89,7 @@
         }
         queries = 0;
         const state = Object.freeze({
+          id,
           x,
           y,
           position: Object.freeze({ x, y }),

@@ -1,5 +1,6 @@
 import { buildGraph } from "../routing/graph";
 import { findRoute } from "../routing/search";
+import { validateRouteOutput } from "../routing/custom";
 import {
   ROUTE_ALGORITHMS,
   type CitySnapshot,
@@ -18,6 +19,15 @@ scope.onmessage = async ({ data }) => {
         );
       graph = buildGraph((await response.json()) as CitySnapshot);
       scope.postMessage({ type: "loaded", graph });
+    } else if (data.type === "validate-custom") {
+      if (!graph) throw new Error("Bitte zuerst eine Karte laden.");
+      const result = validateRouteOutput(
+        graph,
+        data.start,
+        data.target,
+        data.output,
+      );
+      scope.postMessage({ type: "result", id: data.id, result });
     } else if (data.type === "route") {
       if (!graph) throw new Error("Bitte zuerst eine Karte laden.");
       const result = findRoute(graph, data.start, data.target, data.algorithm);

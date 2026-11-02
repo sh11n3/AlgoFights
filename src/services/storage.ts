@@ -60,17 +60,20 @@ export function readSettings(): Settings {
   }
   return structuredClone(defaults);
 }
-export function readStrategies(): CustomStrategy[] {
+export function readStrategies(
+  kind = "strategies",
+  prefix = "custom:",
+): CustomStrategy[] {
   try {
     const data = JSON.parse(
-      localStorage.getItem("algofights.strategies.v1") || "[]",
+      localStorage.getItem(`algofights.${kind}.v1`) || "[]",
     );
     if (!Array.isArray(data)) return [];
     return data
       .filter(
         (s) =>
           typeof s.id === "string" &&
-          s.id.startsWith("custom:") &&
+          s.id.startsWith(prefix) &&
           typeof s.name === "string" &&
           s.name.length <= 40 &&
           typeof s.code === "string" &&

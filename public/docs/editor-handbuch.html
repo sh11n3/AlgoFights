@@ -275,10 +275,11 @@
         Bereits aktualisierter eigener Speicher bleibt erhalten.
       </li>
       <li>
-        Ohne freien Nachbarn wartet ein Punkt. Sobald alle Punkte blockiert
-        sind, plant der Kern mit einer Breitensuche einen Rückweg zur
-        nächstgelegenen freien Zelle. Jeder Rücklaufschritt ist ein tatsächlich
-        gespeicherter, orthogonaler Einzelschritt über bespielbare Zellen.
+        Ohne freien Nachbarn beginnt dieser Punkt sofort seinen Rücklauf. Die
+        anderen Punkte ziehen gleichzeitig weiter. Der Kern plant mit einer
+        Breitensuche einen Rückweg zur nächstgelegenen freien Zelle. Jeder
+        Rücklaufschritt ist ein tatsächlich gespeicherter, orthogonaler
+        Einzelschritt über bespielbare Zellen.
       </li>
       <li>
         <strong
@@ -816,6 +817,176 @@ A*:       Priorität = dist[v] + Luftlinie(v, ziel)</code></pre>
       eingestellte Heap-Einträge und verwirft bereits abgeschlossene Knoten beim
       Entnehmen. A* kann mit guter Heuristik weniger Knoten expandieren, hat
       jedoch keine allgemeine lineare Laufzeitgarantie.
+    </p>
+
+    <h3 id="originalcode">Originalcode öffnen und verändern</h3>
+    <p>
+      Beide Editoren bieten im Feld „Strategie“ alle eingebauten Algorithmen
+      unter „Eingebaute Algorithmen · als Kopie bearbeiten“ an. Algo Sim hat
+      zusätzlich „Originalcode öffnen / eigene Version“ direkt unter der
+      Algorithmusauswahl. Der geladene JavaScript-Code stammt aus derselben
+      Implementierung wie das eingebaute Verfahren, einschließlich seiner
+      Hilfsfunktionen. Speichern legt eine eigene Kopie an. Die eingebauten
+      Originale bleiben unverändert. Eigene gespeicherte Varianten lassen sich
+      aktualisieren oder über „Als neue Kopie speichern“ erneut verzweigen.
+    </p>
+    <p>
+      In der Arena übersetzt ein Adapter die begrenzte Editor-API in die
+      gemeinsame Entscheidungsfunktion <code>chooseBuiltin</code>. Der Adapter
+      puffert Zellabfragen. Der eigentliche Algorithmus steht darunter; seine
+      Auswahl steht im Adapter in <code>player.strategy</code>.
+      <code>state.id</code> ist die Teilnehmernummer ab 0. Bei der Wegsuche ruft
+      <code>findRoute</code> die mitgelieferte Funktion
+      <code>searchGraph</code> auf. Der letzte Parameter wählt das Verfahren;
+      die zugehörigen Prioritäten und Abbruchregeln stehen im Funktionskörper.
+      Alle Hilfsfunktionen sind editierbar und dürfen durch eine eigene
+      Implementierung ersetzt werden.
+    </p>
+    <p>
+      Aufgabe: Kopiere A*, ändere ausschließlich die Priorität von
+      <code>candidate + h</code> in <code>candidate + 2 * h</code> und
+      vergleiche Suchaufwand und Streckenlänge bei identischen Endpunkten.
+      Begründe, weshalb die ursprüngliche Optimalitätsgarantie dann nicht mehr
+      gilt. Bewahre eine unveränderte eigene Kopie als Kontrollgruppe auf.
+    </p>
+    <h3 id="eigene-wegsuche">Eigene Algorithmen in Algo Sim</h3>
+    <p>
+      Ein Routenalgorithmus definiert <code>function findRoute(graph)</code> und
+      wird einmal pro Suche synchron aufgerufen. Der gesamte gerichtete Graph
+      wird einmal an seine isolierte Ausführung übergeben, ohne neue Kopie bei
+      jeder Expansion. Zustände, Prioritätswarteschlangen und Vorgängerlisten
+      können im Funktionsaufruf frei angelegt werden. Es gibt hier keinen
+      persistenten Arena-Speicher.
+    </p>
+    <div class="table">
+      <table>
+        <thead>
+          <tr>
+            <th>Feld / Funktion</th>
+            <th>Bedeutung</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>graph.start, graph.target</code></td>
+            <td>Ausgewählte Knoten als Array-Indizes, beginnend bei 0.</td>
+          </tr>
+          <tr>
+            <td><code>graph.nodeCount</code></td>
+            <td>Anzahl der Knoten; geeignet für Typed Arrays.</td>
+          </tr>
+          <tr>
+            <td><code>graph.nodes[v]</code></td>
+            <td>
+              <code>{ id, lat, lon }</code>. id ist die originale OSM-ID, nicht
+              der Index v.
+            </td>
+          </tr>
+          <tr>
+            <td><code>graph.arcs[e]</code></td>
+            <td>
+              <code>{ from, to, length }</code>. e ist die Kanten-ID, length die
+              Länge in Metern.
+            </td>
+          </tr>
+          <tr>
+            <td><code>graph.outgoing[v], graph.incoming[v]</code></td>
+            <td>
+              Arrays mit ausgehenden bzw. eingehenden Kanten-IDs. Einbahnstraßen
+              besitzen nur ihre erlaubte Richtung.
+            </td>
+          </tr>
+          <tr>
+            <td><code>graph.neighbors(v)</code></td>
+            <td>
+              Ausgehende Kanten als Objekte
+              <code>{ id, from, to, length }</code>. Gleichwertig ist der
+              direkte Zugriff über outgoing und arcs.
+            </td>
+          </tr>
+          <tr>
+            <td><code>graph.heuristic(v)</code></td>
+            <td>
+              Luftlinie von v zum Ziel in Metern. Direkte Graph-Daten sind
+              schreibgeschützt.
+            </td>
+          </tr>
+          <tr>
+            <td><code>graph.trace(v, e = -1, side = 0)</code></td>
+            <td>
+              Expansion für die Wiedergabe aufzeichnen. Vorwärtssuche: e endet
+              an v. Rückwärtssuche (side=1): e beginnt an v und führt zur
+              rückwärtigen Vorgängerposition. -1 protokolliert nur den Knoten.
+              side ist 0 oder 1.
+            </td>
+          </tr>
+          <tr>
+            <td><code>return { path: [...] }</code></td>
+            <td>
+              Kanten-IDs in Fahrtrichtung vom Start bis zum Ziel, keine
+              Knoten-IDs. Ein leeres Array ist nur bei Start = Ziel ein gültiger
+              Weg.
+            </td>
+          </tr>
+          <tr>
+            <td><code>return { path: null }</code></td>
+            <td>
+              Der eigene Algorithmus hat keinen Weg gefunden. Dies ist seine
+              Aussage, kein unabhängiger Unerreichbarkeitsbeweis.
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <pre><code>// Kleinste vollständige Lösung für einen direkten Nachbarn:
+function findRoute(graph) {
+  graph.trace(graph.start);
+  if (graph.start === graph.target) return { path: [] };
+  for (const edge of graph.outgoing[graph.start]) {
+    if (graph.arcs[edge].to === graph.target) {
+      graph.trace(graph.target, edge);
+      return { path: [edge] };
+    }
+  }
+  return { path: null }; // Nur direkte Verbindungen geprüft!
+}</code></pre>
+    <p>
+      „Auf Vorlage zurücksetzen“ lädt eine vollständige, kommentierte
+      Breitensuche. Die Originale geben das Suchprotokoll als gleich lange
+      Arrays <code>traceNodes</code>, <code>traceEdges</code> und
+      <code>traceSides</code> zurück. Alternativ nutzt eigener Code
+      <code>graph.trace()</code>; beide Formen werden unterstützt. Verwende eine
+      der beiden Protokollformen, weil explizite Arrays Vorrang vor den
+      graph.trace-Aufrufen haben. Ohne Protokoll erscheint nur die grüne Route;
+      die Zahl expandierter Knoten bleibt dann 0.
+    </p>
+    <p>
+      Prüfen verwendet einen kleinen gerichteten Graphen mit zwei Wegen. Eine
+      gültige Rückgabe belegt weder Vollständigkeit noch Optimalität. Speichern
+      macht die Variante in der Algorithmusauswahl von Algo Sim verfügbar. Nach
+      einer eigenen Suche ergänzt „Mit eingebauten vergleichen“ deren Ergebnis
+      um die sechs eingebauten Verfahren mit denselben Endpunkten. Der eigene
+      Name bedeutet keine Optimalitätsgarantie.
+    </p>
+    <p>
+      Eigene Wegsuchen und Arena-Strategien werden in getrennten lokalen
+      Bibliotheken gespeichert (je bis zu 30 Einträge). JSON-Import und -Export
+      verwenden verschiedene Formate: <code>algofights-route-v1</code> und
+      <code>algofights-strategy-v1</code>. Eine Routenfunktion ist deshalb nicht
+      versehentlich als Arena-Strategie importierbar.
+    </p>
+    <p>
+      Grenzen: 50.000 Zeichen Code, 5 Sekunden Ausführungszeit, höchstens
+      250.000 Protokoll- und Routeneinträge. neighbors/heuristic erlauben
+      zusammen bis zu 2.000.000 Aufrufe; direkte Array-Zugriffe unterliegen dem
+      Zeitlimit. Die UI zeigt Berechnung und Abbruch an. Abbruch, Schließen des
+      Editors und ein Zeitlimit beenden die isolierte Ausführung; danach kann
+      sofort eine neue Suche gestartet werden. Der getrennte Kern prüft
+      Knoten-IDs, Kantenrichtung, Zusammenhang und Zielerreichung und berechnet
+      die Strecke selbst neu. Ungültiger Code erzeugt eine Fehlermeldung unter
+      seinem Namen und keine Ersatzroute. Die Isolation hat dieselben Grenzen
+      bei Browserfehlern und extremer Speichernutzung wie der Arena-Editor. Nur
+      eigenen oder vertrauten lokalen Code verwenden.
     </p>
 
     <h2 id="unterricht">8. Unterricht und Vorlesung</h2>

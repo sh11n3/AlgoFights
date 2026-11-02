@@ -56,7 +56,7 @@ export interface RoadGraph {
 export type RouteAlgorithm =
   "dijkstra" | "astar" | "bidirectional" | "bfs" | "dfs" | "greedy";
 export interface RouteResult {
-  algorithm: RouteAlgorithm;
+  algorithm: RouteAlgorithm | "custom";
   found: boolean;
   distance: number;
   traceNodes: Uint32Array;

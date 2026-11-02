@@ -36,9 +36,13 @@ export class CityMapRenderer {
     this.draw();
   }
   frame(count: number, routeProgress: number) {
+    count = Math.max(
+      0,
+      Math.min(Math.floor(count), this.result?.traceNodes.length ?? 0),
+    );
     if (count < this.drawn) this.clearExploration();
     this.count = count;
-    this.routeProgress = routeProgress;
+    this.routeProgress = Math.max(0, Math.min(1, routeProgress));
     this.draw();
   }
   fit() {
@@ -185,12 +189,19 @@ export class CityMapRenderer {
     }
     c.font = "500 13px system-ui";
     c.fillStyle = "#78858e";
-    const labelCells=new Set<string>();
+    const labelCells = new Set<string>();
     for (const label of this.graph.labels) {
-      if (this.zoom < 2.5 && label.name.length <= 4 && /\d/.test(label.name)) continue;
+      if (this.zoom < 2.5 && label.name.length <= 4 && /\d/.test(label.name))
+        continue;
       const [x, y] = this.world(label.x, label.y);
-      const cell=`${Math.floor(x!/100)},${Math.floor(y!/40)}`;
-      if (x! > 45 && x! < this.w - 45 && y! > 120 && y! < this.h - 85 && !labelCells.has(cell)) {
+      const cell = `${Math.floor(x! / 100)},${Math.floor(y! / 40)}`;
+      if (
+        x! > 45 &&
+        x! < this.w - 45 &&
+        y! > 120 &&
+        y! < this.h - 85 &&
+        !labelCells.has(cell)
+      ) {
         labelCells.add(cell);
         c.fillText(label.name, x!, y!);
       }

@@ -1,5 +1,7 @@
 # AlgoFights
 
+Beide Code-Editoren öffnen die Originalimplementierungen der eingebauten Verfahren als editierbare Kopie. Eigene Varianten lassen sich benennen, prüfen, lokal speichern, importieren und exportieren. Algo Sim verwendet `findRoute(graph)` mit gerichteten Kanten, Längen, Luftlinien-Heuristik und aufgezeichneten Expansionen. Ein eigener Worker unter isolierter Herkunft beendet Endlosschleifen nach fünf Sekunden; ein getrennter Kern validiert die zurückgegebene Route. Die vollständige API und Unterrichtsaufgaben stehen im [Editor-Handbuch](public/docs/editor-handbuch.html#eigene-wegsuche).
+
 Browser-Labor für Algorithmusexperimente: eine deterministische Raster-Arena für zwei bis vier Strategien und ein separater Wegsuche-Simulator auf echten Straßen. Vue 3, Composition API, TypeScript, Vite, Canvas 2D und Web Worker. Eigene Strategien werden im integrierten JavaScript-Editor entwickelt.
 
 ## Entwicklung
@@ -23,7 +25,7 @@ npm run preview # Vorschau des fertigen Builds
 - Jeder Teilnehmer steuert einen bewegten Punkt. Die Startzelle und jede neu eroberte Zelle geben jeweils einen Punkt.
 - Reguläre Züge bewegen den Punkt genau eine Zelle nach oben, rechts, unten oder links. Grenzen, Hindernisse und belegte Zellen einschließlich der eigenen Spur sind gesperrt.
 - Alle Teilnehmer entscheiden anhand desselben Zustands vor dem Schritt. Bei identischem freien Ziel gewinnt genau einer durch Seed-Zufall. Die anderen warten diesen Schritt.
-- Ohne freien Nachbarn wartet ein Punkt. Sind alle blockiert, plant der Kern mit BFS Rückwege zur jeweils nächsten freien Zelle. Die Punkte gehen diese Wege sichtbar, ausschließlich über benachbarte bespielbare Zellen. **Kein Teleportieren und keine zufälligen Neustarts.**
+- Ohne freien Nachbarn plant der Kern sofort für diesen Punkt einen BFS-Rückweg zur nächsten freien Zelle. Alle anderen Teilnehmer ziehen gleichzeitig weiter. Die Punkte gehen ihre Rückwege sichtbar, ausschließlich über benachbarte bespielbare Zellen. **Kein Teleportieren und keine zufälligen Neustarts.** Nur ein verlorener Konflikt um eine freie Zelle lässt einen Punkt für diesen Schritt warten.
 - Nur diese automatischen Rückläufe dürfen belegte, auch gegnerische Zellen überqueren. Besitzer und Farben bleiben unverändert; Rücklaufschritte geben keine Punkte. Rücklaufende Punkte dürfen sich begegnen und kreuzen. Danach übernimmt die eigene Strategie wieder.
 - Alle eingebauten Arenen sind zusammenhängend und enden bei **100 % Belegung**. Nicht zusammenhängende eigene Masken können unerreichbare Bereiche enthalten; der Kern meldet dies, statt zu teleportieren oder endlos zu rechnen.
 - Fehlerhafter eigener Code wird mit Ursache angezeigt und deaktiviert; die Ersatzstrategie „Geradeaus“ übernimmt diesen Teilnehmer. Die Punktezahl entspricht weiterhin exakt der Zahl eigener Zellen.
@@ -52,7 +54,7 @@ function nextMove(state, memory) {
   const choices = state.availableMoves;
   return {
     direction: choices[Math.floor(state.random() * choices.length)],
-    memory: { decisions: (memory.decisions || 0) + 1 }
+    memory: { decisions: (memory.decisions || 0) + 1 },
   };
 }
 ```
@@ -67,7 +69,7 @@ Budgets: 250 ms pro Zug, 45 Sekunden Vorbereitung mit eigenem Code und eine Seku
 
 ## Algo Sim: Wegsuche auf realen Straßen
 
-Der Reiter simuliert **Dijkstra, A*, bidirektionalen Dijkstra, BFS, DFS und Greedy Best-First** auf realen OpenStreetMap-Innenstadtausschnitten von Mannheim mit den Quadraten und Berlin-Mitte. Start und Ziel werden per Kartenklick auf einen nahegelegenen Straßenknoten gesetzt oder über Straßennamen gewählt. Verschieben, Zoomen, Pause, Einzelschritte, Spulen, Vergleich aller Verfahren und JSON-Ergebnisexport sind integriert.
+Der Reiter simuliert **Dijkstra, A\*, bidirektionalen Dijkstra, BFS, DFS und Greedy Best-First** auf realen OpenStreetMap-Innenstadtausschnitten von Mannheim mit den Quadraten und Berlin-Mitte. Start und Ziel werden per Kartenklick auf einen nahegelegenen Straßenknoten gesetzt oder über Straßennamen gewählt. Verschieben, Zoomen, Pause, Einzelschritte, Spulen, Vergleich aller Verfahren und JSON-Ergebnisexport sind integriert.
 
 Ein Worker lädt den lokalen Datenschnappschuss, erzeugt den gerichteten Graphen und berechnet Suchspur und Route. Canvas zeichnet die reale Segmentgeometrie: Grundnetz dunkel, expandierte Suchbaum-Kanten blau, rekonstruierte Route grün. Die anschließende Fahrt entlang der Route ist proportional zur zurückgelegten Strecke.
 
@@ -87,11 +89,11 @@ src/core/        Arenaregeln, Strategien, Masken, Seed-Zufall und Replay-Typen
 src/routing/     OSM-Graph, Entfernungen und sechs echte Suchalgorithmen
 src/workers/     Simulation, Wegsuche und Ausführungsbudgets
 src/render/      Arena- und Straßenkarten-Renderer
-src/content/     Ladbare Strategiebeispiele
+src/content/     Ladbare Beispiele und unveränderte Originalquellen für die Editoren
 src/services/    Worker-Lebenszyklus, Sandbox und lokale Speicherung
 src/components/ Arena, Code-Editor und Algo Sim
 public/docs/    Druckbares Handbuch und Unterrichtsmaterial
 public/maps/    Reale OSM-Datenschnappschüsse und Lizenznachweis
 ```
 
-Neue Arenaformen werden als Maskenfunktionen ergänzt. Routing-Algorithmen verwenden dieselben Graphen und dieselbe Kostenfunktion, damit Vergleiche fachlich nachvollziehbar bleiben.
+Neue Arenaformen werden als Maskenfunktionen ergänzt. Routing-Algorithmen verwenden dieselben Graphen und dieselbe Kostenfunktion, damit Vergleiche fachlich nachvollziehbar bleiben. Die portablen JavaScript-Dateien `builtin-arena.js` und `builtin-routing.js` sind die gemeinsame Originalimplementierung für Worker und Editor; TypeScript-Deklarationen halten ihre Kern-Schnittstellen typisiert. Die Editoren laden diese Dateien als Rohtext mit einem kleinen API-Adapter. Sie pflegen keine abweichenden Beispielkopien der Originale.

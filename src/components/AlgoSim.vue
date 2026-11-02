@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import {
   computed,
+  defineAsyncComponent,
+  nextTick,
   onBeforeUnmount,
   onMounted,
   ref,
@@ -28,10 +30,22 @@ import {
   type RouteResult,
 } from "../routing/types";
 import "../routing/style.css";
+import { readStrategies, store } from "../services/storage";
+import { runRouteCode } from "../services/route-sandbox";
+import type { CustomStrategy } from "../core/types";
+const StrategyEditor = defineAsyncComponent(
+  () => import("./StrategyEditor.vue"),
+);
+const customStrategies = ref(readStrategies("routes", "route:"));
+const editorShown = ref(false),
+  editorSource = ref(""),
+  storageNotice = ref("");
+const editorHost = ref<HTMLElement>();
+let customRun: AbortController | null = null;
 const dataBase = import.meta.env.BASE_URL;
 
 const city = ref("mannheim"),
-  algorithm = ref<RouteAlgorithm>("dijkstra"),
+  algorithm = ref<string>("dijkstra"),
   graph = shallowRef<RoadGraph | null>(null),
   result = shallowRef<RouteResult | null>(null);
 const start = ref(0),
@@ -47,7 +61,8 @@ const progress = ref(0),
   canvas = ref<HTMLCanvasElement>();
 const comparison = ref<
   Array<{
-    algorithm: RouteAlgorithm;
+    algorithm: string;
+    name?: string;
     found: boolean;
     distance: number;
     expanded: number;
@@ -69,6 +84,49 @@ let pointer: {
   } | null = null,
   dragged = false;
 const integer = new Intl.NumberFormat("de-DE");
+const custom = computed(() =>
+  customStrategies.value.find((s) => s.id === algorithm.value),
+);
+const routeInfo = computed(
+  () =>
+    ROUTE_ALGORITHMS[algorithm.value as RouteAlgorithm] ?? {
+      name: custom.value?.name ?? "Eigener Algorithmus",
+      description:
+        "Eigener JavaScript-Algorithmus. Der Spielkern prüft den gerichteten Weg.",
+      guarantee:
+        "Optimalität hängt vom eigenen Code ab; keine automatische Ersatzroute.",
+    },
+);
+async function openEditor() {
+  pause();
+  editorSource.value = custom.value
+    ? algorithm.value
+    : `builtin:${algorithm.value}`;
+  editorShown.value = true;
+  await nextTick();
+  editorHost.value?.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+function saveStrategy(strategy: CustomStrategy) {
+  const index = customStrategies.value.findIndex((s) => s.id === strategy.id);
+  if (index < 0 && customStrategies.value.length >= 30) {
+    storageNotice.value =
+      "Höchstens 30 eigene Routenalgorithmen. Bitte zuerst einen löschen.";
+    return;
+  }
+  if (index < 0) customStrategies.value.push(strategy);
+  else customStrategies.value[index] = strategy;
+  storageNotice.value = store("routes", customStrategies.value)
+    ? ""
+    : "Der Browser konnte nicht lokal speichern. Bitte den Algorithmus exportieren.";
+  algorithm.value = strategy.id;
+  clearRoute();
+}
+function removeStrategy(id: string) {
+  customStrategies.value = customStrategies.value.filter((s) => s.id !== id);
+  if (!store("routes", customStrategies.value))
+    storageNotice.value = "Löschen konnte nicht dauerhaft gespeichert werden.";
+  if (algorithm.value === id) algorithm.value = "dijkstra";
+}
 const searchFraction = computed(() => Math.min(1, progress.value / 0.75));
 const expanded = computed(() =>
   result.value
@@ -147,6 +205,8 @@ function replay() {
 }
 function clearRoute() {
   pause();
+  customRun?.abort();
+  customRun = null;
   request++;
   computing.value = false;
   result.value = null;
@@ -198,6 +258,7 @@ function createWorker() {
     }
     if (data.id !== undefined && data.id !== request) return;
     if (data.type === "result") {
+      customRun = null;
       result.value = data.result;
       computing.value = false;
       progress.value = 0;
@@ -206,10 +267,19 @@ function createWorker() {
     }
     if (data.type === "comparison") {
       comparison.value = data.rows;
+      if (custom.value && result.value?.algorithm === "custom")
+        comparison.value.push({
+          algorithm: custom.value.id,
+          name: custom.value.name,
+          found: result.value.found,
+          distance: result.value.distance,
+          expanded: result.value.traceNodes.length,
+          milliseconds: result.value.milliseconds,
+        });
       computing.value = false;
     }
     if (data.type === "error") {
-      error.value = data.error;
+      error.value = `${routeInfo.value.name}: ${data.error}`;
       loading.value = false;
       computing.value = false;
     }
@@ -217,6 +287,8 @@ function createWorker() {
 }
 function load() {
   pause();
+  customRun?.abort();
+  customRun = null;
   request++;
   error.value = "";
   graph.value = null;
@@ -234,8 +306,10 @@ function load() {
     ).href,
   });
 }
-function run() {
+async function run() {
   if (!graph.value || !worker) return;
+  customRun?.abort();
+  customRun = null;
   pause();
   error.value = "";
   hint.value = "";
@@ -244,13 +318,47 @@ function run() {
   progress.value = 0;
   result.value = null;
   renderer?.setResult(null);
+  const id = ++request;
+  if (custom.value) {
+    const controller = new AbortController();
+    customRun = controller;
+    try {
+      const output = await runRouteCode(
+        graph.value,
+        start.value,
+        target.value,
+        custom.value.code,
+        controller.signal,
+      );
+      if (id !== request || controller.signal.aborted) return;
+      worker.postMessage({
+        type: "validate-custom",
+        id,
+        start: start.value,
+        target: target.value,
+        output,
+      });
+    } catch (e) {
+      if (id !== request) return;
+      computing.value = false;
+      customRun = null;
+      if (!(e instanceof DOMException && e.name === "AbortError"))
+        error.value = `${routeInfo.value.name}: ${e instanceof Error ? e.message : String(e)}`;
+    }
+    return;
+  }
   worker.postMessage({
     type: "route",
-    id: ++request,
+    id,
     start: start.value,
     target: target.value,
     algorithm: algorithm.value,
   });
+}
+function cancelSearch() {
+  clearRoute();
+  hint.value =
+    "Berechnung abgebrochen. Eine neue Suche kann sofort gestartet werden.";
 }
 function compare() {
   if (!graph.value || !worker) return;
@@ -380,6 +488,7 @@ function saveResult() {
     start: graph.value.nodes[start.value],
     target: graph.value.nodes[target.value],
     algorithm: algorithm.value,
+    algorithmName: routeInfo.value.name,
     found: r.found,
     distanceMeters: r.found ? r.distance : null,
     expanded: r.traceNodes.length,
@@ -421,6 +530,7 @@ onMounted(() => {
 });
 onBeforeUnmount(() => {
   pause();
+  customRun?.abort();
   worker?.terminate();
   observer?.disconnect();
   document.removeEventListener("visibilitychange", visibility);
@@ -437,7 +547,11 @@ onBeforeUnmount(() => {
       <span>{{ status }}</span>
     </div>
     <div v-if="error" class="error-banner" role="alert">
-      {{ error }} <button @click="load">Karte neu laden</button>
+      {{ error }} <button v-if="!graph" @click="load">Karte neu laden</button
+      ><button v-else-if="custom" @click="openEditor">Code bearbeiten</button>
+    </div>
+    <div v-if="storageNotice" class="error-banner" role="status">
+      {{ storageNotice }}
     </div>
     <div class="sim-layout">
       <div class="sim-map-panel panel">
@@ -455,8 +569,7 @@ onBeforeUnmount(() => {
           ></canvas>
           <div class="map-hud">
             <div>
-              <span>Algorithmus</span
-              ><strong>{{ ROUTE_ALGORITHMS[algorithm].name }}</strong>
+              <span>Algorithmus</span><strong>{{ routeInfo.name }}</strong>
             </div>
             <div>
               <span>Expandiert</span
@@ -496,7 +609,11 @@ onBeforeUnmount(() => {
           </div>
           <div class="map-legend">
             <span><i class="legend-search"></i> Suche</span
-            ><span v-if="algorithm === 'bidirectional'"
+            ><span
+              v-if="
+                algorithm === 'bidirectional' ||
+                result?.traceSides.some((s) => s === 1)
+              "
               ><i class="legend-backward"></i> Rückwärts</span
             ><span><i class="legend-route"></i> Route</span>
           </div>
@@ -566,15 +683,29 @@ onBeforeUnmount(() => {
         >
         <label
           >Algorithmus<select v-model="algorithm">
-            <option
-              v-for="(info, key) in ROUTE_ALGORITHMS"
-              :key="key"
-              :value="key"
-            >
-              {{ info.name }}
-            </option>
+            <optgroup label="Eingebaute Algorithmen">
+              <option
+                v-for="(info, key) in ROUTE_ALGORITHMS"
+                :key="key"
+                :value="key"
+              >
+                {{ info.name }}
+              </option>
+            </optgroup>
+            <optgroup v-if="customStrategies.length" label="Eigene Algorithmen">
+              <option v-for="s in customStrategies" :key="s.id" :value="s.id">
+                {{ s.name }}
+              </option>
+            </optgroup>
           </select></label
         >
+        <button class="text-button" @click="openEditor">
+          {{
+            custom
+              ? "Eigenen Code bearbeiten"
+              : "Originalcode öffnen / eigene Version"
+          }}
+        </button>
         <div class="endpoint-actions">
           <button
             :class="{ selected: selecting === 'start' }"
@@ -645,20 +776,27 @@ onBeforeUnmount(() => {
           />
           Suche starten
         </button>
+        <button v-if="computing" class="secondary-button" @click="cancelSearch">
+          Berechnung abbrechen
+        </button>
         <button
           class="secondary-button"
           :disabled="!graph || computing"
           @click="compare"
         >
-          Alle Algorithmen vergleichen
+          {{
+            custom && result
+              ? "Mit eingebauten vergleichen"
+              : "Eingebaute Algorithmen vergleichen"
+          }}
         </button>
         <button class="text-button" :disabled="!result" @click="saveResult">
           <Download :size="14" /> Ergebnis exportieren
         </button>
         <div class="route-explanation">
-          <h3>{{ ROUTE_ALGORITHMS[algorithm].name }}</h3>
-          <p>{{ ROUTE_ALGORITHMS[algorithm].description }}</p>
-          <p>{{ ROUTE_ALGORITHMS[algorithm].guarantee }}</p>
+          <h3>{{ routeInfo.name }}</h3>
+          <p>{{ routeInfo.description }}</p>
+          <p>{{ routeInfo.guarantee }}</p>
         </div>
         <p v-if="result && !result.found" class="no-route" role="status">
           Keine Verbindung im gerichteten Straßenausschnitt. Wähle andere
@@ -689,7 +827,12 @@ onBeforeUnmount(() => {
           </thead>
           <tbody>
             <tr v-for="row in comparison" :key="row.algorithm">
-              <td>{{ ROUTE_ALGORITHMS[row.algorithm].name }}</td>
+              <td>
+                {{
+                  row.name ||
+                  ROUTE_ALGORITHMS[row.algorithm as RouteAlgorithm]?.name
+                }}
+              </td>
               <td>{{ row.found ? km(row.distance) : "kein Weg" }}</td>
               <td>{{ integer.format(row.expanded) }}</td>
               <td>{{ row.milliseconds.toFixed(2) }} ms</td>
@@ -710,6 +853,16 @@ onBeforeUnmount(() => {
         Einzellaufzeiten hängen von Rechner und Browser ab; sie sind kein
         belastbarer Performance-Benchmark.
       </p>
+    </div>
+    <div v-if="editorShown" ref="editorHost" class="sim-editor">
+      <StrategyEditor
+        mode="route"
+        :source-id="editorSource"
+        :strategies="customStrategies"
+        @save="saveStrategy"
+        @remove="removeStrategy"
+        @close="editorShown = false"
+      />
     </div>
     <details class="sim-notes panel">
       <summary>Kartendaten, Modell und Unterricht</summary>

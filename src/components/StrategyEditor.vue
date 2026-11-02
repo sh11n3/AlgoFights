@@ -19,10 +19,26 @@ import { TEMPLATE } from "../services/storage";
 import { createSandbox } from "../services/sandbox";
 import type { CustomStrategy } from "../core/types";
 import { STRATEGY_EXAMPLES } from "../content/strategy-examples";
+import {
+  ARENA_SOURCES,
+  ROUTING_SOURCES,
+  ROUTING_TEMPLATE,
+} from "../content/builtin-sources";
+import { runRouteCode } from "../services/route-sandbox";
+import { routeProbe } from "../routing/probe";
+import { validateRouteOutput } from "../routing/custom";
 const documentationUrl = `${import.meta.env.BASE_URL}docs/editor-handbuch.html`;
 const example = ref("");
 
-const props = defineProps<{ strategies: CustomStrategy[] }>();
+const props = defineProps<{
+  strategies: CustomStrategy[];
+  mode?: "arena" | "route";
+  sourceId?: string;
+}>();
+const isRoute = props.mode === "route";
+const originals = isRoute ? ROUTING_SOURCES : ARENA_SOURCES;
+const template = isRoute ? ROUTING_TEMPLATE : TEMPLATE;
+const prefix = isRoute ? "route:" : "custom:";
 const emit = defineEmits<{
   save: [strategy: CustomStrategy];
   remove: [id: string];
@@ -36,9 +52,10 @@ const host = ref<HTMLElement>(),
   checking = ref(false);
 const input = ref<HTMLInputElement>();
 let editor: EditorView | null = null,
-  draft = TEMPLATE,
+  draft = template,
   generation = 0;
 let sandbox: Awaited<ReturnType<typeof createSandbox>> | null = null;
+let routeCheck: AbortController | null = null;
 function clearNotice() {
   notice.value = "";
   valid.value = false;
@@ -51,12 +68,23 @@ function replace(code: string) {
   clearNotice();
 }
 function select() {
+  stopCheck();
+  const original = originals.find((s) => `builtin:${s.id}` === selected.value);
+  if (original) {
+    name.value = `${original.name} – eigene Version`.slice(0, 40);
+    replace(original.code);
+    notice.value =
+      "Originalcode geladen. Speichern erstellt eine eigene Kopie; das eingebaute Original bleibt erhalten.";
+    return;
+  }
   const strategy = props.strategies.find((s) => s.id === selected.value);
   name.value = strategy?.name ?? "Meine Strategie";
-  replace(strategy?.code ?? TEMPLATE);
+  replace(strategy?.code ?? template);
 }
 function stopCheck() {
   generation++;
+  routeCheck?.abort();
+  routeCheck = null;
   sandbox?.dispose();
   sandbox = null;
   checking.value = false;
@@ -73,6 +101,17 @@ async function validate(): Promise<boolean> {
   }
   let timer: ReturnType<typeof setTimeout> | undefined;
   try {
+    if (isRoute) {
+      routeCheck = new AbortController();
+      const graph = routeProbe();
+      const output = await runRouteCode(graph, 0, 3, draft, routeCheck.signal);
+      validateRouteOutput(graph, 0, 3, output);
+      if (current !== generation) return false;
+      valid.value = true;
+      notice.value =
+        "Syntax, Rückgabe und gerichtete Route am Probegraphen sind gültig. Dies beweist keine allgemeine Korrektheit oder Optimalität.";
+      return true;
+    }
     const created = await createSandbox({
       shape: "square",
       resolution: 32,
@@ -141,6 +180,7 @@ async function validate(): Promise<boolean> {
     if (current === generation) {
       sandbox?.dispose();
       sandbox = null;
+      routeCheck = null;
       checking.value = false;
     }
   }
@@ -151,17 +191,24 @@ async function save() {
     return;
   }
   if (!(await validate())) return;
-  const id = selected.value || `custom:${crypto.randomUUID()}`;
+  const id = selected.value.startsWith(prefix)
+    ? selected.value
+    : `${prefix}${crypto.randomUUID()}`;
   emit("save", { id, name: name.value.trim().slice(0, 40), code: draft });
   selected.value = id;
-  notice.value =
-    "Strategie gespeichert. Du kannst sie jetzt als Teilnehmer auswählen.";
+  notice.value = isRoute
+    ? "Algorithmus gespeichert. Er ist jetzt in Algo Sim auswählbar."
+    : "Strategie gespeichert. Du kannst sie jetzt als Teilnehmer auswählen.";
+}
+function saveCopy() {
+  selected.value = "";
+  save();
 }
 function reset() {
   stopCheck();
   selected.value = "";
   name.value = "Meine Strategie";
-  replace(TEMPLATE);
+  replace(template);
 }
 function loadExample() {
   const item = STRATEGY_EXAMPLES.find((item) => item.name === example.value);
@@ -175,7 +222,11 @@ function exportCode() {
   const file = new Blob(
     [
       JSON.stringify(
-        { format: "algofights-strategy-v1", name: name.value, code: draft },
+        {
+          format: isRoute ? "algofights-route-v1" : "algofights-strategy-v1",
+          name: name.value,
+          code: draft,
+        },
         null,
         2,
       ),
@@ -197,7 +248,8 @@ async function importCode(event: Event) {
       throw new Error("Die Datei darf höchstens 300 KB groß sein.");
     const parsed = JSON.parse(await file.text());
     if (
-      parsed.format !== "algofights-strategy-v1" ||
+      parsed.format !==
+        (isRoute ? "algofights-route-v1" : "algofights-strategy-v1") ||
       typeof parsed.code !== "string" ||
       parsed.code.length > 50000 ||
       typeof parsed.name !== "string"
@@ -215,7 +267,10 @@ async function importCode(event: Event) {
   }
   (event.target as HTMLInputElement).value = "";
 }
-watch(name, clearNotice);
+watch(name, () => {
+  if (checking.value) stopCheck();
+  clearNotice();
+});
 onMounted(() => {
   editor = new EditorView({
     doc: draft,
@@ -226,10 +281,13 @@ onMounted(() => {
       oneDark,
       EditorView.lineWrapping,
       EditorView.contentAttributes.of({
-        "aria-label": "JavaScript-Code deiner Strategie",
+        "aria-label": isRoute
+          ? "JavaScript-Code deines Routenalgorithmus"
+          : "JavaScript-Code deiner Strategie",
       }),
       EditorView.updateListener.of((update) => {
         if (update.docChanged) {
+          if (checking.value) stopCheck();
           draft = update.state.doc.toString();
           clearNotice();
         }
@@ -244,7 +302,20 @@ onMounted(() => {
       }),
     ],
   });
+  if (props.sourceId) {
+    selected.value = props.sourceId;
+    select();
+  }
 });
+watch(
+  () => props.sourceId,
+  (value) => {
+    if (value) {
+      selected.value = value;
+      select();
+    }
+  },
+);
 onBeforeUnmount(() => {
   stopCheck();
   editor?.destroy();
@@ -254,7 +325,7 @@ onBeforeUnmount(() => {
   <section class="code-lab panel" aria-label="Strategie-Editor">
     <div class="section-heading">
       <div>
-        <h2>Strategie-Editor</h2>
+        <h2>{{ isRoute ? "Algo Sim · Code-Editor" : "Strategie-Editor" }}</h2>
       </div>
       <button
         class="icon-button"
@@ -266,7 +337,7 @@ onBeforeUnmount(() => {
     </div>
     <div class="editor-layout">
       <div class="editor-main">
-        <div class="example-picker">
+        <div v-if="!isRoute" class="example-picker">
           <label for="example">Beispiel laden</label
           ><select id="example" v-model="example" @change="loadExample">
             <option value="" disabled>Beispiel auswählen …</option>
@@ -283,14 +354,26 @@ onBeforeUnmount(() => {
           <label
             >Strategie<select v-model="selected" @change="select">
               <option value="">Neue Strategie</option>
-              <option v-for="s in strategies" :key="s.id" :value="s.id">
-                {{ s.name }}
-              </option>
+              <optgroup label="Eingebaute Algorithmen · als Kopie bearbeiten">
+                <option
+                  v-for="s in originals"
+                  :key="s.id"
+                  :value="`builtin:${s.id}`"
+                >
+                  {{ s.name }}
+                </option>
+              </optgroup>
+              <optgroup label="Eigene Algorithmen">
+                <option v-for="s in strategies" :key="s.id" :value="s.id">
+                  {{ s.name }}
+                </option>
+              </optgroup>
             </select></label
           ><label>Name<input v-model="name" maxlength="40" /></label>
         </div>
         <div class="editor-filename">
-          <FileCode2 :size="15" /> nextMove.js
+          <FileCode2 :size="15" />
+          {{ isRoute ? "findRoute.js" : "nextMove.js" }}
           <span>lokal · isoliert ausgeführt</span>
         </div>
         <div ref="host" class="code-editor"></div>
@@ -323,7 +406,7 @@ onBeforeUnmount(() => {
           >
             <RotateCcw :size="17" /></button
           ><button
-            v-if="selected"
+            v-if="selected.startsWith(prefix)"
             class="icon-button danger"
             aria-label="Strategie löschen"
             @click="
@@ -332,6 +415,24 @@ onBeforeUnmount(() => {
             "
           >
             <Trash2 :size="17" />
+          </button>
+        </div>
+        <div class="file-actions">
+          <button
+            v-if="selected.startsWith(prefix)"
+            :disabled="checking"
+            @click="saveCopy"
+          >
+            Als neue Kopie speichern
+          </button>
+          <button
+            v-if="checking"
+            @click="
+              stopCheck();
+              notice = 'Prüfung abgebrochen.';
+            "
+          >
+            Prüfung abbrechen
           </button>
         </div>
         <div class="file-actions">
@@ -348,7 +449,77 @@ onBeforeUnmount(() => {
           /><span>Nur eigenen, vertrauten Code verwenden.</span>
         </div>
       </div>
-      <aside class="api-docs">
+      <aside v-if="isRoute" class="api-docs">
+        <h3>Wegsuche-Schnittstelle</h3>
+        <p>
+          Definiere <code>findRoute(graph)</code>. Der Aufruf berechnet die
+          gesamte Suche synchron. Eigene Funktionen, Klassen und Datenstrukturen
+          sind erlaubt.
+        </p>
+        <dl>
+          <dt>graph.start · target · nodeCount</dt>
+          <dd>Knoten-IDs ab 0 und Anzahl der Knoten.</dd>
+          <dt>graph.nodes[id]</dt>
+          <dd>
+            { id, lat, lon }. id ist hier die originale OSM-ID; Array-Indizes
+            sind die Such-IDs.
+          </dd>
+          <dt>graph.arcs[edge]</dt>
+          <dd>{ from, to, length }. Gerichtete Kante, Länge in Metern.</dd>
+          <dt>graph.outgoing[node] · incoming[node]</dt>
+          <dd>
+            Arrays mit ausgehenden bzw. eingehenden Kanten-IDs. Rückwärtssuche
+            nutzt incoming.
+          </dd>
+          <dt>graph.neighbors(node)</dt>
+          <dd>Ausgehende Kanten als { id, from, to, length }.</dd>
+          <dt>graph.heuristic(node)</dt>
+          <dd>Luftlinie zum Ziel in Metern.</dd>
+          <dt>graph.trace(node, edge = -1, side = 0)</dt>
+          <dd>
+            Suchschritt aufzeichnen. edge führt zum Knoten; bei side=1 führt sie
+            vom Knoten zur rückwärtigen Vorgängerposition. -1 zeichnet keine
+            Kante.
+          </dd>
+          <dt>Rückgabe</dt>
+          <dd>
+            <code>{ path: [Kanten-IDs] }</code> in Reihenfolge vom Start zum
+            Ziel. <code>{ path: null }</code> für keinen gefundenen Weg; leeres
+            Array nur bei Start = Ziel.
+          </dd>
+        </dl>
+        <p>
+          Originale enthalten Hilfsfunktionen und geben zusätzlich traceNodes,
+          traceEdges, traceSides zurück. Nutze entweder diese Arrays oder
+          graph.trace().
+        </p>
+        <div class="budget-note">
+          50.000 Zeichen Code · 5 Sekunden Laufzeit · höchstens 250.000 Such-
+          und Routeneinträge. Die Graph-Kopie ist schreibgeschützt. Der
+          getrennte Kern validiert Route, Fahrtrichtung und Länge. Es gibt keine
+          automatische Ersatzroute bei Fehlern.
+        </div>
+        <details>
+          <summary>Prüfung und Isolation</summary>
+          <p>
+            Prüfen nutzt einen kleinen gerichteten Probegraphen. Ein
+            erfolgreicher Probelauf beweist keine allgemeine Korrektheit.
+            Eigener Code läuft in einem Worker unter isolierter Herkunft ohne
+            Netzwerk- oder Speicherzugriff. Abbruch und Zeitlimit beenden diesen
+            Worker. Extreme Speichernutzung oder Browserfehler bleiben Grenzen
+            der Isolation. Nur vertrauten lokalen Code verwenden.
+          </p>
+        </details>
+        <div class="editor-resources">
+          <a
+            :href="documentationUrl + '#eigene-wegsuche'"
+            target="_blank"
+            rel="noopener noreferrer"
+            >Handbuch: eigene Wegsuche und Originalcode bearbeiten</a
+          >
+        </div>
+      </aside>
+      <aside v-else class="api-docs">
         <h3>Schnittstelle</h3>
         <p>
           Definiere <code>nextMove(state, memory)</code>. Gib ein Objekt mit
@@ -357,6 +528,11 @@ onBeforeUnmount(() => {
         <dl>
           <dt>state.position · x · y</dt>
           <dd>Eigene Position, Koordinaten ab 0.</dd>
+          <dt>state.id</dt>
+          <dd>
+            Teilnehmernummer ab 0. Für positionsabhängige Prioritäten der
+            Originale.
+          </dd>
           <dt>state.direction</dt>
           <dd>Aktuelle Richtung: up, right, down, left.</dd>
           <dt>state.score · step</dt>

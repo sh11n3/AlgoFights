@@ -158,19 +158,19 @@ export class Simulation {
       if (!this.routes.has(p.id)) {
         const moves = legalMoves(p, this.board, this.arena);
         if (moves.length) legal.set(p.id, moves);
-      }
-    if (!legal.size && !this.routes.size) {
-      for (const p of this.players) {
-        const route = this.routeToFree(p.position);
-        if (route) {
-          this.routes.set(p.id, route);
-          this.freshRoutes.add(p.id);
+        else {
+          // Start this participant's return immediately; never wait for the others.
+          const route = this.routeToFree(p.position);
+          if (route) {
+            this.routes.set(p.id, route);
+            this.freshRoutes.add(p.id);
+          }
         }
       }
-      if (!this.routes.size)
-        throw new Error(
-          "Die Arenamaske enthält unerreichbare, getrennte Bereiche. Ohne Teleportieren sind diese nicht vollständig begehbar.",
-        );
+    if (!legal.size && !this.routes.size) {
+      throw new Error(
+        "Die Arenamaske enthält unerreichbare, getrennte Bereiche. Ohne Teleportieren sind diese nicht vollständig begehbar.",
+      );
     }
     for (const [id, route] of this.routes)
       this.transitTargets.set(id, route[route.length - 1]!);
