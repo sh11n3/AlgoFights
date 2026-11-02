@@ -1,119 +1,116 @@
-# AlgoFIghts
+# AlgoFights
 
-Eine deutsche Browser-Arena, in der zwei bis vier Algorithmen freie Rasterzellen erobern. Vue 3, Composition API, TypeScript, Vite und Canvas 2D. Vollständig statisch, ohne Backend oder Accounts.
+Deterministische Raster-Simulation für zwei bis vier konkurrierende Algorithmen. Implementiert mit Vue 3, Composition API, TypeScript, Vite, Canvas 2D und Web Workern. Eigene Strategien lassen sich im integrierten JavaScript-Editor entwickeln.
 
-## Lokal starten
+## Entwicklung
 
-Node.js 22.12+ oder 24 und npm:
+Voraussetzung: Node.js 22.12+ oder 24 und npm.
 
 ```sh
 npm ci
 npm run dev
 ```
 
-Produktionsbuild und lokale Vorschau:
-
 ```sh
-npm run build
-npm run preview
+npm run build   # TypeScript-Prüfung und Produktionsbuild
+npm run preview # Lokale Vorschau des Builds
 ```
 
-`dist/` enthält die komplette Website. Vite verwendet relative Assetpfade; auch Hosting in einem Unterverzeichnis ist möglich. JavaScript, Web Worker und Iframe-Sandbox müssen im Browser erlaubt sein. Dateien über HTTP(S) bereitstellen, nicht mit `file://` öffnen.
+Der Build in `dist/` besteht ausschließlich aus statischen Dateien. Relative Assetpfade erlauben auch ein Unterverzeichnis. Die Anwendung benötigt HTTP(S), JavaScript, Web Worker und sandboxed Iframes. Es gibt kein Backend und kein serverseitiges Routing.
 
 ## Spielregeln
 
-- Zwei bis vier Teilnehmer, jede Strategie darf mehrfach vorkommen. Startzellen zählen je einen Punkt.
-- Ein Zug bewegt den Punkt genau eine Zelle nach oben, rechts, unten oder links. Nur freie Zellen sind erlaubt.
-- Jede eroberte Zelle bleibt dauerhaft belegt, auch für ihren Besitzer. Kein Backtracking und keine automatische Flächeneroberung.
-- Alle aktiven Teilnehmer entscheiden anhand desselben Zustands vor dem Schritt. Bei identischem Ziel entscheidet ein separater Seed-Zufallsstrom. Verlierer bleiben stehen und dürfen im nächsten Schritt erneut entscheiden.
-- Ohne freien Nachbarn stoppt ein Teilnehmer dauerhaft. Fehlerhafte eigene Strategien stoppen mit Fehlermeldung; bisherige Punkte bleiben erhalten.
-- Ende: alle Zellen belegt oder alle Teilnehmer gestoppt. Unerreichbare Zellen bleiben frei. Die meisten Punkte gewinnen, Gleichstand ist möglich.
+- Jeder Teilnehmer besitzt einen bewegten Punkt. Startzellen und jede neu eroberte Zelle geben jeweils einen Punkt.
+- Reguläre Züge erfolgen eine Rasterzelle nach oben, rechts, unten oder links. Grenzen, Hindernisse und belegte Zellen sind gesperrt, einschließlich der eigenen Spur.
+- Alle Teilnehmer entscheiden anhand desselben Zustands vor dem Schritt. Wählen mehrere dieselbe freie Zelle, gewinnt genau einer durch Seed-Zufall. Die anderen warten diesen Schritt.
+- Hat ein Punkt keinen freien Nachbarn, wartet er. Erst wenn alle Punkte blockiert sind, beginnt ein neuer Durchlauf: Jeder setzt an einer freien Zelle am Rand des eigenen Gebiets fort. Ist dort keine verfügbar, wählt der Kern Seed-basiert eine freie Zelle in einem Restbereich. Die Fortsetzung ist ein eigener Schritt und erobert genau eine Zelle. Es wird keine Fläche pauschal eingefärbt. Leistungsfähigere Strategien können so länger punkten, während eingeschlossene Gegner warten.
+- Auch getrennte, zuvor eingeschlossene Restbereiche werden so besucht. Die Runde endet ausschließlich bei **100 % Belegung aller bespielbaren Zellen**.
+- Ungültige Züge, Laufzeitfehler oder Zeitüberschreitungen eigener Strategien werden angezeigt. Für diesen Teilnehmer übernimmt die eingebaute Ersatzstrategie „Geradeaus“. Dadurch beendet auch ein Kampf mit ausschließlich fehlerhaften Teilnehmern die Arena vollständig.
+- Die meisten Punkte gewinnen; Gleichstände sind möglich. Jedes Ergebnis enthält genau so viele Punkte wie bespielbare Zellen.
 
-Kreis, Quadrat, Ring und vier verbundene Kammern stehen mit 256², 512² und 1.024² zur Auswahl. Standard: Kreis, 512², vier unterschiedliche Strategien, zwölf Sekunden Wiedergabe. Startpositionen werden mit einer Seed-Rotation auf gleichmäßig verteilte Winkel gelegt und auf die nächste gültige, unterschiedliche Zelle projiziert. Das ist eine geometrische Annäherung an Fairness, keine Garantie gleicher erreichbarer Flächen.
+Kreis, Quadrat, Ring und verbundene Kammern sind als Masken verfügbar. Rasterauflösungen: 256², 512² und 1.024², Standard 512². Startpositionen liegen auf Seed-rotierten, gleichmäßig verteilten Winkeln und werden auf die nächste gültige Zelle projiziert. Geometrie und diskretes Raster können weiterhin Vor- und Nachteile erzeugen.
 
-Eingebaut: rechtsorientiert, linksorientiert, Lookahead und Seed-Zufall. Lookahead untersucht höchstens 40 lokale Zellen je Zugoption. Es findet keine vollständige Flutfüllung pro Zug statt.
+## Eingebaute Strategien
 
-## Simulation und Replay
+| Strategie        | Entscheidung                                                               |
+| ---------------- | -------------------------------------------------------------------------- |
+| Rechtsorientiert | Rechts, geradeaus, links, zurück relativ zur Bewegungsrichtung             |
+| Linksorientiert  | Links, geradeaus, rechts, zurück                                           |
+| Lookahead        | Begrenzte lokale Erreichbarkeit, höchstens 40 untersuchte Zellen je Option |
+| Zufall           | Seed-basierte Wahl aus erlaubten Zügen                                     |
+| Geradeaus        | Hält die Richtung bis zu einem Hindernis                                   |
+| Zickzack         | Wechselt zwischen horizontalen und vertikalen Zügen                        |
+| Zeilenläufer     | Wechselnde horizontale Bahnen nach Zeilenparität                           |
+| Spirale          | Nach außen wachsende rechtwinklige Spirale, angepasst an Hindernisse       |
+| Kantenläufer     | Bevorzugt Zellen entlang belegter Bereiche und Arenagrenzen                |
+| Invasion         | Sucht gegnerische Spuren über begrenzte Sichtlinien                        |
 
-Die Simulation läuft in einem dedizierten Worker vor der Wiedergabe. Das Replay enthält pro Eroberung eine 32-Bit-Zahl (Zellindex + Teilnehmer) und Schrittoffsets. Startzellen, Wartezüge, Endpositionen und Fehlerzeitpunkte bleiben nachvollziehbar. Zwischen Bildern werden alle Ereignisse des übersprungenen Zeitabschnitts angewendet; keine Zelle geht verloren.
+Jede Strategie darf mehrfach teilnehmen. Zufallsströme für Entscheidungen, Zellkonflikte und Fortsetzungen sind voneinander getrennt. Identische Einstellungen und deterministische Strategien erzeugen dasselbe Ergebnis.
 
-Wiedergabe: zehn bis fünfzehn Sekunden, Pause/Fortsetzen, Spulen, erneute Wiedergabe desselben Kampfs und neuer Kampf. Ein Wechsel in einen anderen Browser-Tab pausiert die Wiedergabe. Einstellungen werden erst beim nächsten Kampf übernommen. Die Dauer gilt für das Replay, nicht die Berechnungszeit. Der Canvas nutzt die logische Rasterauflösung unabhängig von seiner Anzeigegröße und berücksichtigt die Display-Pixeldichte.
+## Spielkern und Replay
 
-Interne Entwicklungsprüfung auf dem Entwicklungsrechner: Standardkampf bei 512² etwa 0,4 s, bei 1.024² etwa 0,5 s reine Berechnung; tatsächliche Zeiten hängen von Browser, Rechner, Arena, Seed und Strategien ab. Es werden keine Tests beim Deployment ausgeführt.
+`src/core/` verwendet keine Vue- oder DOM-APIs. Die Arenamaske ist ein `Uint8Array`, die Besitzerkarte ein `Int8Array`. Ein dichter Pool freier Zellen ermöglicht Zugriffe und Entfernen in O(1). Teilnehmer sammeln freie Randkandidaten beim Erobern; belegte Kandidaten werden bei Bedarf verworfen. Weder Fortsetzungen noch gewöhnliche Strategien benötigen eine vollständige Flutfüllung pro Zug.
 
-## Eigene Strategien
+Die Simulation läuft vorab in einem Worker. Das Replay speichert pro eroberter Zelle ein 32-Bit-Ereignis mit Zellindex, Teilnehmer und einem Bit für Fortsetzungen, dazu Schrittoffsets und Fehlerzeitpunkte. Es enthält jede einzelne Eroberung und keine künstliche Abschlussfüllung.
 
-Im Code-Labor steht ein CodeMirror-Editor mit JavaScript-Syntaxhervorhebung bereit. Strategien und Einstellungen werden lokal im Browser gespeichert. Benennen, Prüfen, Speichern, Löschen, Zurücksetzen sowie JSON-Import/-Export sind integriert. Die Bibliothek ist auf 30 Strategien mit je 50.000 Zeichen begrenzt.
+Die Wiedergabe dauert unabhängig von der Berechnungszeit zehn bis fünfzehn Sekunden, standardmäßig zwölf. Zwischen Bildern werden alle fälligen Ereignisse angewendet. Pause, Fortsetzen, Spulen und Wiederholen ändern das Ergebnis nicht. Einstellungen gelten erst für die nächste Runde. Ein Wechsel in einen anderen Browser-Tab pausiert das Replay.
+
+Der Renderer trennt logische Rastergröße und Canvas-Anzeigegröße, berücksichtigt die Display-Pixeldichte und verwendet keine sichtbaren Rasterlinien. Ein dezenter farbiger Saum macht schmale Spuren besser erkennbar. Er ist ausschließlich eine Darstellungshilfe, erzeugt keine Punkte und übermalt keine belegten Zellen anderer Teilnehmer. Aktive Köpfe verwenden vorberechnete Glow-Sprites.
+
+## Eigene Algorithmen
+
+Der CodeMirror-Editor unterstützt JavaScript-Syntaxhervorhebung, eigene Hilfsfunktionen, Klassen und Datenstrukturen. Strategien und Einstellungen werden lokal im Browser gespeichert. Benennen, Prüfen, Speichern, Löschen, Zurücksetzen und JSON-Import/-Export sind integriert. Grenzen: 30 Strategien mit jeweils 50.000 Zeichen Code.
 
 ```js
 function nextMove(state, memory) {
   const moves = state.availableMoves;
+  const direction = moves[Math.floor(state.random() * moves.length)];
   return {
-    direction: moves[Math.floor(state.random() * moves.length)],
-    memory: { turns: (memory.turns || 0) + 1 }
+    direction,
+    memory: { turns: (memory.turns || 0) + 1 },
   };
 }
 ```
 
-| Wert | Bedeutung |
-| --- | --- |
-| `state.x`, `state.y`, `state.position` | Position, ganzzahlige Koordinaten ab 0; position ist `{ x, y }` |
-| `state.width`, `state.height` | Logische Rastergröße |
-| `state.direction` | `up`, `right`, `down` oder `left` |
-| `state.score`, `state.step` | Eigene Punkte und aktueller Simulationsschritt |
-| `state.neighbors[direction]` | `{ x, y, type, free }` für jede der vier Richtungen |
-| `state.availableMoves` | Array der erlaubten Richtungen |
-| `state.cell(x, y)` | `free`, `wall`, `self` oder `opponent`; maximal 128 Abfragen pro Zug; außerhalb ergibt `wall` |
-| `state.random()` | Reproduzierbarer Zufall in `[0, 1)`; separater Strom je Teilnehmer |
-| `memory` | Eigener Speicher, anfangs `{}`; über `return.memory` aktualisieren; JSON-kompatibel, maximal 16 KB |
+| Wert                                   | Bedeutung                                                                                    |
+| -------------------------------------- | -------------------------------------------------------------------------------------------- |
+| `state.x`, `state.y`, `state.position` | Eigene Position; `position` ist `{ x, y }`, Koordinaten ab 0                                 |
+| `state.width`, `state.height`          | Logische Rastergröße                                                                         |
+| `state.direction`                      | `up`, `right`, `down` oder `left`                                                            |
+| `state.score`, `state.step`            | Eigene Punkte und Simulationsschritt                                                         |
+| `state.neighbors[direction]`           | `{ x, y, type, free }` je Richtung                                                           |
+| `state.availableMoves`                 | Erlaubte Richtungen als Array                                                                |
+| `state.cell(x, y)`                     | `free`, `wall`, `self` oder `opponent`; maximal 512 Abfragen je Zug; außerhalb ergibt `wall` |
+| `state.random()`                       | Reproduzierbarer Zufall in `[0, 1)`                                                          |
+| `state.restarts`                       | Anzahl bisheriger Fortsetzungen an einer anderen Position                                    |
+| `state.restarted`                      | Ob im vorherigen Schritt eine solche Fortsetzung stattfand                                   |
+| `memory`                               | JSON-kompatibler Speicher, anfangs `{}`, maximal 64 KiB UTF-8-JSON; getrennt pro Teilnehmer  |
 
-`nextMove` ist synchron. Promises, fehlende/ungültige Richtungen, unerlaubte Züge und Exceptions führen zu einem Strategiefehler. Ohne zurückgegebenes `memory` bleibt der vorherige Speicher erhalten. Drei Probeaufrufe prüfen Syntax und Rückgabe vor dem Speichern; die tatsächliche Legalität prüft der Kern in jedem Spielzug erneut. Ein bestandener Probelauf ist keine Garantie für alle Spielsituationen.
+`nextMove` ist synchron. Die Rückgabe muss ein Objekt mit gültiger `direction` sein. `memory` ist optional; ohne Rückgabe bleibt der bisherige Speicher bestehen. Er bleibt auch nach verlorenen Konflikten und Fortsetzungen erhalten. Einen Neustart der gesamten Runde beginnt jeder Teilnehmer mit frischem Speicher.
 
-Für reproduzierbares Verhalten ausschließlich `state.random()` verwenden, keine Uhrzeit, `Math.random()` oder andere äußere Quellen. Nach einem verlorenen Konflikt ändern sich weder Position noch Richtung; der eigene Speicher eines bereits ausgeführten Aufrufs bleibt erhalten.
+Eigener Code entscheidet nur reguläre Züge. Fortsetzungen übernimmt der Kern; dafür wird `nextMove` nicht aufgerufen. Beim nächsten Aufruf wird die Rasterkopie mit allen seit dem letzten Aufruf entstandenen Belegungen synchronisiert. `restarts` ermöglicht es, eigene Planungsdaten bei Bedarf zurückzusetzen.
 
-### Isolation und Budgets
+Drei Probeaufrufe prüfen Syntax und grundlegende Rückgaben vor dem Speichern. Im Kampf validiert der Spielkern jeden Zug erneut. Für Reproduzierbarkeit ausschließlich `state.random()` nutzen; `Math.random()`, Uhrzeit und ähnliche Quellen sind nicht deterministisch.
 
-Jede eigene Strategie erhält einen separaten Blob-Worker in einem Iframe mit `sandbox="allow-scripts"`, **ohne** `allow-same-origin`. Eine restriktive CSP unterbindet Netzwerkzugriffe, weitere Frames, Formulare und externe Ressourcen. Kommunikation mit dem vertrauenswürdigen Simulations-Worker erfolgt direkt über private MessagePorts. Raster und Startzustand werden einmal kopiert, danach ausschließlich neue Zellbelegungen und kompakte Zugzustände übertragen. Der Spielkern besitzt das echte Raster und validiert alle Entscheidungen.
+### Isolation und Ausführungsgrenzen
 
-250 ms Zeitbudget pro Zug, 45 Sekunden Gesamtvorbereitung mit eigenen Strategien. Nach einem Timeout wird der betroffene Worker beendet; eingebaute Strategien und andere Teilnehmer können weiterlaufen. Abbrechen beendet alle zur Runde gehörenden Worker und entfernt das Iframe. Ein Neustart erstellt eine neue Umgebung. Im Editor gilt ein separates einsekündiges Zeitlimit für die Probezüge.
+Jede eigene Strategie läuft in einem separaten Blob-Worker innerhalb eines Iframes mit `sandbox="allow-scripts"`, ohne `allow-same-origin`. Eine CSP blockiert Netzwerkzugriffe und externe Ressourcen. Der vertrauenswürdige Spielkern läuft in einem anderen Worker und besitzt das echte Raster.
 
-Dies ist eine lokale Entwicklungsfunktion für **eigenen, vertrauten Code**, keine öffentliche Plattform für fremde Programme und keine vollständige Sicherheitsgarantie. Browser-Sicherheitslücken, absichtliche Speicherauslastung und Ressourcenmissbrauch lassen sich damit nicht vollständig verhindern. Es gibt keinen Zugriff auf UI, Browser-Speicher oder das echte Spielraster. Unvertrauenswürdigen Code nicht importieren oder ausführen.
+Private MessagePorts übertragen den Raster-Startzustand einmal und anschließend ausschließlich kompakte Zustände und alle neu belegten Zellen seit dem letzten Aufruf. Benutzercode kann den echten Spielzustand nicht direkt verändern.
 
-## Struktur
+Budgets: 250 ms je Zug, 45 Sekunden Vorbereitung für eigenen Code, eine Sekunde für Editor-Probezüge. Bei einer Überschreitung wird der betreffende Worker beendet und die Ersatzstrategie übernimmt. Abbrechen beendet alle Worker der Runde; Neustart erstellt neue Ausführungsumgebungen.
+
+Die Sandbox ist für eigenen, vertrauten lokalen Code gedacht. Browser-Sicherheitslücken oder absichtliche extreme Speichernutzung lassen sich damit nicht vollständig ausschließen. Externe Module, DOM-Zugriffe, Netzwerk und Browser-Speicher sind innerhalb der Strategie nicht verfügbar.
+
+## Quellstruktur
 
 ```text
-src/core/        Typen, Seed-Zufall, Arenamasken, Strategien, Spielkern
-src/workers/     Vertrauenswürdige Hintergrundsimulation und Zeitlimits
-src/render/      Canvas-Renderer, Zellpuffer und vorberechnete Glow-Sprites
+src/core/        Spielregeln, Strategien, Arenamasken, Seed-Zufall und Replay-Typen
+src/workers/     Hintergrundsimulation und Zeitlimits
+src/render/      Canvas-Renderer und Glow-Sprites
 src/services/    Worker-Lebenszyklus, Sandbox und lokale Speicherung
-src/components/ Arena-Canvas und nachgeladener CodeMirror-Editor
-public/         Isolierter Strategie-Runner, Favicon und Apache-Konfiguration
-scripts/        SFTP-Deployment und administrative Secret-Konfiguration
+src/components/ Arena-Canvas und bei Bedarf geladener Code-Editor
+public/         Isolierter Strategie-Runner und statische Ressourcen
 ```
 
-Neue Arenen über eine normalisierte Maskenfunktion in `src/core/arena.ts` ergänzen. Kern und Replay verwenden keine Vue- oder DOM-APIs.
-
-## Hosting und automatisches Deployment
-
-Alle Inhalte von `dist/` auf gewöhnlichen statischen Webspace hochladen. Für Apache setzt die mitgelieferte `.htaccess` `index.html` vor `index.htm`; die alte Provider-Startseite wird nicht gelöscht. Bei anderen Webservern die Startdatei entsprechend konfigurieren. HTTPS ist empfohlen. Es ist kein SPA-Routing und kein Backend erforderlich. Schriften werden aktuell von Google Fonts geladen, mit lokalen Systemschriften als Fallback; die Spielausführung benötigt keine externe API.
-
-Der Workflow `.github/workflows/deploy.yml` veröffentlicht jeden Push auf `main` sowie manuell ausgelöste Runs:
-
-1. `npm ci --no-audit --no-fund`
-2. `npm run build` (TypeScript-Prüfung und Vite-Build)
-3. `node scripts/deploy.mjs` (SFTP-Upload)
-
-**Keine Tests im Deployment.** Secrets im GitHub-Repository unter Settings → Secrets and variables → Actions:
-
-| Secret | Inhalt |
-| --- | --- |
-| `SFTP_HOST` | SFTP-Server |
-| `SFTP_PORT` | Port, normalerweise 22 |
-| `SFTP_USER` | Benutzername |
-| `SFTP_PASSWORD` | Passwort |
-| `SFTP_PATH` | Absoluter Webroot im SFTP-Konto, hier `/public_html` |
-| `SFTP_FINGERPRINT` | Gepinnter SSH-Hostschlüssel als `SHA256:…` |
-
-`scripts/configure-hosting.mjs` ist ein optionaler Administrationshelfer mit verdeckter stdin-Eingabe. Er prüft den GitHub-Account `sh11n3` und verschlüsselt Secret-Werte mit dem Repository-Public-Key vor der Übertragung. Beim ersten autorisierten SFTP-Verbindungsaufbau wird der Hostschlüssel erfasst und danach fest gepinnt (Trust on first use). Änderungen am Server-Hostschlüssel erfordern eine bewusste Aktualisierung des Fingerprints.
-
-Upload-Reihenfolge: Ressourcen zuerst, `index.html` zuletzt per atomarem SFTP-Rename. Bestehende Dateien und ältere gehashte Assets werden nicht gelöscht, damit bereits geöffnete Browserseiten weiter funktionieren. Alte Assets bei Bedarf separat aufräumen. Zugangsdaten gehören ausschließlich in Secrets, niemals in Git, Frontend oder `.env`-Dateien im Build. Repository-Administratoren und autorisierte Workflows können Deployment-Secrets verwenden.
+Neue Arenen lassen sich als normalisierte Maskenfunktion in `src/core/arena.ts` ergänzen. Eingebaute Strategien werden über `src/core/strategies.ts` und die Beschreibungen in `src/core/types.ts` erweitert.

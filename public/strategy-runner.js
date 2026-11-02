@@ -6,7 +6,8 @@
     const { width, height, mask, initial, code, seed, id } = data;
     const board = new Int8Array(mask.length);
     for (let i = 0; i < mask.length; i++) board[i] = mask[i] ? -1 : -2;
-    for (const packed of initial) board[packed >>> 2] = packed & 3;
+    for (const packed of initial)
+      board[(packed & 0x7fffffff) >>> 2] = packed & 3;
     let memory = {},
       stateSeed = seed >>> 0,
       decide;
@@ -20,6 +21,7 @@
     const send = port.postMessage.bind(port);
     const clone = structuredClone;
     const stringify = JSON.stringify;
+    const encoder = new TextEncoder();
     const directions = ["up", "right", "down", "left"];
     const offsets = [
       [0, -1],
@@ -45,12 +47,13 @@
     send({ ready: true });
     port.onmessage = ({ data: request }) => {
       try {
-        for (const packed of request.delta) board[packed >>> 2] = packed & 3;
+        for (const packed of request.delta)
+          board[(packed & 0x7fffffff) >>> 2] = packed & 3;
         let queries = 0;
         const cell = (x, y) => {
-          if (++queries > 128)
+          if (++queries > 512)
             throw new Error(
-              "Pro Zug sind höchstens 128 cell()-Abfragen erlaubt.",
+              "Pro Zug sind höchstens 512 cell()-Abfragen erlaubt.",
             );
           if (
             !Number.isInteger(x) ||
@@ -94,6 +97,8 @@
           direction: request.direction,
           score: request.score,
           step: request.step,
+          restarts: request.restarts ?? 0,
+          restarted: request.restarted ?? false,
           neighbors: Object.freeze(neighbors),
           availableMoves: Object.freeze(
             directions.filter((d) => neighbors[d].free),
@@ -113,9 +118,12 @@
         }
         if (result.memory !== undefined) {
           const serialized = stringify(result.memory);
-          if (serialized === undefined || serialized.length > 16384)
+          if (
+            serialized === undefined ||
+            encoder.encode(serialized).byteLength > 65536
+          )
             throw new Error(
-              "memory muss JSON-kompatibel und höchstens 16 KB groß sein.",
+              "memory muss JSON-kompatibel und höchstens 64 KB groß sein.",
             );
           memory = clone(result.memory);
         }

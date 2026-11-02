@@ -16,9 +16,7 @@ import {
   Braces,
   Check,
   CircleHelp,
-  Command,
   Copy,
-  FlaskConical,
   Github,
   Hexagon,
   LoaderCircle,
@@ -36,6 +34,7 @@ import {
 import ArenaCanvas from "./components/ArenaCanvas.vue";
 import {
   COLORS,
+  DESCRIPTIONS,
   LABELS,
   SHAPES,
   type ArenaShape,
@@ -64,7 +63,13 @@ const tab = ref("arena"),
   toast = ref("");
 const playing = ref(false),
   playback = ref(0),
-  stats = ref<FrameStats>({ scores: [], positions: [], occupied: 0 });
+  stats = ref<FrameStats>({
+    scores: [],
+    positions: [],
+    restarts: [],
+    blocked: [],
+    occupied: 0,
+  });
 const arenaPanel = ref<HTMLElement>(),
   labPanel = ref<HTMLElement>();
 let animation = 0,
@@ -268,6 +273,7 @@ async function expand() {
   }
 }
 function openLab() {
+  pause();
   tab.value = "code";
   nextTick(() =>
     labPanel.value?.scrollIntoView({ behavior: "smooth", block: "start" }),
@@ -293,6 +299,8 @@ function exportResult() {
         score: p.score,
         status: p.status,
         error: p.error,
+        restarts: p.restarts,
+        fallback: p.fallback,
       })),
   };
   const url = URL.createObjectURL(
@@ -333,15 +341,11 @@ onBeforeUnmount(() => {
       <a
         class="brand"
         href="#"
-        aria-label="AlgoFIghts Startseite"
+        aria-label="AlgoFights Startseite"
         @click.prevent="tab = 'arena'"
         ><span class="brand-mark"
           ><Swords :size="21" :stroke-width="2.3" /></span
-        ><span
-          >Algo<span class="brand-accent">FI</span>ghts<span class="brand-dot"
-            >.</span
-          ></span
-        ></a
+        ><span>AlgoFights</span></a
       >
       <nav class="main-nav" aria-label="Hauptnavigation">
         <button :class="{ selected: tab === 'arena' }" @click="tab = 'arena'">
@@ -351,8 +355,7 @@ onBeforeUnmount(() => {
         </button>
       </nav>
       <div class="header-right">
-        <span class="local-badge"><span></span> Läuft in deinem Browser</span
-        ><button
+        <button
           class="icon-button help-button"
           aria-label="Spielregeln anzeigen"
           @click="help = true"
@@ -370,21 +373,6 @@ onBeforeUnmount(() => {
     </header>
 
     <main>
-      <div class="page-intro">
-        <div>
-          <div class="eyebrow">
-            <span class="tiny-line"></span> DER SPIELPLATZ FÜR ALGORITHMEN
-          </div>
-          <h1>Code. Conquer. <span>Repeat.</span></h1>
-          <p>
-            Vier Richtungen. Tausende Zellen. Welche Strategie setzt sich durch?
-          </p>
-        </div>
-        <button class="text-button how-button" @click="help = true">
-          So funktioniert’s <ArrowRight :size="16" />
-        </button>
-      </div>
-
       <div v-if="savedWarning" class="notice-banner" role="status">
         {{ savedWarning }}
       </div>
@@ -392,7 +380,7 @@ onBeforeUnmount(() => {
         {{ error }} <button @click="start">Erneut versuchen</button>
       </div>
 
-      <div class="battle-layout">
+      <div v-show="tab === 'arena'" class="battle-layout">
         <section
           ref="arenaPanel"
           class="arena-panel panel"
@@ -421,18 +409,6 @@ onBeforeUnmount(() => {
             </div>
           </div>
           <div class="arena-stage">
-            <div class="stage-cross cross-top-left"></div>
-            <div class="stage-cross cross-top-right"></div>
-            <div class="stage-cross cross-bottom-left"></div>
-            <div class="stage-cross cross-bottom-right"></div>
-            <span class="stage-label"
-              >SIMULATION
-              {{
-                String(currentSettings.participants.length).padStart(2, "0")
-              }}</span
-            ><span class="stage-coordinate"
-              >Y <span>↓</span> &nbsp; X <span>→</span></span
-            >
             <ArenaCanvas
               :replay="replay"
               :frame="frame"
@@ -468,7 +444,6 @@ onBeforeUnmount(() => {
                 <Play :size="16" /> Kampf starten
               </button>
             </div>
-            <div class="arena-scale"><span></span> EINE ZELLE. EIN PUNKT.</div>
             <span class="stage-seed"
               >SEED <b>{{ currentSettings.seed }}</b
               ><button aria-label="Seed kopieren" @click="copySeed">
@@ -614,6 +589,9 @@ onBeforeUnmount(() => {
                 ><span class="color-dot"></span
                 ><select
                   v-model="p.strategy"
+                  :title="
+                    DESCRIPTIONS[p.strategy] ?? 'Eigene JavaScript-Strategie'
+                  "
                   :aria-label="`Strategie für Teilnehmer ${id + 1}`"
                   @change="strategyChange(id)"
                 >
@@ -666,19 +644,10 @@ onBeforeUnmount(() => {
               <span v-if="!preparing"><ArrowRight :size="17" /></span>
             </button>
           </section>
-          <div class="tip-card">
-            <FlaskConical :size="18" />
-            <div>
-              <strong>Kleine Regeln. Große Unterschiede.</strong>
-              <p>
-                Schon eine andere Priorität kann den ganzen Kampf entscheiden.
-              </p>
-            </div>
-          </div>
         </aside>
       </div>
 
-      <section class="results-section">
+      <section v-show="tab === 'arena'" class="results-section">
         <div class="results-title">
           <h2>
             <AudioLines :size="17" />
@@ -693,8 +662,7 @@ onBeforeUnmount(() => {
                 : "Gewinner"
             }}: {{ winnerNames }}
           </div>
-          <span v-else class="small-label">JEDE ZELLE ZÄHLT</span
-          ><button
+          <button
             v-if="finished"
             class="text-button result-export"
             @click="exportResult"
@@ -718,6 +686,7 @@ onBeforeUnmount(() => {
                   stoppedAt: -1,
                   status: 'active',
                   error: undefined,
+                  errorAt: -1,
                 }))"
             :key="p.id"
             class="score-card panel"
@@ -757,23 +726,32 @@ onBeforeUnmount(() => {
                 % der Arena</span
               ><span
                 class="player-status"
-                :class="{ error: p.status === 'error' && frame >= p.stoppedAt }"
+                :class="{ error: p.errorAt >= 0 && frame >= p.errorAt }"
                 ><i></i
                 >{{
-                  p.stoppedAt >= 0 && frame >= p.stoppedAt
-                    ? p.status === "error"
-                      ? "Fehler"
-                      : "Blockiert"
-                    : "Aktiv"
+                  p.errorAt >= 0 && frame >= p.errorAt
+                    ? finished
+                      ? "Beendet · Ersatz"
+                      : stats.blocked[p.id]
+                        ? "Ersatz · blockiert"
+                        : "Ersatz aktiv"
+                    : finished
+                      ? "Beendet"
+                      : stats.blocked[p.id]
+                        ? "Blockiert"
+                        : "Aktiv"
                 }}</span
               >
             </div>
             <p
-              v-if="p.error && frame >= p.stoppedAt"
+              v-if="p.error && frame >= p.errorAt"
               class="strategy-error"
               role="alert"
             >
-              {{ p.error }}
+              {{ p.error }} Fortsetzung mit der Ersatzstrategie „Geradeaus“.
+            </p>
+            <p v-if="(stats.restarts[p.id] ?? 0) > 0" class="restart-count">
+              {{ number.format(stats.restarts[p.id]!) }} Fortsetzungen
             </p>
           </article>
         </div>
@@ -819,20 +797,14 @@ onBeforeUnmount(() => {
           @close="tab = 'arena'"
         />
       </div>
-
-      <div class="bottom-note">
-        <span><Command :size="14" /> Gebaut für neugierige Köpfe.</span
-        ><span>Keine Accounts. Kein Server. Nur Algorithmen.</span
-        ><button class="text-button" @click="openLab">
-          Deine Strategie wartet <ArrowRight :size="14" />
-        </button>
-      </div>
     </main>
     <footer class="site-footer">
       <span
-        >AlgoFIghts <span>© {{ new Date().getFullYear() }}</span></span
-      ><span>CODE IS THE COMPETITION.</span>
-      <button class="text-button footer-rules" @click="help = true">Spielregeln</button>
+        >AlgoFights <span>© {{ new Date().getFullYear() }}</span></span
+      >
+      <button class="text-button footer-rules" @click="help = true">
+        Spielregeln
+      </button>
       <a
         href="https://github.com/sh11n3/AlgoFights"
         target="_blank"
@@ -882,12 +854,16 @@ onBeforeUnmount(() => {
             warten diesen Schritt.
           </li>
           <li>
-            Ohne freien Nachbarn stoppt ein Algorithmus dauerhaft.
-            Eingeschlossene Flächen werden nicht automatisch gefüllt.
+            Ohne freien Nachbarn wartet ein Algorithmus. Sind alle blockiert,
+            beginnt ein neuer Durchlauf: Jeder setzt an einer freien Zelle am
+            Rand seines Gebiets fort. Gibt es dort keinen freien Rand mehr, wird
+            eine freie Zelle in einem Restbereich gewählt. Auch dieser Schritt
+            erobert genau eine Zelle. Bestehende Spuren bleiben gesperrt.
           </li>
           <li>
-            Sind alle blockiert oder ist die Arena voll, endet der Kampf. Die
-            meisten Punkte gewinnen; Gleichstände sind möglich.
+            Der Kampf endet erst, wenn alle bespielbaren Zellen belegt sind. Bei
+            einem Strategiefehler übernimmt sichtbar die Ersatzstrategie
+            „Geradeaus“. Die meisten Punkte gewinnen; Gleichstände sind möglich.
           </li>
         </ol>
         <p>

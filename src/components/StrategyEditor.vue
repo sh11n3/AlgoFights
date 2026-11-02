@@ -182,8 +182,8 @@ async function importCode(event: Event) {
   const file = (event.target as HTMLInputElement).files?.[0];
   if (!file) return;
   try {
-    if (file.size > 60000)
-      throw new Error("Die Datei darf höchstens 60 KB groß sein.");
+    if (file.size > 300000)
+      throw new Error("Die Datei darf höchstens 300 KB groß sein.");
     const parsed = JSON.parse(await file.text());
     if (
       parsed.format !== "algofights-strategy-v1" ||
@@ -225,7 +225,7 @@ onMounted(() => {
       }),
       EditorView.theme({
         "&": {
-          minHeight: "340px",
+          minHeight: "520px",
           fontSize: "13px",
           backgroundColor: "#10151e",
         },
@@ -243,8 +243,7 @@ onBeforeUnmount(() => {
   <section class="code-lab panel" aria-label="Strategie-Editor">
     <div class="section-heading">
       <div>
-        <span class="eyebrow">DEIN CODE. DEIN SPIEL.</span>
-        <h2>Code-Labor <span class="tag">JAVASCRIPT</span></h2>
+        <h2>Strategie-Editor <span class="tag">JAVASCRIPT</span></h2>
       </div>
       <button
         class="icon-button"
@@ -326,8 +325,7 @@ onBeforeUnmount(() => {
         </div>
       </div>
       <aside class="api-docs">
-        <span class="eyebrow">DIE SCHNITTSTELLE</span>
-        <h3>Ein Zug. Vier Richtungen.</h3>
+        <h3>Schnittstelle</h3>
         <p>
           Definiere <code>nextMove(state, memory)</code>. Gib ein Objekt mit
           <code>direction</code> und optional <code>memory</code> zurück.
@@ -344,21 +342,26 @@ onBeforeUnmount(() => {
           <dt>state.availableMoves</dt>
           <dd>Array aller gerade erlaubten Richtungen.</dd>
           <dt>state.cell(x, y)</dt>
-          <dd>free, wall, self oder opponent. Bis zu 128 Abfragen pro Zug.</dd>
+          <dd>free, wall, self oder opponent. Bis zu 512 Abfragen pro Zug.</dd>
           <dt>state.random()</dt>
           <dd>Seed-basierter Zufall von 0 bis kleiner 1.</dd>
           <dt>state.width · height</dt>
           <dd>Logische Rastergröße der Arena.</dd>
           <dt>memory</dt>
           <dd>
-            Eigener JSON-Speicher, anfangs {}. Bis zu 16 KB. Getrennt für jeden
+            Eigener JSON-Speicher, anfangs {}. Bis zu 64 KB. Getrennt für jeden
             Teilnehmer.
+          </dd>
+          <dt>state.restarts · restarted</dt>
+          <dd>
+            Anzahl der Fortsetzungen und ob der letzte Schritt eine Fortsetzung
+            an einer anderen Position war. memory bleibt erhalten.
           </dd>
         </dl>
         <div class="budget-note">
-          250 ms pro Zug · 45 s Rundenbudget<br />Fehler stoppen nur den
-          betroffenen Algorithmus. Verlorene Zellkonflikte lassen ihn
-          weiterspielen.
+          Eigene Hilfsfunktionen, Klassen und Datenstrukturen sind erlaubt.
+          50.000 Zeichen Code · 250 ms pro Zug · 45 s Rundenbudget. Bei Fehlern
+          übernimmt „Geradeaus“, bis die Arena vollständig belegt ist.
         </div>
         <details>
           <summary>Sandbox & Grenzen</summary>

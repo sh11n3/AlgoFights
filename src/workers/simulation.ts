@@ -10,7 +10,7 @@ scope.onmessage = async ({ data }) => {
     const ports: Record<number, MessagePort> = data.ports ?? {};
     const unavailable = new Map<number, string>();
     const started = performance.now();
-    let lastEvent = sim.events.length;
+    const eventCursors = sim.players.map(() => sim.events.length);
     const pending = new Map<
       number,
       {
@@ -58,21 +58,26 @@ scope.onmessage = async ({ data }) => {
         if (!waiting) return;
         clearTimeout(waiting.timer);
         pending.delete(id);
-        if (answer.error)
+        if (answer.error) {
           unavailable.set(id, String(answer.error).slice(0, 400));
+          scope.postMessage({ type: "terminate-custom", id });
+        }
         waiting.resolve(answer);
       };
       ports[id]!.start();
       return promise;
     });
     await Promise.all(ready);
-    const custom = sim.players.some((p) => p.code !== undefined);
     let lastProgress = 0;
     while (!sim.finished) {
-      if (custom) {
-        const delta = Uint32Array.from(sim.events.slice(lastEvent));
-        lastEvent = sim.events.length;
-        await sim.tickCustom((p, request) => waitFor(p.id, request), delta);
+      if (sim.players.some((p) => p.code !== undefined && !p.fallback)) {
+        await sim.tickCustom((p, request) => {
+          request.delta = Uint32Array.from(
+            sim.events.slice(eventCursors[p.id]),
+          );
+          eventCursors[p.id] = sim.events.length;
+          return waitFor(p.id, request);
+        }, new Uint32Array());
       } else sim.tick();
       if (sim.step % 2048 === 0 || performance.now() - lastProgress > 200) {
         scope.postMessage({

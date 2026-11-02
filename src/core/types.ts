@@ -1,7 +1,17 @@
 export const DIRECTIONS = ["up", "right", "down", "left"] as const;
 export type Direction = (typeof DIRECTIONS)[number];
 export type ArenaShape = "circle" | "square" | "ring" | "rooms";
-export type Builtin = "right" | "left" | "lookahead" | "random";
+export type Builtin =
+  | "right"
+  | "left"
+  | "lookahead"
+  | "random"
+  | "straight"
+  | "zigzag"
+  | "serpentine"
+  | "spiral"
+  | "edge"
+  | "invasion";
 export type Status = "active" | "blocked" | "error";
 export interface ParticipantConfig {
   name: string;
@@ -29,6 +39,10 @@ export interface Player extends ParticipantConfig {
   status: Status;
   stoppedAt: number;
   error?: string;
+  errorAt: number;
+  fallback: boolean;
+  restarts: number;
+  lastRestartAt: number;
 }
 export interface Arena {
   width: number;
@@ -57,6 +71,8 @@ export interface CustomRequest {
   score: number;
   step: number;
   delta: Uint32Array;
+  restarts: number;
+  restarted: boolean;
 }
 export interface CustomAnswer {
   direction?: Direction;
@@ -72,7 +88,30 @@ export const LABELS: Record<string, string> = {
   left: "Linksorientiert",
   lookahead: "Lookahead",
   random: "Zufall",
+  straight: "Geradeaus",
+  zigzag: "Zickzack",
+  serpentine: "Zeilenläufer",
+  spiral: "Spirale",
+  edge: "Kantenläufer",
+  invasion: "Invasion",
 };
+export const DESCRIPTIONS: Record<string, string> = {
+  right: "Rechts, geradeaus, links, zurück.",
+  left: "Links, geradeaus, rechts, zurück.",
+  lookahead: "Sucht lokal nach Wegen mit viel freiem Raum.",
+  random: "Wählt jeden freien Nachbarn mit Seed-Zufall.",
+  straight: "Bleibt möglichst lange in derselben Richtung.",
+  zigzag: "Wechselt zwischen horizontalen und vertikalen Zügen.",
+  serpentine: "Füllt das Raster in wechselnden horizontalen Bahnen.",
+  spiral: "Folgt einer nach außen wachsenden rechtwinkligen Spirale.",
+  edge: "Bevorzugt freie Zellen entlang bestehender Grenzen.",
+  invasion: "Steuert auf die Spuren anderer Teilnehmer zu.",
+};
+// The high bit records an explicit relocation. Cell indices use at most 20 bits.
+export const RELOCATION_FLAG = 0x80000000;
+export function eventCell(event: number): number {
+  return (event & 0x7fffffff) >>> 2;
+}
 export const SHAPES: Record<ArenaShape, string> = {
   circle: "Kreis",
   square: "Quadrat",
