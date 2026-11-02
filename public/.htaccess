@@ -1,0 +1,10 @@
+# Apache / Hetzner Webhosting: leave a provider's existing index.htm untouched.
+DirectoryIndex index.html index.htm
+
+<IfModule mod_headers.c>
+  Header always set X-Content-Type-Options "nosniff"
+  Header always set Referrer-Policy "strict-origin-when-cross-origin"
+  <FilesMatch "^(index\.html|strategy-runner\.js)$">
+    Header set Cache-Control "no-cache"
+  </FilesMatch>
+</IfModule>

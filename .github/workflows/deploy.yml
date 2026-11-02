@@ -1,0 +1,40 @@
+name: Build & SFTP deployment
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: algofights-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Build und Veröffentlichung
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Repository laden
+        uses: actions/checkout@v6
+      - name: Node.js vorbereiten
+        uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+          cache: npm
+      - name: Abhängigkeiten installieren
+        run: npm ci --no-audit --no-fund
+      - name: Statische Website bauen
+        run: npm run build
+      - name: Per SFTP veröffentlichen
+        run: node scripts/deploy.mjs
+        env:
+          SFTP_HOST: ${{ secrets.SFTP_HOST }}
+          SFTP_PORT: ${{ secrets.SFTP_PORT }}
+          SFTP_USER: ${{ secrets.SFTP_USER }}
+          SFTP_PASSWORD: ${{ secrets.SFTP_PASSWORD }}
+          SFTP_PATH: ${{ secrets.SFTP_PATH }}
+          SFTP_FINGERPRINT: ${{ secrets.SFTP_FINGERPRINT }}
