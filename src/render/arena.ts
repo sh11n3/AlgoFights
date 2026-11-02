@@ -15,12 +15,46 @@ export interface FrameStats {
   returnSteps: number[];
   occupied: number;
 }
+// Precomputed raster halos keep trails readable without a fullscreen blur pass.
+const littleEndian =
+  new Uint8Array(new Uint32Array([0x01020304]).buffer)[0] === 4;
+function rgba(r: number, g: number, b: number): number {
+  return (
+    (littleEndian
+      ? (255 << 24) | (b << 16) | (g << 8) | r
+      : (r << 24) | (g << 16) | (b << 8) | 255) >>> 0
+  );
+}
+const halo: Array<{ dx: number; dy: number; level: number }> = [];
+for (let dy = -2; dy <= 2; dy++)
+  for (let dx = -2; dx <= 2; dx++) {
+    if (!dx && !dy) continue;
+    const level =
+      Math.max(Math.abs(dx), Math.abs(dy)) === 2
+        ? dx && dy
+          ? 0
+          : 1
+        : dx && dy
+          ? 2
+          : 3;
+    halo.push({ dx, dy, level });
+  }
+const TILE = 64;
+
 export class ArenaRenderer {
   private buffer = document.createElement("canvas");
-  private trailBuffer = document.createElement("canvas");
-  private trailPixels: ImageData;
   private pixels: ImageData;
-  private colors: number[][];
+  private colorPixels: number[];
+  private haloPixels: number[][];
+  private packedPixels: Uint32Array;
+  private haloLevels: Uint8Array;
+  private tileColumns: number;
+  private dirtyFlags: Uint8Array;
+  private dirtyTiles: number[] = [];
+  private fullDirty = true;
+  private context: CanvasRenderingContext2D;
+  private bufferContext: CanvasRenderingContext2D;
+  private blocked: boolean[];
   private sprites: HTMLCanvasElement[];
   private cursor = 0;
   private frame = -1;
@@ -37,13 +71,29 @@ export class ArenaRenderer {
     const { width, height } = replay.arena;
     this.buffer.width = width;
     this.buffer.height = height;
-    this.trailBuffer.width = width;
-    this.trailBuffer.height = height;
-    this.trailPixels = new ImageData(width, height);
     this.pixels = new ImageData(width, height);
+    this.packedPixels = new Uint32Array(this.pixels.data.buffer);
     this.owners = new Int8Array(width * height).fill(-1);
-    this.colors = replay.players.map((p) =>
+    this.haloLevels = new Uint8Array(width * height);
+    this.tileColumns = Math.ceil(width / TILE);
+    this.dirtyFlags = new Uint8Array(
+      this.tileColumns * Math.ceil(height / TILE),
+    );
+    this.context = canvas.getContext("2d")!;
+    this.bufferContext = this.buffer.getContext("2d")!;
+    this.blocked = replay.players.map(() => false);
+    const colors = replay.players.map((p) =>
       p.color.match(/[0-9a-f]{2}/gi)!.map((c) => parseInt(c, 16)),
+    );
+    this.colorPixels = colors.map((c) => rgba(c[0]!, c[1]!, c[2]!));
+    this.haloPixels = colors.map((c) =>
+      [0.035, 0.09, 0.28, 0.55].map((strength) =>
+        rgba(
+          Math.round(22 + (c[0]! - 22) * strength),
+          Math.round(30 + (c[1]! - 30) * strength),
+          Math.round(41 + (c[2]! - 41) * strength),
+        ),
+      ),
     );
     this.sprites = replay.players.map((p) => {
       const sprite = document.createElement("canvas");
@@ -68,7 +118,10 @@ export class ArenaRenderer {
   private reset() {
     const { mask, width, height } = this.replay.arena;
     this.pixels.data.fill(0);
-    this.trailPixels.data.fill(0);
+    this.haloLevels.fill(0);
+    this.dirtyFlags.fill(0);
+    this.dirtyTiles.length = 0;
+    this.fullDirty = true;
     this.owners.fill(-1);
     for (let i = 0; i < mask.length; i++)
       if (mask[i]) {
@@ -83,11 +136,7 @@ export class ArenaRenderer {
           !mask[i + 1] ||
           !mask[i - width] ||
           !mask[i + width];
-        const offset = i * 4;
-        this.pixels.data.set(
-          edge ? [55, 68, 82, 255] : [22, 30, 41, 255],
-          offset,
-        );
+        this.packedPixels[i] = edge ? rgba(55, 68, 82) : rgba(22, 30, 41);
       }
     this.cursor = 0;
     this.frame = -1;
@@ -98,7 +147,7 @@ export class ArenaRenderer {
     this.positions = [...this.replay.starts];
   }
   seek(frame: number): FrameStats {
-    frame = Math.max(0, Math.min(this.replay.steps, frame));
+    frame = Math.max(0, Math.min(this.replay.steps, Math.floor(frame)));
     if (frame < this.frame) this.reset();
     const end = this.replay.offsets[frame + 1]!;
     while (this.cursor < end) {
@@ -114,48 +163,37 @@ export class ArenaRenderer {
         continue;
       }
       this.traveling[id] = false;
-      const color = this.colors[id]!;
       this.owners[cell] = id;
-      // A one-cell colored shoulder emphasizes narrow paths visually.
-      // It never paints over another owner's cells or changes the simulation.
       const { width, height, mask } = this.replay.arena;
       const cx = cell % width,
         cy = Math.floor(cell / width);
-      for (let dy = -1; dy <= 1; dy++)
-        for (let dx = -1; dx <= 1; dx++) {
-          const x = cx + dx,
-            y = cy + dy,
-            n = y * width + x;
-          if (
-            x < 0 ||
-            y < 0 ||
-            x >= width ||
-            y >= height ||
-            !mask[n] ||
-            this.owners[n] !== -1
-          )
-            continue;
-          const strength = dx && dy ? 0.28 : 0.55;
-          this.pixels.data.set(
-            [
-              Math.round(22 + (color[0]! - 22) * strength),
-              Math.round(30 + (color[1]! - 30) * strength),
-              Math.round(41 + (color[2]! - 41) * strength),
-              255,
-            ],
-            n * 4,
-          );
-        }
-      this.pixels.data.set([color[0]!, color[1]!, color[2]!, 255], cell * 4);
-      this.trailPixels.data.set(
-        [color[0]!, color[1]!, color[2]!, 255],
-        cell * 4,
-      );
+      // Paint a narrow shoulder and a faint outer halo only into unclaimed cells.
+      // A weak halo never overwrites an existing brighter shoulder.
+      const palette = this.haloPixels[id]!;
+      for (const { dx, dy, level } of halo) {
+        const x = cx + dx,
+          y = cy + dy,
+          n = y * width + x;
+        if (
+          x < 0 ||
+          y < 0 ||
+          x >= width ||
+          y >= height ||
+          !mask[n] ||
+          this.owners[n] !== -1 ||
+          this.haloLevels[n]! >= level + 1
+        )
+          continue;
+        this.haloLevels[n] = level + 1;
+        this.packedPixels[n] = palette[level]!;
+      }
+      this.packedPixels[cell] = this.colorPixels[id]!;
+      this.markDirty(cx, cy);
       this.scores[id] = this.scores[id]! + 1;
     }
     this.frame = frame;
-    this.buffer.getContext("2d")!.putImageData(this.pixels, 0, 0);
-    this.trailBuffer.getContext("2d")!.putImageData(this.trailPixels, 0, 0);
+    this.flushPixels();
+    this.blocked = this.positions.map((position) => this.isBlocked(position));
     this.draw();
     return {
       scores: [...this.scores],
@@ -163,7 +201,7 @@ export class ArenaRenderer {
       restarts: [...this.restarts],
       traveling: [...this.traveling],
       returnSteps: [...this.returnSteps],
-      blocked: this.positions.map((position) => this.isBlocked(position)),
+      blocked: [...this.blocked],
       occupied: this.scores.reduce((sum, score) => sum + score, 0),
     };
   }
@@ -171,23 +209,60 @@ export class ArenaRenderer {
     const { width, height, mask } = this.replay.arena;
     const x = position % width,
       y = Math.floor(position / width);
-    return ![
-      [x, y - 1],
-      [x + 1, y],
-      [x, y + 1],
-      [x - 1, y],
-    ].some(
-      ([nx, ny]) =>
-        nx! >= 0 &&
-        ny! >= 0 &&
-        nx! < width &&
-        ny! < height &&
-        mask[ny! * width + nx!] &&
-        this.owners[ny! * width + nx!] === -1,
+    return !(
+      (x > 0 && mask[position - 1] && this.owners[position - 1] === -1) ||
+      (x < width - 1 &&
+        mask[position + 1] &&
+        this.owners[position + 1] === -1) ||
+      (y > 0 &&
+        mask[position - width] &&
+        this.owners[position - width] === -1) ||
+      (y < height - 1 &&
+        mask[position + width] &&
+        this.owners[position + width] === -1)
     );
   }
+  private markDirty(x: number, y: number) {
+    if (this.fullDirty) return;
+    const { width, height } = this.replay.arena;
+    const x0 = Math.max(0, x - 2) >> 6,
+      x1 = Math.min(width - 1, x + 2) >> 6;
+    const y0 = Math.max(0, y - 2) >> 6,
+      y1 = Math.min(height - 1, y + 2) >> 6;
+    for (let ty = y0; ty <= y1; ty++)
+      for (let tx = x0; tx <= x1; tx++) {
+        const tile = ty * this.tileColumns + tx;
+        if (!this.dirtyFlags[tile]) {
+          this.dirtyFlags[tile] = 1;
+          this.dirtyTiles.push(tile);
+        }
+      }
+  }
+  private flushPixels() {
+    if (this.fullDirty) {
+      this.bufferContext.putImageData(this.pixels, 0, 0);
+      this.fullDirty = false;
+    } else {
+      const { width, height } = this.replay.arena;
+      for (const tile of this.dirtyTiles) {
+        const x = (tile % this.tileColumns) * TILE,
+          y = Math.floor(tile / this.tileColumns) * TILE;
+        this.bufferContext.putImageData(
+          this.pixels,
+          0,
+          0,
+          x,
+          y,
+          Math.min(TILE, width - x),
+          Math.min(TILE, height - y),
+        );
+        this.dirtyFlags[tile] = 0;
+      }
+    }
+    this.dirtyTiles.length = 0;
+  }
   draw() {
-    const context = this.canvas.getContext("2d")!;
+    const context = this.context;
     const size = this.canvas.clientWidth;
     if (size <= 0) return;
     const dpr = Math.min(devicePixelRatio || 1, 3);
@@ -202,17 +277,10 @@ export class ArenaRenderer {
       inner = size - padding * 2;
     context.imageSmoothingEnabled = false;
     context.drawImage(this.buffer, padding, padding, inner, inner);
-    // One composited glow pass for all claimed cells, never a shadow per cell.
-    context.save();
-    context.globalAlpha = 0.18;
-    context.globalCompositeOperation = "screen";
-    context.filter = "blur(1.4px)";
-    context.drawImage(this.trailBuffer, padding, padding, inner, inner);
-    context.restore();
     this.positions.forEach((position, id) => {
       const player = this.replay.players[id]!;
       const active =
-        (this.traveling[id] || !this.isBlocked(position)) &&
+        (this.traveling[id] || !this.blocked[id]) &&
         (player.stoppedAt < 0 || this.frame < player.stoppedAt);
       const x =
         padding +

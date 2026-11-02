@@ -43,6 +43,8 @@ Das Replay speichert **jede Kopfbewegung** als 32-Bit-Ereignis mit Zellindex, Te
 
 Die Runde wird vorab im Worker berechnet und über zehn bis fünfzehn Sekunden abgespielt. Pause, Spulen und Wiederholen beeinflussen das Ergebnis nicht. Änderungen gelten ab dem nächsten Kampf. Der Wechsel in einen anderen Browser-Tab pausiert die Wiedergabe.
 
+Canvas zeichnet unabhängig von Vue in jedem Display-Frame. Punktestände und Zeitleiste aktualisieren höchstens 20-mal pro Sekunde. Rasteränderungen werden in 64-Zellen-Kacheln übertragen; vorberechnete Farbabstufungen erzeugen den dezenten Spur-Glow ohne Blur über die gesamte Arena. Der Glow der bewegten Punkte verwendet vorberechnete Sprites.
+
 Der Canvas trennt logische Auflösung und Anzeigegröße, berücksichtigt Display-Pixeldichte und zeichnet keine Gitterlinien. Ein dezenter Saum verbessert die Lesbarkeit feiner Spuren, erzeugt aber keine Punkte. Köpfe verwenden vorberechnete Glow-Sprites; ein gestrichelter Ring zeigt den automatischen Rücklauf.
 
 ## Eigene Strategien und Editor

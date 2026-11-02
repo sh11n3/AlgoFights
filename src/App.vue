@@ -70,9 +70,12 @@ const playing = ref(false),
     returnSteps: [],
   });
 const arenaPanel = ref<HTMLElement>(),
+  arenaCanvas = ref<InstanceType<typeof ArenaCanvas>>(),
   labPanel = ref<HTMLElement>();
 let animation = 0,
   lastTime = 0,
+  playhead = 0,
+  lastUiUpdate = 0,
   toastTimer: ReturnType<typeof setTimeout> | undefined;
 const number = new Intl.NumberFormat("de-DE");
 const currentSettings = computed(() => replay.value?.settings ?? settings);
@@ -148,18 +151,25 @@ function notify(message: string) {
   toastTimer = setTimeout(() => (toast.value = ""), 3500);
 }
 function pause() {
+  if (playing.value) playback.value = playhead;
   playing.value = false;
   cancelAnimationFrame(animation);
 }
 function advance(time: number) {
   if (!playing.value || !replay.value) return;
-  playback.value = Math.min(
+  playhead = Math.min(
     1,
-    playback.value +
+    playhead +
       Math.max(0, time - lastTime) / (replay.value.settings.duration * 1000),
   );
   lastTime = time;
-  if (playback.value >= 1) {
+  // Canvas follows every display frame; the rest of Vue updates at most 20 Hz.
+  arenaCanvas.value?.display(Math.floor(playhead * replay.value.steps), false);
+  if (time - lastUiUpdate >= 50 || playhead >= 1) {
+    playback.value = playhead;
+    lastUiUpdate = time;
+  }
+  if (playhead >= 1) {
     playing.value = false;
     return;
   }
@@ -168,8 +178,10 @@ function advance(time: number) {
 function play() {
   if (!replay.value || preparing.value) return;
   if (finished.value) playback.value = 0;
+  playhead = playback.value;
   playing.value = true;
   lastTime = performance.now();
+  lastUiUpdate = lastTime;
   animation = requestAnimationFrame(advance);
 }
 function togglePlay() {
@@ -422,6 +434,7 @@ onBeforeUnmount(() => {
           </div>
           <div class="arena-stage">
             <ArenaCanvas
+              ref="arenaCanvas"
               :replay="replay"
               :frame="frame"
               @stats="stats = $event"

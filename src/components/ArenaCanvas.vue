@@ -7,17 +7,30 @@ const emit = defineEmits<{ stats: [value: FrameStats] }>();
 const canvas = ref<HTMLCanvasElement>();
 let renderer: ArenaRenderer | null = null,
   observer: ResizeObserver | null = null;
+let renderedFrame = -1;
+let latestStats: FrameStats | null = null;
+function display(frame: number, report = true) {
+  if (!renderer) return;
+  frame = Math.floor(frame);
+  if (frame !== renderedFrame) {
+    latestStats = renderer.seek(frame);
+    renderedFrame = frame;
+  }
+  if (report && latestStats) emit("stats", latestStats);
+}
+defineExpose({ display });
 function setup() {
   if (canvas.value && props.replay) {
     renderer = new ArenaRenderer(canvas.value, props.replay);
-    emit("stats", renderer.seek(props.frame));
+    renderedFrame = -1;
+    display(props.frame);
   }
 }
 watch(() => props.replay, setup);
 watch(
   () => props.frame,
   (value) => {
-    if (renderer) emit("stats", renderer.seek(value));
+    display(value);
   },
 );
 onMounted(() => {
