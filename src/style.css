@@ -19,7 +19,7 @@
 }
 body {
   margin: 0;
-  min-width: 360px;
+  min-width: 0;
 }
 button,
 input,
@@ -1636,7 +1636,7 @@ kbd {
 }
 @media (max-width: 620px) {
   body {
-    min-width: 360px;
+    min-width: 0;
   }
   .topbar {
     height: 68px;
@@ -1941,6 +1941,35 @@ kbd {
   }
   .preparation-overlay {
     backdrop-filter: blur(3px);
+  }
+}
+@media (max-width: 380px) {
+  .arena-state,
+  .settings-panel .small-label {
+    display: none;
+  }
+  .arena-title h2,
+  .arena-toolbar-right > span {
+    white-space: nowrap;
+  }
+  .topbar {
+    padding: 0 14px;
+    gap: 8px;
+  }
+  .brand {
+    font-size: 18px;
+    gap: 7px;
+  }
+  .brand-mark {
+    width: 28px;
+    height: 28px;
+  }
+  .main-nav button {
+    padding: 0 6px;
+    font-size: 10px;
+  }
+  .main-nav button > svg {
+    display: none;
   }
 }
 @media (prefers-reduced-motion: reduce) {
