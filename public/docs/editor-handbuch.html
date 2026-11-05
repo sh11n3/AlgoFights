@@ -664,6 +664,22 @@ GIB »kein direkter Weg« ZURÜCK</code></pre>
       Speichern auf dem gerichteten, gewichteten Abkürzungsgraphen geprüft.
     </p>
 
+    <p>
+      Mit <code>graph.track(dis, previous, side = 0)</code> meldest du vor dem
+      ersten <code>graph.trace()</code>-Aufruf deine Live-Arrays an. Ändere
+      anschließend ihre Einträge. <code>dis</code> enthält einen Wert je Knoten
+      oder ist <code>null</code>, wenn das Verfahren keine Distanzen führt.
+      <code>previous</code> enthält pro Knoten die Vorgängerkanten-ID oder
+      <code>-1</code>. Eine Map mit Knoten-IDs als Schlüsseln geht ebenfalls.
+      Die Anzeige wandelt Kanten-IDs in Vorgängerknoten um.
+      <code>side = 1</code> kennzeichnet die Rückwärtssuche.
+    </p>
+    <p>
+      Rufe <code>graph.trace()</code> unmittelbar vor der Expansion auf. Der
+      Suchverlauf zeigt den Initialzustand und nach jeder Expansion den Stand
+      von <code>dis</code> und <code>pre</code>.
+    </p>
+
     <h2 id="speichern">6. Prüfen, speichern und ausführen</h2>
     <ul>
       <li>

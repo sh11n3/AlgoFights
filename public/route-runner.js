@@ -8,6 +8,10 @@
     const freeze = Object.freeze,
       now = performance.now.bind(performance);
     const traces = [[], [], []];
+    const arrays =
+      options && typeof createArrayTrace === "function"
+        ? createArrayTrace(nodes.length, arcs)
+        : null;
     const stepLimit = {};
     let limited = false;
     let queries = 0;
@@ -32,6 +36,7 @@
         weighted: options.weighted,
         directed: options.directed,
         stepLimit: options.stepLimit,
+        track: arrays?.track,
       }),
       createQueue,
       neighbors(id) {
@@ -61,12 +66,15 @@
       },
       trace(node, edge = -1, side = 0) {
         if (options && traces[0].length >= options.stepLimit) {
+          if (!limited) arrays?.capture();
           limited = true;
           throw stepLimit;
         }
         if (traces[0].length >= 250000)
           throw new Error("Höchstens 250.000 Suchschritte sind erlaubt.");
-        traces[0].push(nodeId(node));
+        const id = nodeId(node);
+        arrays?.capture();
+        traces[0].push(id);
         traces[1].push(edge);
         traces[2].push(side);
       },
@@ -83,6 +91,7 @@
             traceSides: traces[2],
             milliseconds: now() - begin,
             limited: true,
+            arrayFrames: arrays?.frames,
           },
         });
       try {
@@ -128,6 +137,7 @@
           throw new Error(
             "Ungültiges Suchprotokoll. Nutze graph.trace(node, edge, side).",
           );
+        if (traces[0].length) arrays?.capture();
         send({
           result: {
             path,
@@ -135,6 +145,7 @@
             traceEdges: entries[1],
             traceSides: entries[2],
             milliseconds: now() - begin,
+            arrayFrames: arrays?.frames,
           },
         });
       } catch (error) {

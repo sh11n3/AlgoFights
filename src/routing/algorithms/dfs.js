@@ -3,6 +3,7 @@ export default function findRoute(graph) {
   const queue = [graph.start];
   const seen = new Set(queue);
   const previous = new Map();
+  graph.track?.(null, previous);
   while (queue.length) {
     const node = queue.pop();
     graph.trace(node, previous.get(node) ?? -1);

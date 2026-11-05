@@ -25,6 +25,7 @@ import {
 import GraphBoard from "./GraphBoard.vue";
 import GraphBuilder from "./GraphBuilder.vue";
 import GraphNotation from "./GraphNotation.vue";
+import SearchArrays from "./SearchArrays.vue";
 import { readGraphNotation } from "../graph/notation";
 import { PRESETS } from "../graph/presets";
 import {
@@ -221,6 +222,7 @@ async function run() {
           algorithm.value as RouteAlgorithm,
           options.stepLimit,
           options.heuristic,
+          true,
         );
     if (activeRun !== controller) return;
     result.value = graphResult(network, from, to, output);
@@ -452,6 +454,14 @@ onBeforeUnmount(() => {
           >
           <span class="route-key">Gefundener Weg</span>
         </div>
+        <SearchArrays
+          :nodes="graph.nodes"
+          :frames="result?.arrayFrames"
+          :order="result?.traceNodes"
+          :step="step"
+          :side="result?.traceSides[step - 1]"
+          :breadth-first="algorithm === 'bfs'"
+        />
         <div class="graph-playback">
           <button
             class="icon-button"

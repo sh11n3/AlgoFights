@@ -3,6 +3,7 @@ import { createQueue } from "../routing/queue.js";
 import { validateRouteOutput, type RouteOutput } from "../routing/custom";
 import type { Arc, RouteAlgorithm } from "../routing/types";
 import type { GraphPreset } from "./presets";
+import { createArrayTrace } from "./array-trace.js";
 
 export const GRAPH_ALGORITHMS = {
   dijkstra: {
@@ -90,6 +91,7 @@ export function searchTeachingGraph(
   algorithm: RouteAlgorithm,
   stepLimit: number,
   heuristic = graphHeuristic(graph, target),
+  trackArrays = false,
 ): RouteOutput {
   const traceNodes: number[] = [],
     traceEdges: number[] = [],
@@ -98,6 +100,9 @@ export function searchTeachingGraph(
   let limited = false,
     path: number[] | null = null;
   const begin = performance.now();
+  const arrays = trackArrays
+    ? createArrayTrace(graph.nodes.length, graph.arcs)
+    : undefined;
   try {
     ({ path } = algorithms[algorithm]({
       ...graph,
@@ -106,8 +111,10 @@ export function searchTeachingGraph(
       nodeCount: graph.nodes.length,
       createQueue,
       heuristic: (node) => heuristic[node],
+      track: arrays?.track,
       trace(node, edge = -1, side = 0) {
         if (traceNodes.length >= stepLimit) throw stop;
+        arrays?.capture();
         traceNodes.push(node);
         traceEdges.push(edge);
         traceSides.push(side);
@@ -117,12 +124,14 @@ export function searchTeachingGraph(
     if (error !== stop) throw error;
     limited = true;
   }
+  arrays?.capture();
   return {
     path,
     limited,
     traceNodes,
     traceEdges,
     traceSides,
+    arrayFrames: arrays?.frames,
     milliseconds: performance.now() - begin,
   };
 }
@@ -136,5 +145,6 @@ export function graphResult(
   return {
     ...validateRouteOutput(graph, start, target, output),
     limited: output.limited === true,
+    arrayFrames: output.arrayFrames,
   };
 }

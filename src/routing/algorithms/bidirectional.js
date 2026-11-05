@@ -1,9 +1,5 @@
 // Bidirektionaler Dijkstra: vorwärts und auf eingehenden Kanten rückwärts.
 export default function findRoute(graph) {
-  if (graph.start === graph.target) {
-    graph.trace(graph.start);
-    return { path: [] };
-  }
   const forward = graph.createQueue(),
     backward = graph.createQueue();
   const distances = [0, 1].map(() =>
@@ -13,6 +9,12 @@ export default function findRoute(graph) {
   const closed = [0, 1].map(() => new Uint8Array(graph.nodeCount));
   distances[0][graph.start] = 0;
   distances[1][graph.target] = 0;
+  graph.track?.(distances[0], previous[0], 0);
+  graph.track?.(distances[1], previous[1], 1);
+  if (graph.start === graph.target) {
+    graph.trace(graph.start);
+    return { path: [] };
+  }
   forward.push(graph.start, 0);
   backward.push(graph.target, 0);
   let best = Infinity,
@@ -56,13 +58,13 @@ export default function findRoute(graph) {
   if (meeting < 0) return { path: null };
 
   const path = [];
-  for (let v = meeting; v !== graph.start;) {
+  for (let v = meeting; v !== graph.start; ) {
     const edge = previous[0][v];
     path.push(edge);
     v = graph.arcs[edge].from;
   }
   path.reverse();
-  for (let v = meeting; v !== graph.target;) {
+  for (let v = meeting; v !== graph.target; ) {
     const edge = previous[1][v];
     path.push(edge);
     v = graph.arcs[edge].to;

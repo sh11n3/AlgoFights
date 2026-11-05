@@ -5,6 +5,7 @@ export default function findRoute(graph) {
   const closed = new Uint8Array(graph.nodeCount);
   const queue = graph.createQueue();
   distance[graph.start] = 0;
+  graph.track?.(distance, previous);
   queue.push(graph.start, 0);
 
   while (queue.peek()) {

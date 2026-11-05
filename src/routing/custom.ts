@@ -1,4 +1,5 @@
 import type { SearchNetwork, RouteResult } from "./types";
+import type { SearchArrayState } from "../graph/array-trace.js";
 
 export interface RouteOutput {
   path: number[] | Uint32Array | null;
@@ -7,6 +8,7 @@ export interface RouteOutput {
   traceSides: number[] | Uint8Array;
   milliseconds: number;
   limited?: boolean;
+  arrayFrames?: SearchArrayState[][];
 }
 export function validateRouteOutput(
   graph: SearchNetwork,

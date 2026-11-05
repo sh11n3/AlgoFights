@@ -700,6 +700,17 @@ onBeforeUnmount(() => {
               Suche.</template
             >
           </dd>
+          <template v-if="isGraph">
+            <dt>graph.track(dis, previous, side = 0)</dt>
+            <dd>
+              Melde die Arrays vor dem ersten <code>trace</code>-Aufruf an und
+              ändere danach ihre Einträge. <code>dis</code> enthält Distanzen
+              oder ist <code>null</code>. <code>previous</code> enthält
+              Kanten-IDs oder <code>−1</code> je Knoten. Die Anzeige übersetzt
+              die Kanten in Vorgängerknoten. <code>side = 1</code> steht für die
+              Rückwärtssuche.
+            </dd>
+          </template>
           <dt>Rückgabe</dt>
           <dd>
             <code>{ path: [Kanten-IDs] }</code> in Reihenfolge vom Start zum

@@ -1,6 +1,7 @@
 import type { RoadGraph, SearchNetwork } from "../routing/types";
 import type { RouteOutput } from "../routing/custom";
 import queueSource from "../routing/queue.js?raw";
+import arrayTraceSource from "../graph/array-trace.js?raw";
 
 // User code only sees a copy, in a blob worker under an opaque iframe origin.
 export async function runRouteCode(
@@ -29,8 +30,8 @@ export async function runRouteCode(
   });
   if (!response.ok)
     throw new Error("Die Wegsuche-Sandbox konnte nicht geladen werden.");
-  const source =
-    queueSource.replace(/^export /gm, "") + "\n" + (await response.text());
+  const helpers = options ? `${queueSource}\n${arrayTraceSource}` : queueSource;
+  const source = helpers.replace(/^export /gm, "") + "\n" + (await response.text());
   if (signal.aborted) throw new DOMException("Abgebrochen", "AbortError");
   const frame = document.createElement("iframe");
   frame.hidden = true;
