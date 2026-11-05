@@ -1,0 +1,48 @@
+[
+  {
+    "id": "mannheim",
+    "name": "Mannheim · Quadrate",
+    "bbox": [49.475, 8.445, 49.497, 8.487],
+    "center": [49.487, 8.466],
+    "start": [49.482, 8.461],
+    "target": [49.488, 8.477],
+    "description": "Die Quadrate: kurze Straßenabschnitte und viele rechtwinklige Kreuzungen."
+  },
+  {
+    "id": "berlin",
+    "name": "Berlin · Mitte",
+    "bbox": [52.502, 13.365, 52.535, 13.43],
+    "center": [52.519, 13.399],
+    "start": [52.515, 13.378],
+    "target": [52.523, 13.412],
+    "description": "Breite Hauptstraßen, Nebenstraßen und Verbindungen über die Spree."
+  },
+  {
+    "id": "barcelona",
+    "name": "Barcelona · Eixample",
+    "bbox": [41.38, 2.145, 41.41, 2.19],
+    "center": [41.395, 2.1675],
+    "start": [41.3868, 2.17],
+    "target": [41.4036, 2.1744],
+    "description": "Regelmäßige Blöcke, abgeschrägte Ecken und die quer verlaufende Diagonal."
+  },
+  {
+    "id": "amsterdam",
+    "name": "Amsterdam · Grachten",
+    "bbox": [52.354, 4.867, 52.387, 4.921],
+    "center": [52.3705, 4.894],
+    "start": [52.3581, 4.8814],
+    "target": [52.376, 4.897],
+    "description": "Grachten, Brücken und Einbahnstraßen schränken die möglichen Wege ein."
+  },
+  {
+    "id": "new-york",
+    "overpass": "global",
+    "name": "New York · Manhattan",
+    "bbox": [40.753, -74.006, 40.802, -73.943],
+    "center": [40.7775, -73.9745],
+    "start": [40.7725, -73.9835],
+    "target": [40.783, -73.9589],
+    "description": "Manhattan-Raster mit wenigen quer durch den Central Park verlaufenden Straßen."
+  }
+]

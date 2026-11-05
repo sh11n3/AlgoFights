@@ -1,6 +1,7 @@
 import {
   COLORS,
   LABELS,
+  SHAPES,
   type CustomStrategy,
   type Settings,
 } from "../core/types";
@@ -33,7 +34,8 @@ export function readSettings(): Settings {
     );
     if (
       parsed &&
-      ["circle", "square", "ring", "rooms"].includes(parsed.shape) &&
+      typeof parsed.shape === "string" &&
+      Object.hasOwn(SHAPES, parsed.shape) &&
       [256, 512, 1024].includes(parsed.resolution) &&
       typeof parsed.seed === "string" &&
       parsed.seed.length <= 80 &&

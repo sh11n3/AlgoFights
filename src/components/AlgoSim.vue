@@ -32,6 +32,7 @@ import {
   type RouteComparisonRow,
 } from "../routing/types";
 import "../routing/style.css";
+import CITIES from "../routing/cities.json";
 import { readStrategies, store } from "../services/storage";
 import { runRouteCode } from "../services/route-sandbox";
 import type { CustomStrategy } from "../core/types";
@@ -80,6 +81,7 @@ let pointer: {
   } | null = null,
   dragged = false;
 const integer = new Intl.NumberFormat("de-DE");
+const cityInfo = computed(() => CITIES.find((c) => c.id === city.value)!);
 const custom = computed(() =>
   customStrategies.value.find((s) => s.id === algorithm.value),
 );
@@ -217,16 +219,7 @@ function clearRoute() {
   error.value = "";
 }
 function defaultPoints(g: RoadGraph) {
-  const corners =
-    city.value === "mannheim"
-      ? [
-          [49.482, 8.461],
-          [49.488, 8.477],
-        ]
-      : [
-          [52.515, 13.378],
-          [52.523, 13.412],
-        ];
+  const corners = [cityInfo.value.start, cityInfo.value.target];
   const a = project(corners[0]![0]!, corners[0]![1]!, g.center),
     b = project(corners[1]![0]!, corners[1]![1]!, g.center);
   start.value = nearestNode(g, a[0]!, a[1]!);
@@ -658,10 +651,12 @@ onBeforeUnmount(() => {
         <h2>Wegsuche</h2>
         <label
           >Stadt<select v-model="city">
-            <option value="mannheim">Mannheim · Quadrate</option>
-            <option value="berlin">Berlin · Mitte</option>
+            <option v-for="item in CITIES" :key="item.id" :value="item.id">
+              {{ item.name }}
+            </option>
           </select></label
         >
+        <p class="city-description">{{ cityInfo.description }}</p>
         <label
           >Algorithmus<select v-model="algorithm">
             <option value="new">Eigenen Algorithmus bauen</option>

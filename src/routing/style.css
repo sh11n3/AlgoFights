@@ -248,6 +248,12 @@
   padding-top: 20px;
   border-top: 1px solid var(--border);
 }
+.city-description {
+  color: #8d9eaf;
+  font-size: 10px;
+  line-height: 1.7;
+  margin: -8px 0 18px;
+}
 .route-explanation h3 {
   font-size: 13px;
   font-weight: 600;

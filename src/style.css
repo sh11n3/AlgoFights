@@ -495,55 +495,10 @@ main {
   border-color: #718097;
 }
 .shape-icon {
-  width: 22px;
-  height: 22px;
-  border: 1px solid currentColor;
+  width: 24px;
+  height: 24px;
   display: block;
-}
-.shape-circle {
-  border-radius: 50%;
-}
-.shape-square {
-  width: 20px;
-  height: 20px;
-  border-radius: 2px;
-}
-.shape-ring {
-  border-radius: 50%;
-  display: grid;
-  place-items: center;
-}
-.shape-ring i {
-  width: 10px;
-  height: 10px;
-  border: 1px solid currentColor;
-  border-radius: 50%;
-}
-.shape-rooms {
-  border: 0;
-  background: currentColor;
-  clip-path: polygon(
-    0 0,
-    43% 0,
-    43% 25%,
-    57% 25%,
-    57% 0,
-    100% 0,
-    100% 43%,
-    75% 43%,
-    75% 57%,
-    100% 57%,
-    100% 100%,
-    57% 100%,
-    57% 75%,
-    43% 75%,
-    43% 100%,
-    0 100%,
-    0 57%,
-    25% 57%,
-    25% 43%,
-    0 43%
-  );
+  shape-rendering: crispEdges;
 }
 .settings-row {
   display: grid;

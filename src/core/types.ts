@@ -1,6 +1,7 @@
 export const DIRECTIONS = ["up", "right", "down", "left"] as const;
 export type Direction = (typeof DIRECTIONS)[number];
-export type ArenaShape = "circle" | "square" | "ring" | "rooms";
+export type ArenaShape =
+  "circle" | "square" | "ring" | "rooms" | "star" | "maze" | "bridges";
 export type Builtin =
   | "right"
   | "left"
@@ -121,4 +122,7 @@ export const SHAPES: Record<ArenaShape, string> = {
   square: "Quadrat",
   ring: "Ring",
   rooms: "Kammern",
+  star: "Stern",
+  maze: "Labyrinth",
+  bridges: "Brücken",
 };

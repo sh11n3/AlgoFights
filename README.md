@@ -31,7 +31,7 @@ npm run preview # Vorschau des fertigen Builds
 - Fehlerhafter eigener Code wird mit Ursache angezeigt und deaktiviert; die Ersatzstrategie „Geradeaus“ übernimmt diesen Teilnehmer. Die Punktezahl entspricht weiterhin exakt der Zahl eigener Zellen.
 - Die meisten Punkte gewinnen; Gleichstände sind möglich. Die Summe aller Endpunktestände entspricht der Zahl bespielbarer Zellen. Es gibt keine automatische Flächeneroberung.
 
-Kreis, Quadrat, Ring und verbundene Kammern stehen mit 256², 512² und 1.024² zur Auswahl. Standard: 512², vier Teilnehmer und zwölf Sekunden Wiedergabe. Startpositionen liegen auf Seed-rotierten Winkeln und werden auf gültige Zellen projiziert. Geometrie und Raster können Vor- und Nachteile erzeugen; für Vergleiche mehrere Seeds und vertauschte Startplätze verwenden.
+Sieben Arenen stehen mit 256², 512² und 1.024² zur Auswahl: Kreis, Quadrat, Ring, verbundene Kammern, achtzackiger Stern, Labyrinth mit drei Ringwänden und versetzten Durchgängen sowie vier kreisförmige Bereiche mit schmalen Brücken. Alle Masken sind zusammenhängend; die drei neuen Formen sind außerdem um jeweils 90° rotationssymmetrisch. Die Vorschaubilder werden aus den tatsächlichen Rastermasken erzeugt. Standard: 512², vier Teilnehmer und zwölf Sekunden Wiedergabe. Startpositionen liegen auf Seed-rotierten Winkeln und werden auf gültige Zellen projiziert. Geometrie und Raster können Vor- und Nachteile erzeugen; für Vergleiche mehrere Seeds und vertauschte Startplätze verwenden.
 
 Eingebaute Strategien: Rechtsorientiert, Linksorientiert, Lookahead, Zufall, Geradeaus, Zickzack, Zeilenläufer, Spirale, Kantenläufer und Invasion. Jede darf mehrfach teilnehmen. Lookahead untersucht höchstens 40 lokale Zellen pro Zugoption; normale Entscheidungen benötigen keine vollständige Flutfüllung.
 
@@ -71,7 +71,7 @@ Budgets: 250 ms pro Zug, 45 Sekunden Vorbereitung mit eigenem Code und eine Seku
 
 ## Algo Sim: Wegsuche auf realen Straßen
 
-Der Reiter simuliert **Dijkstra, A\*, bidirektionalen Dijkstra, BFS, DFS und Greedy Best-First** auf realen OpenStreetMap-Innenstadtausschnitten von Mannheim mit den Quadraten und Berlin-Mitte. Start und Ziel werden per Kartenklick auf einen nahegelegenen Straßenknoten gesetzt oder über Straßennamen gewählt. Verschieben, Zoomen, Pause, Einzelschritte, Spulen, Vergleich aller Verfahren und JSON-Ergebnisexport sind integriert.
+Der Reiter simuliert **Dijkstra, A\*, bidirektionalen Dijkstra, BFS, DFS und Greedy Best-First** auf realen OpenStreetMap-Ausschnitten von Mannheim mit den Quadraten, Berlin-Mitte, Barcelona-Eixample, Amsterdams Grachten und New York rund um den Central Park in Manhattan. Start und Ziel werden per Kartenklick auf einen nahegelegenen Straßenknoten gesetzt oder über Straßennamen gewählt. Verschieben, Zoomen, Pause, Einzelschritte, Spulen, Vergleich aller Verfahren und JSON-Ergebnisexport sind integriert.
 
 Ein Worker lädt den lokalen Datenschnappschuss, erzeugt den gerichteten Graphen und berechnet Suchspur und Route. Canvas zeichnet die reale Segmentgeometrie: Grundnetz dunkel, expandierte Suchbaum-Kanten blau, rekonstruierte Route grün. Die anschließende Fahrt entlang der Route ist proportional zur zurückgelegten Strecke.
 
@@ -82,7 +82,7 @@ Am Ende von Algo Sim vergleicht eine dauerhaft sichtbare Tabelle alle sechs eing
 - Dijkstra und A* verwenden einen binären Min-Heap. A* nutzt die konsistente Luftlinie als zulässige Heuristik. Bidirektionaler Dijkstra sucht auf eingehenden Kanten rückwärts und stoppt erst bei einer abgesicherten besten Verbindung.
 - BFS minimiert Kanten statt Meter; DFS und Greedy besitzen keine Kürzestweggarantie. Die Vergleichstabelle zeigt Distanz, Expansionen und einzelne Rechenzeiten ohne daraus belastbare Benchmarks abzuleiten.
 - Es sind reale Stadt-Ausschnitte, nicht die kompletten Städte. Wasser-/Parkkonturen sind vereinfachte Orientierung. Ausschnittsgrenzen können Verbindungen abschneiden.
-- Datenschnappschüsse stehen unter `public/maps/` mit Bounding Box und Zeitstempeln. Copyright und ODbL: [public/maps/LICENSE.md](public/maps/LICENSE.md). Die Rohdaten sind direkt herunterladbar. `node scripts/fetch-city-maps.mjs` aktualisiert sie bewusst manuell; normale Builds laden keine externen Kartendaten.
+- Datenschnappschüsse stehen unter `public/maps/` mit Bounding Box und Zeitstempeln. Copyright und ODbL: [public/maps/LICENSE.md](public/maps/LICENSE.md). Die Rohdaten sind direkt herunterladbar. `src/routing/cities.json` definiert Namen, Ausschnitte und gültige Standard-Endpunkte gemeinsam für Oberfläche und Downloadskript. `node scripts/fetch-city-maps.mjs` aktualisiert alle Städte bewusst manuell; angehängte Stadt-IDs wählen einzelne Downloads aus. Normale Builds laden keine externen Kartendaten.
 
 ## Quellstruktur
 

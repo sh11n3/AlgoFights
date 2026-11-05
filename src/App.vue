@@ -27,6 +27,7 @@ import {
   X,
 } from "lucide-vue-next";
 import ArenaCanvas from "./components/ArenaCanvas.vue";
+import { createArena } from "./core/arena";
 import {
   COLORS,
   DESCRIPTIONS,
@@ -78,6 +79,25 @@ let animation = 0,
   lastUiUpdate = 0,
   toastTimer: ReturnType<typeof setTimeout> | undefined;
 const number = new Intl.NumberFormat("de-DE");
+// Small previews are generated from the actual masks, including walls and gates.
+const shapePreviews = Object.fromEntries(
+  Object.keys(SHAPES).map((shape) => {
+    const size = 64,
+      arena = createArena(shape as ArenaShape, size);
+    let path = "";
+    for (let y = 0; y < size; y++)
+      for (let x = 0; x < size;) {
+        if (!arena.mask[y * size + x]) {
+          x++;
+          continue;
+        }
+        const begin = x;
+        while (x < size && arena.mask[y * size + x]) x++;
+        path += `M${begin} ${y}h${x - begin}v1h-${x - begin}Z`;
+      }
+    return [shape, path];
+  }),
+);
 const currentSettings = computed(() => replay.value?.settings ?? settings);
 const frame = computed(() =>
   Math.floor(playback.value * (replay.value?.steps ?? 0)),
@@ -536,7 +556,8 @@ onBeforeUnmount(() => {
                 :class="{ active: settings.shape === shape }"
                 @click="settings.shape = shape as ArenaShape"
               >
-                <span class="shape-icon" :class="`shape-${shape}`"><i></i></span
+                <svg class="shape-icon" viewBox="0 0 64 64" aria-hidden="true">
+                  <path :d="shapePreviews[shape]" fill="currentColor" /></svg
                 ><span>{{ label }}</span>
               </button>
             </div>

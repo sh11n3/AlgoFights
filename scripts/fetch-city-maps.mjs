@@ -1,25 +1,26 @@
 /** Refresh the checked-in OSM snapshots. No API key, live map service, or backend needed. */
 import { mkdir, writeFile } from "node:fs/promises";
-const cities = [
-  {
-    id: "berlin",
-    name: "Berlin · Mitte",
-    bbox: [52.502, 13.365, 52.535, 13.43],
-    center: [52.519, 13.399],
-  },
-  {
-    id: "mannheim",
-    name: "Mannheim · Quadrate",
-    bbox: [49.475, 8.445, 49.497, 8.487],
-    center: [49.487, 8.466],
-  },
-];
+import cities from "../src/routing/cities.json" with { type: "json" };
+const requested = new Set(process.argv.slice(2));
+if ([...requested].some((id) => !cities.some((city) => city.id === id)))
+  throw new Error(
+    "Unbekannte Stadt. Erlaubt: " + cities.map((city) => city.id).join(", "),
+  );
 await mkdir("public/maps", { recursive: true });
 for (const city of cities) {
+  if (requested.size && !requested.has(city.id)) continue;
+  console.log(`Lade ${city.name} …`);
   const b = city.bbox.join(",");
   const query = `[out:json][timeout:90];(way[highway][highway!~"^(footway|path|steps|cycleway|bridleway|construction|proposed|platform|raceway)$"](${b});way[natural=water](${b});way[waterway=riverbank](${b});way[leisure=park](${b});node[place~"^(suburb|quarter|neighbourhood)$"](${b}););out body;>;out skel qt;`;
-  let data;
-  for (const host of ["https://ovp.dresel.systems/api/interpreter"]) {
+  let data, provider;
+  const hosts =
+    city.overpass === "global"
+      ? [
+          "https://overpass-api.de/api/interpreter",
+          "https://overpass.private.coffee/api/interpreter",
+        ]
+      : ["https://ovp.dresel.systems/api/interpreter"];
+  for (const host of hosts) {
     try {
       const response = await fetch(host, {
         method: "POST",
@@ -35,6 +36,7 @@ for (const city of cities) {
       if (!candidate.elements?.length || candidate.remark)
         throw new Error(candidate.remark || "Empty map");
       data = candidate;
+      provider = host;
       break;
     } catch (e) {
       console.log(
@@ -44,10 +46,14 @@ for (const city of cities) {
   }
   if (!data) throw new Error(`OSM-Download für ${city.id} fehlgeschlagen`);
   const result = {
-    ...city,
+    id: city.id,
+    name: city.name,
+    bbox: city.bbox,
+    center: city.center,
     downloadedAt: new Date().toISOString(),
     osmTimestamp: data.osm3s?.timestamp_osm_base,
     source: "https://www.openstreetmap.org/copyright",
+    overpass: provider,
     license: "ODbL-1.0",
     elements: data.elements,
   };

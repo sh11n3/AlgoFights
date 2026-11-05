@@ -16,6 +16,26 @@ export const masks: Record<ArenaShape, (x: number, y: number) => boolean> = {
     ) ||
     (Math.abs(x) < 0.57 && Math.abs(y) < 0.2) ||
     (Math.abs(y) < 0.57 && Math.abs(x) < 0.2),
+  star: (x, y) =>
+    Math.hypot(x, y) <= 0.7 + 0.22 * Math.cos(8 * Math.atan2(y, x)),
+  maze: (x, y) => {
+    const radius = Math.hypot(x, y);
+    if (radius > 0.94) return false;
+    const angle = Math.atan2(y, x);
+    // Three circular walls, with four gates alternating by 45 degrees.
+    for (let ring = 0; ring < 3; ring++) {
+      const inner = 0.23 * (ring + 1);
+      if (radius >= inner && radius <= inner + 0.05)
+        return (
+          Math.abs(ring % 2 ? Math.cos(2 * angle) : Math.sin(2 * angle)) < 0.16
+        );
+    }
+    return true;
+  },
+  bridges: (x, y) =>
+    (Math.abs(Math.abs(x) - 0.48) <= 0.055 && Math.abs(y) <= 0.48) ||
+    (Math.abs(Math.abs(y) - 0.48) <= 0.055 && Math.abs(x) <= 0.48) ||
+    (Math.abs(x) - 0.48) ** 2 + (Math.abs(y) - 0.48) ** 2 <= 0.33 ** 2,
 };
 export function createArena(shape: ArenaShape, resolution: number): Arena {
   if (
