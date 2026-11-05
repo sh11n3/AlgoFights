@@ -493,6 +493,175 @@
   margin-top: 22px;
   scroll-margin-top: 16px;
 }
+.graph-notation-panel {
+  margin-top: 22px;
+  scroll-margin-top: 16px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel);
+}
+.graph-notation-panel > summary {
+  padding: 15px 18px;
+  cursor: pointer;
+  font-size: 15px;
+  font-weight: 600;
+}
+.graph-notation {
+  border: 0;
+  border-top: 1px solid var(--border);
+  border-radius: 0;
+}
+.notation-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.notation-grid > section {
+  min-width: 0;
+  padding: 18px;
+}
+.notation-grid > section + section {
+  border-left: 1px solid var(--border);
+}
+.notation-grid h3 {
+  color: #e8eef6;
+  font-size: 14px;
+  margin: 0 0 9px;
+}
+.notation-grid p,
+.editor-notation p {
+  color: #aebdcd;
+  font-size: 12px;
+  line-height: 1.65;
+  margin: 7px 0 0;
+}
+.notation-grid code {
+  color: #e3ecf6;
+  font: 12px var(--mono);
+}
+.notation-math {
+  color: #e0ebf8;
+  font:
+    15px/1.65 "Cambria Math",
+    Georgia,
+    serif;
+  overflow-wrap: anywhere;
+}
+.notation-equation {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 24px;
+  align-items: center;
+  margin-block: 7px;
+  font-size: 17px;
+}
+.notation-grid details,
+.notation-path {
+  border-top: 1px solid var(--border);
+  padding-top: 11px;
+  margin-top: 12px;
+}
+.notation-grid summary,
+.editor-notation summary {
+  cursor: pointer;
+  font-size: 12px;
+  color: #d7e2f0;
+}
+.notation-set {
+  display: grid;
+  grid-template-columns: 3ch minmax(0, 1fr);
+  gap: 5px;
+  margin-top: 8px;
+  color: #d8e5f4;
+  font: 12px/1.7 var(--mono);
+}
+.notation-token {
+  display: inline-block;
+  margin-right: 0.45em;
+}
+.notation-select {
+  display: block;
+  margin-top: 9px;
+  font-size: 11px;
+  color: #adbace;
+}
+.notation-select select {
+  display: block;
+  margin-top: 5px;
+}
+.notation-table {
+  margin-top: 10px;
+  max-height: 350px;
+  overflow: auto;
+}
+.notation-table table {
+  border-collapse: collapse;
+  min-width: 100%;
+  font: 12px var(--mono);
+}
+.notation-table th,
+.notation-table td {
+  text-align: center;
+  padding: 7px 9px;
+  border: 1px solid var(--border);
+  white-space: nowrap;
+}
+.notation-table th {
+  color: #bfccdb;
+  background: #151d28;
+}
+.notation-table thead th {
+  position: sticky;
+  top: 0;
+}
+.notation-table tbody th {
+  position: sticky;
+  left: 0;
+}
+.notation-own {
+  white-space: pre-wrap;
+}
+.notation-evaluation {
+  padding: 9px 12px;
+  margin-top: 11px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  background: #0c1119;
+}
+.notation-evaluation .notation-math:last-of-type {
+  color: var(--graph-route);
+}
+.editor-notation {
+  margin-top: 12px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+}
+.editor-notation label {
+  display: grid;
+  gap: 7px;
+  margin-top: 9px;
+  font-size: 12px;
+  color: #aebdcd;
+}
+.editor-notation textarea {
+  resize: vertical;
+  width: 100%;
+  padding: 9px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: #10151e;
+  color: #e0ebf8;
+  font: 13px/1.55 var(--mono);
+}
+@media (max-width: 760px) {
+  .notation-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .notation-grid > section + section {
+    border-left: 0;
+    border-top: 1px solid var(--border);
+  }
+}
 @media (max-width: 900px) {
   .graph-layout {
     grid-template-columns: minmax(0, 1fr);

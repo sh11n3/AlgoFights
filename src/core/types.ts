@@ -31,6 +31,7 @@ export interface CustomStrategy {
   id: string;
   name: string;
   code: string;
+  notation?: string;
 }
 export interface Player extends ParticipantConfig {
   id: number;

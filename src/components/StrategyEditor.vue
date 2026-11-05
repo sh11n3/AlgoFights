@@ -30,9 +30,11 @@ import { routeProbe } from "../routing/probe";
 import { validateRouteOutput } from "../routing/custom";
 import { PRESETS } from "../graph/presets";
 import { createGraph, graphHeuristic } from "../graph/simulation";
+import { MAX_NOTATION_LENGTH, readGraphNotation } from "../graph/notation";
 import CodeReference from "./CodeReference.vue";
 const documentationUrl = `${import.meta.env.BASE_URL}docs/editor-handbuch.html`;
 const example = ref("");
+const notation = ref("");
 
 const props = defineProps<{
   strategies: CustomStrategy[];
@@ -127,6 +129,7 @@ function select() {
   example.value = "";
   activeExample.value = undefined;
   if (original.value) {
+    notation.value = "";
     name.value = `${original.value.name} – eigene Version`.slice(0, 40);
     replace(original.value.code);
     notice.value =
@@ -134,6 +137,7 @@ function select() {
     return;
   }
   const strategy = props.strategies.find((s) => s.id === selected.value);
+  notation.value = isGraph ? readGraphNotation(strategy?.notation) : "";
   name.value =
     strategy?.name ?? (isRoute ? "Mein Algorithmus" : "Meine Strategie");
   if (!strategy && !isRoute) activeExample.value = STRATEGY_EXAMPLES[0];
@@ -281,7 +285,13 @@ async function save() {
   const id = selected.value.startsWith(prefix)
     ? selected.value
     : `${prefix}${crypto.randomUUID()}`;
-  emit("save", { id, name: name.value.trim().slice(0, 40), code: draft });
+  const math = readGraphNotation(notation.value);
+  emit("save", {
+    id,
+    name: name.value.trim().slice(0, 40),
+    code: draft,
+    ...(isGraph && math ? { notation: math } : {}),
+  });
   selected.value = id;
   activeExample.value = undefined;
   example.value = "";
@@ -307,6 +317,7 @@ function loadExample() {
   replace(item.code);
 }
 function exportCode() {
+  const math = readGraphNotation(notation.value);
   const file = new Blob(
     [
       JSON.stringify(
@@ -314,6 +325,7 @@ function exportCode() {
           format: fileFormat,
           name: name.value,
           code: draft,
+          ...(isGraph && math ? { notation: math } : {}),
         },
         null,
         2,
@@ -347,6 +359,7 @@ async function importCode(event: Event) {
     activeExample.value = undefined;
     example.value = "";
     name.value = parsed.name.slice(0, 40);
+    notation.value = isGraph ? readGraphNotation(parsed.notation) : "";
     replace(parsed.code);
     notice.value =
       "Importiert. Prüfe und speichere die Strategie, um sie zu verwenden.";
@@ -531,6 +544,22 @@ onBeforeUnmount(() => {
           </div>
         </template>
         <template v-if="language === 'javascript'">
+          <details v-if="isGraph" class="editor-notation">
+            <summary>Mathematische Notation für die eigene Variante</summary>
+            <label
+              >Formeln und Auswahlregel
+              <textarea
+                v-model="notation"
+                :maxlength="MAX_NOTATION_LENGTH"
+                rows="4"
+                placeholder="u ∈ arg min { dis(v) : v ∈ Q }&#10;dis(v) ← dis(u) + w(u, v)"
+              />
+            </label>
+            <p>
+              Diese Angabe erscheint nach dem Speichern in Graph Sim.
+              Schreibweise und Voraussetzungen legst du selbst fest.
+            </p>
+          </details>
           <div
             v-if="notice"
             class="editor-notice"

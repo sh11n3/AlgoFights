@@ -20,9 +20,12 @@ import {
   RotateCcw,
   SkipBack,
   SkipForward,
+  Sigma,
 } from "lucide-vue-next";
 import GraphBoard from "./GraphBoard.vue";
 import GraphBuilder from "./GraphBuilder.vue";
+import GraphNotation from "./GraphNotation.vue";
+import { readGraphNotation } from "../graph/notation";
 import { PRESETS } from "../graph/presets";
 import {
   cloneLayout,
@@ -56,6 +59,8 @@ const layoutNotice = ref("");
 const layouts = ref(readLayouts());
 const builder = shallowRef<GraphLayout>();
 const graphHost = ref<HTMLElement>();
+const notationPanel = ref<HTMLDetailsElement>();
+const notationOpen = ref(false);
 const presetId = ref(PRESETS[0].id),
   algorithm = ref("dijkstra");
 const preset = computed(
@@ -79,6 +84,11 @@ const stepLimit = computed(() =>
 const delay = ref(360);
 const custom = computed(() =>
   customStrategies.value.find((item) => item.id === algorithm.value),
+);
+const builtinAlgorithm = computed(() =>
+  Object.hasOwn(GRAPH_ALGORITHMS, algorithm.value)
+    ? (algorithm.value as RouteAlgorithm)
+    : undefined,
 );
 const description = computed(
   () =>
@@ -232,6 +242,12 @@ function selectNode(node: number) {
 function swap() {
   [start.value, target.value] = [target.value, start.value];
 }
+async function showNotation() {
+  notationOpen.value = true;
+  await nextTick();
+  notationPanel.value?.scrollIntoView({ behavior: "instant", block: "start" });
+  notationPanel.value?.querySelector("summary")?.focus({ preventScroll: true });
+}
 function openBuilder(copy: boolean) {
   pause();
   cancel();
@@ -360,6 +376,9 @@ onBeforeUnmount(() => {
         </p>
       </div>
       <div v-if="!builder" class="graph-heading-actions">
+        <button class="secondary-button" @click="showNotation">
+          <Sigma :size="16" /> Notation
+        </button>
         <button class="secondary-button" @click="openEditor">
           <CodeXml :size="17" /> Code-Editor
         </button>
@@ -657,6 +676,34 @@ onBeforeUnmount(() => {
       </section>
     </div>
 
+    <details
+      v-if="!builder"
+      ref="notationPanel"
+      class="graph-notation-panel"
+      :open="notationOpen"
+      @toggle="notationOpen = ($event.currentTarget as HTMLDetailsElement).open"
+    >
+      <summary>Mathematische Notation</summary>
+      <GraphNotation
+        v-if="notationOpen"
+        :preset="preset"
+        :graph="graph"
+        :directed="directed"
+        :weighted="weighted"
+        :start="start"
+        :target="target"
+        :algorithm="builtinAlgorithm"
+        :algorithm-name="
+          builtinAlgorithm
+            ? GRAPH_ALGORITHMS[builtinAlgorithm].name
+            : (custom?.name ?? 'Eigener Algorithmus')
+        "
+        :custom-notation="readGraphNotation(custom?.notation)"
+        :result="atEnd ? result : undefined"
+        :step="step"
+        :current="trace.current"
+      />
+    </details>
     <p v-if="layoutNotice" class="graph-field-help" role="status">
       {{ layoutNotice }}
     </p>
