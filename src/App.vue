@@ -55,6 +55,9 @@ const StrategyEditor = defineAsyncComponent(
   () => import("./components/StrategyEditor.vue"),
 );
 const AlgoSim = defineAsyncComponent(() => import("./components/AlgoSim.vue"));
+const GraphSim = defineAsyncComponent(
+  () => import("./components/GraphSim.vue"),
+);
 const tab = ref("arena"),
   editorSource = ref(""),
   help = ref(false),
@@ -396,6 +399,12 @@ onBeforeUnmount(() => {
           @click="tab = 'algosim'"
         >
           Algo Sim
+        </button>
+        <button
+          :class="{ selected: tab === 'graphsim' }"
+          @click="tab = 'graphsim'"
+        >
+          Graph Sim
         </button>
       </nav>
       <div class="header-right">
@@ -843,6 +852,7 @@ onBeforeUnmount(() => {
         />
       </div>
       <AlgoSim v-if="tab === 'algosim'" />
+      <GraphSim v-if="tab === 'graphsim'" />
     </main>
     <footer class="site-footer">
       <span

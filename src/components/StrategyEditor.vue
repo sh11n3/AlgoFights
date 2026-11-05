@@ -27,18 +27,26 @@ import {
 import { runRouteCode } from "../services/route-sandbox";
 import { routeProbe } from "../routing/probe";
 import { validateRouteOutput } from "../routing/custom";
+import { PRESETS } from "../graph/presets";
+import { createGraph, graphHeuristic } from "../graph/simulation";
 const documentationUrl = `${import.meta.env.BASE_URL}docs/editor-handbuch.html`;
 const example = ref("");
 
 const props = defineProps<{
   strategies: CustomStrategy[];
-  mode?: "arena" | "route";
+  mode?: "arena" | "route" | "graph";
   sourceId?: string;
 }>();
-const isRoute = props.mode === "route";
+const isGraph = props.mode === "graph";
+const isRoute = isGraph || props.mode === "route";
 const originals = isRoute ? ROUTING_SOURCES : ARENA_SOURCES;
 const template = isRoute ? ROUTING_TEMPLATE : TEMPLATE;
-const prefix = isRoute ? "route:" : "custom:";
+const prefix = isGraph ? "graph:" : isRoute ? "route:" : "custom:";
+const fileFormat = isGraph
+  ? "algofights-graph-v1"
+  : isRoute
+    ? "algofights-route-v1"
+    : "algofights-strategy-v1";
 const emit = defineEmits<{
   save: [strategy: CustomStrategy];
   remove: [id: string];
@@ -111,9 +119,38 @@ async function validate(): Promise<boolean> {
   try {
     if (isRoute) {
       routeCheck = new AbortController();
-      const graph = routeProbe();
-      const output = await runRouteCode(graph, 0, 3, draft, routeCheck.signal);
-      validateRouteOutput(graph, 0, 3, output);
+      if (isGraph) {
+        const preset = PRESETS[0];
+        const graph = createGraph(preset, true, true);
+        const output = await runRouteCode(
+          graph,
+          preset.start,
+          preset.target,
+          draft,
+          routeCheck.signal,
+          {
+            heuristic: graphHeuristic(graph, preset.target),
+            stepLimit: 100,
+            weighted: true,
+            directed: true,
+          },
+        );
+        validateRouteOutput(graph, preset.start, preset.target, output);
+        if (output.limited)
+          throw new Error(
+            "Der Probelauf hat das Limit von 100 Suchschritten erreicht.",
+          );
+      } else {
+        const graph = routeProbe();
+        const output = await runRouteCode(
+          graph,
+          0,
+          3,
+          draft,
+          routeCheck.signal,
+        );
+        validateRouteOutput(graph, 0, 3, output);
+      }
       if (current !== generation) return false;
       valid.value = true;
       notice.value =
@@ -205,7 +242,7 @@ async function save() {
   emit("save", { id, name: name.value.trim().slice(0, 40), code: draft });
   selected.value = id;
   notice.value = isRoute
-    ? "Algorithmus gespeichert. Er ist jetzt in Algo Sim auswählbar."
+    ? `Algorithmus gespeichert. Er ist jetzt in ${isGraph ? "Graph Sim" : "Algo Sim"} auswählbar.`
     : "Strategie gespeichert. Du kannst sie jetzt als Teilnehmer auswählen.";
 }
 function saveCopy() {
@@ -231,7 +268,7 @@ function exportCode() {
     [
       JSON.stringify(
         {
-          format: isRoute ? "algofights-route-v1" : "algofights-strategy-v1",
+          format: fileFormat,
           name: name.value,
           code: draft,
         },
@@ -256,8 +293,7 @@ async function importCode(event: Event) {
       throw new Error("Die Datei darf höchstens 300 KB groß sein.");
     const parsed = JSON.parse(await file.text());
     if (
-      parsed.format !==
-        (isRoute ? "algofights-route-v1" : "algofights-strategy-v1") ||
+      parsed.format !== fileFormat ||
       typeof parsed.code !== "string" ||
       parsed.code.length > 50000 ||
       typeof parsed.name !== "string"
@@ -290,7 +326,7 @@ onMounted(() => {
       EditorView.lineWrapping,
       EditorView.contentAttributes.of({
         "aria-label": isRoute
-          ? "JavaScript-Code deines Routenalgorithmus"
+          ? `JavaScript-Code deines ${isGraph ? "Graphalgorithmus" : "Routenalgorithmus"}`
           : "JavaScript-Code deiner Strategie",
       }),
       EditorView.updateListener.of((update) => {
@@ -337,7 +373,15 @@ onBeforeUnmount(() => {
   <section class="code-lab panel" aria-label="Strategie-Editor">
     <div class="section-heading">
       <div>
-        <h2>{{ isRoute ? "Algo Sim · Code-Editor" : "Strategie-Editor" }}</h2>
+        <h2>
+          {{
+            isGraph
+              ? "Graph Sim · Code-Editor"
+              : isRoute
+                ? "Algo Sim · Code-Editor"
+                : "Strategie-Editor"
+          }}
+        </h2>
       </div>
       <button
         class="icon-button"
@@ -478,12 +522,29 @@ onBeforeUnmount(() => {
           <dt>graph.start · target · nodeCount</dt>
           <dd>Knoten-IDs ab 0 und Anzahl der Knoten.</dd>
           <dt>graph.nodes[id]</dt>
-          <dd>
+          <dd v-if="isGraph">
+            { id, label, x, y }. id ist der Array-Index, label der sichtbare
+            Name. Die Modellkoordinaten liegen zwischen 0 und 1.
+          </dd>
+          <dd v-else>
             { id, lat, lon }. id ist hier die originale OSM-ID; Array-Indizes
             sind die Such-IDs.
           </dd>
           <dt>graph.arcs[edge]</dt>
-          <dd>{ from, to, length }. Gerichtete Kante, Länge in Metern.</dd>
+          <dd v-if="isGraph">
+            { from, to, length }. length sind die Kosten (ungewichtet immer 1).
+            Ungerichtete Kanten haben je einen Eintrag pro Richtung.
+          </dd>
+          <dd v-else>
+            { from, to, length }. Gerichtete Kante, Länge in Metern.
+          </dd>
+          <template v-if="isGraph">
+            <dt>graph.weighted · directed · stepLimit</dt>
+            <dd>
+              Aktive Gewichts- und Richtungsschalter sowie das Limit für
+              protokollierte Suchschritte.
+            </dd>
+          </template>
           <dt>graph.outgoing[node] · incoming[node]</dt>
           <dd>
             Arrays mit ausgehenden bzw. eingehenden Kanten-IDs. Rückwärtssuche
@@ -499,12 +560,23 @@ onBeforeUnmount(() => {
             der Algorithmus überspringt bereits abgeschlossene Knoten.
           </dd>
           <dt>graph.heuristic(node)</dt>
-          <dd>Luftlinie zum Ziel in Metern.</dd>
+          <dd>
+            {{
+              isGraph
+                ? "Skalierter geradliniger Abstand zum Ziel als untere Kostenschranke."
+                : "Luftlinie zum Ziel in Metern."
+            }}
+          </dd>
           <dt>graph.trace(node, edge = -1, side = 0)</dt>
           <dd>
             Suchschritt aufzeichnen. edge führt zum Knoten; bei side=1 führt sie
             vom Knoten zur rückwärtigen Vorgängerposition. -1 zeichnet keine
             Kante.
+            <template v-if="isGraph"
+              >Rufe trace bei jeder Expansion auf. Jeder Aufruf zählt als ein
+              Suchschritt; ein weiterer Aufruf über dem Limit stoppt die
+              Suche.</template
+            >
           </dd>
           <dt>Rückgabe</dt>
           <dd>
@@ -513,16 +585,20 @@ onBeforeUnmount(() => {
             Array nur bei Start = Ziel.
           </dd>
         </dl>
-        <p>
+        <p v-if="!isGraph">
           Im Editor steht nur das gewählte Verfahren. Die Warteschlange und
           Luftlinie liefert die API; eigene Datenstrukturen sind ebenfalls
           erlaubt.
         </p>
         <div class="budget-note">
-          50.000 Zeichen Code · 5 Sekunden Laufzeit · höchstens 250.000 Such-
-          und Routeneinträge. Die Graph-Kopie ist schreibgeschützt. Der
-          getrennte Kern validiert Route, Fahrtrichtung und Länge. Es gibt keine
-          automatische Ersatzroute bei Fehlern.
+          50.000 Zeichen Code · 5 Sekunden Laufzeit.
+          {{
+            isGraph
+              ? "Das Schrittlimit zählt Aufrufe von graph.trace. Die Laufzeitgrenze gilt auch für Code ohne trace-Aufrufe."
+              : "Höchstens 250.000 Such- und Routeneinträge."
+          }}
+          Die Graph-Kopie ist schreibgeschützt. Der getrennte Kern prüft
+          Kantenfolge, Richtung und Kosten.
         </div>
         <details>
           <summary>Prüfung und Isolation</summary>
@@ -537,7 +613,9 @@ onBeforeUnmount(() => {
         </details>
         <div class="editor-resources">
           <a
-            :href="documentationUrl + '#eigene-wegsuche'"
+            :href="
+              documentationUrl + (isGraph ? '#graph-sim' : '#eigene-wegsuche')
+            "
             target="_blank"
             rel="noopener noreferrer"
             >Handbuch: Funktionen und Beispiele</a

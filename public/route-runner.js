@@ -3,10 +3,13 @@
   self.onmessage = ({ data, ports }) => {
     const port = ports[0],
       send = port.postMessage.bind(port);
-    const { code, start, target, nodes, arcs, outgoing, incoming } = data;
+    const { code, start, target, nodes, arcs, outgoing, incoming, options } =
+      data;
     const freeze = Object.freeze,
       now = performance.now.bind(performance);
     const traces = [[], [], []];
+    const stepLimit = {};
+    let limited = false;
     let queries = 0;
     const nodeId = (id) => {
       if (!Number.isInteger(id) || !nodes[id])
@@ -25,6 +28,11 @@
       arcs: freeze(arcs),
       outgoing: freeze(outgoing),
       incoming: freeze(incoming),
+      ...(options && {
+        weighted: options.weighted,
+        directed: options.directed,
+        stepLimit: options.stepLimit,
+      }),
       createQueue,
       neighbors(id) {
         if (++queries > 2000000)
@@ -36,6 +44,7 @@
       heuristic(id) {
         if (++queries > 2000000)
           throw new Error("Mehr als 2.000.000 Graph-Abfragen.");
+        if (options) return options.heuristic[nodeId(id)];
         const a = nodes[nodeId(id)],
           b = nodes[target],
           rad = Math.PI / 180;
@@ -51,6 +60,10 @@
         );
       },
       trace(node, edge = -1, side = 0) {
+        if (options && traces[0].length >= options.stepLimit) {
+          limited = true;
+          throw stepLimit;
+        }
         if (traces[0].length >= 250000)
           throw new Error("Höchstens 250.000 Suchschritte sind erlaubt.");
         traces[0].push(nodeId(node));
@@ -60,14 +73,26 @@
     });
     send({ ready: true });
     port.onmessage = () => {
+      const begin = now();
+      const sendLimited = () =>
+        send({
+          result: {
+            path: null,
+            traceNodes: traces[0],
+            traceEdges: traces[1],
+            traceSides: traces[2],
+            milliseconds: now() - begin,
+            limited: true,
+          },
+        });
       try {
-        const begin = now();
         const decide = new Function(
           '"use strict";\n' +
             code +
             '\n;if(typeof findRoute!=="function") throw new Error("Definiere function findRoute(graph)."); return findRoute;',
         )();
         const result = decide(graph);
+        if (limited) return sendLimited();
         if (
           !result ||
           typeof result !== "object" ||
@@ -89,9 +114,9 @@
             "path muss ein Array von höchstens 250.000 Kanten-IDs oder null sein.",
           );
         const entries = [
-          result.traceNodes ?? traces[0],
-          result.traceEdges ?? traces[1],
-          result.traceSides ?? traces[2],
+          options ? traces[0] : (result.traceNodes ?? traces[0]),
+          options ? traces[1] : (result.traceEdges ?? traces[1]),
+          options ? traces[2] : (result.traceSides ?? traces[2]),
         ];
         if (
           entries.some(
@@ -113,7 +138,8 @@
           },
         });
       } catch (error) {
-        send({ error: String(error.message || error).slice(0, 500) });
+        if (limited) return sendLimited();
+        send({ error: String(error?.message || error).slice(0, 500) });
       }
     };
     port.start();

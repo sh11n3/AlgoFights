@@ -1,4 +1,4 @@
-// A*: Entfernung vom Start plus Luftlinie zum Ziel.
+// A*: bisherige Kosten plus geschätzte Restkosten zum Ziel.
 export default function findRoute(graph) {
   const distance = new Float64Array(graph.nodeCount).fill(Infinity);
   const previous = new Int32Array(graph.nodeCount).fill(-1);

@@ -1,4 +1,4 @@
-// Greedy Best-First: nur die Luftlinie bestimmt die Priorität.
+// Greedy Best-First: nur die geschätzten Restkosten bestimmen die Priorität.
 export default function findRoute(graph) {
   const distance = new Float64Array(graph.nodeCount).fill(Infinity);
   const previous = new Int32Array(graph.nodeCount).fill(-1);

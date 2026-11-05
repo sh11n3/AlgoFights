@@ -154,12 +154,12 @@
       <h1>AlgoFights – Editor-Handbuch</h1>
       <p class="intro">
         Algorithmen laden, verändern und ausprobieren. Referenz für die Arena
-        und die Wegsuche in Algo Sim.
+        und die Wegsuche in Algo Sim und Graph Sim.
       </p>
       <nav aria-label="Inhalt">
         <a href="#einstieg">Einstieg</a><a href="#modell">Arena-Regeln</a
         ><a href="#api">Arena-API</a><a href="#wegsuche">Algo-Sim-API</a
-        ><a href="#beispiele">Beispiele</a
+        ><a href="#beispiele">Beispiele</a><a href="#graph-sim">Graph-Sim-API</a
         ><a href="#speichern">Prüfen und Speichern</a
         ><a href="#fehler">Fehlerhilfe</a>
       </nav>
@@ -168,8 +168,8 @@
     <ol>
       <li>
         <strong>Arena:</strong> Öffne „Code-Labor“ oder das Code-Symbol neben
-        einem Teilnehmer. <strong>Algo Sim:</strong> Wähle ein Verfahren und
-        klicke „Code-Editor öffnen“.
+        einem Teilnehmer. <strong>Algo Sim und Graph Sim:</strong> Wähle ein
+        Verfahren und klicke „Code-Editor öffnen“.
       </li>
       <li>
         Wähle im Editor einen eingebauten Algorithmus. Der Quellcode wird als
@@ -523,6 +523,59 @@ queue.push(arc.to, candidate + graph.heuristic(arc.to));</code></pre>
       größerer Faktor vor der Heuristik kann die Suche stärker zum Ziel lenken,
       nimmt ihr aber diese Optimalitätsgarantie. Speichere Experimente unter
       eigenen Namen und behalte die Originale als Vergleich.
+    </p>
+
+    <h3 id="graph-sim">Graph Sim: findRoute(graph)</h3>
+    <p>
+      Graph Sim verwendet dieselbe
+      <a href="#wegsuche">Wegsuche-Schnittstelle</a>
+      wie Algo Sim. Beginne im Editor mit dem Original einer Breitensuche oder
+      einem leeren Feld. In Graph Sim gelten folgende Unterschiede:
+    </p>
+    <ul>
+      <li>
+        <code>graph.nodes[id]</code> enthält <code>{ id, label, x, y }</code>.
+        <code>label</code> ist der sichtbare Name, etwa A. Die Modellkoordinaten
+        liegen zwischen 0 und 1.
+      </li>
+      <li>
+        <code>graph.arcs[id].length</code> sind die Kosten der Kante. Ohne
+        Gewichte kosten alle Kanten 1. Ungerichtete Kanten erscheinen als zwei
+        gerichtete Einträge. <code>graph.weighted</code> und
+        <code>graph.directed</code> geben die Schalterstellung an.
+      </li>
+      <li>
+        <code>graph.heuristic(id)</code> schätzt die Restkosten durch skalierten
+        geradlinigen Abstand. Die Schätzung überschätzt die tatsächlichen
+        Mindestkosten nicht.
+      </li>
+      <li>
+        Rufe <code>graph.trace(node, edge)</code> einmal pro verarbeitetem
+        Knoten auf, beim Start ohne Kante. Der nächste Aufruf über
+        <code>graph.stepLimit</code> beendet den Lauf mit der bisherigen
+        Suchspur. Code ohne <code>trace</code> erzeugt keine Suchschritte. Das
+        Zeitlimit von fünf Sekunden greift trotzdem.
+      </li>
+    </ul>
+    <p>
+      Dieses Beispiel prüft, ob Start und Ziel durch höchstens eine Kante
+      verbunden sind.
+    </p>
+    <pre><code>function findRoute(graph) {
+  graph.trace(graph.start);
+  if (graph.start === graph.target) return { path: [] };
+  for (const edge of graph.neighbors(graph.start)) {
+    if (edge.to === graph.target) {
+      graph.trace(edge.to, edge.id);
+      return { path: [edge.id] };
+    }
+  }
+  return { path: null };
+}</code></pre>
+    <p>
+      Im Ergebnis ist die Zahl der Suchschritte von der Zahl der Kanten im
+      gefundenen Weg und dessen Gesamtkosten getrennt. Eigener Code wird beim
+      Speichern auf dem gerichteten, gewichteten Abkürzungsgraphen geprüft.
     </p>
 
     <h2 id="speichern">6. Prüfen, speichern und ausführen</h2>

@@ -1,9 +1,6 @@
-import type { RoadGraph, RouteAlgorithm } from "../types";
+import type { SearchNetwork, RouteAlgorithm } from "../types";
 import type { createQueue } from "../queue";
-export interface SearchGraph extends Pick<
-  RoadGraph,
-  "nodes" | "arcs" | "incoming" | "outgoing"
-> {
+export interface SearchGraph extends SearchNetwork {
   start: number;
   target: number;
   nodeCount: number;

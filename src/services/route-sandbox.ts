@@ -1,14 +1,25 @@
-import type { RoadGraph } from "../routing/types";
+import type { RoadGraph, SearchNetwork } from "../routing/types";
 import type { RouteOutput } from "../routing/custom";
 import queueSource from "../routing/queue.js?raw";
 
 // User code only sees a copy, in a blob worker under an opaque iframe origin.
 export async function runRouteCode(
-  graph: RoadGraph,
+  graph: Omit<SearchNetwork, "nodes"> & {
+    nodes: Array<
+      | Pick<RoadGraph["nodes"][number], "id" | "lat" | "lon">
+      | { id: number; label: string; x: number; y: number }
+    >;
+  },
   start: number,
   target: number,
   code: string,
   signal: AbortSignal,
+  options?: {
+    heuristic: number[];
+    stepLimit: number;
+    weighted: boolean;
+    directed: boolean;
+  },
 ): Promise<RouteOutput> {
   if (signal.aborted) throw new DOMException("Abgebrochen", "AbortError");
   if (code.length > 50000)
@@ -69,8 +80,13 @@ export async function runRouteCode(
             code,
             start,
             target,
+            options,
             // A single graph snapshot per run. No map areas, imagery or per-step messages.
-            nodes: graph.nodes.map(({ id, lat, lon }) => ({ id, lat, lon })),
+            nodes: graph.nodes.map((node) =>
+              "lat" in node
+                ? { id: node.id, lat: node.lat, lon: node.lon }
+                : { id: node.id, label: node.label, x: node.x, y: node.y },
+            ),
             arcs: graph.arcs.map(({ from, to, length }) => ({
               from,
               to,

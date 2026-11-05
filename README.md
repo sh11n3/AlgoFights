@@ -2,7 +2,7 @@
 
 Beide Code-Editoren öffnen die Originalimplementierungen der eingebauten Verfahren als editierbare Kopie. Eigene Varianten lassen sich benennen, prüfen, lokal speichern, importieren und exportieren. Algo Sim verwendet `findRoute(graph)` mit gerichteten Kanten, Längen, Luftlinien-Heuristik und aufgezeichneten Expansionen. Ein eigener Worker unter isolierter Herkunft beendet Endlosschleifen nach fünf Sekunden; ein getrennter Kern validiert die zurückgegebene Route. Die API und lauffähige Beispiele stehen im [Editor-Handbuch](public/docs/editor-handbuch.html#eigene-wegsuche).
 
-Browser-Labor für Algorithmusexperimente: eine deterministische Raster-Arena für zwei bis vier Strategien und ein separater Wegsuche-Simulator auf echten Straßen. Vue 3, Composition API, TypeScript, Vite, Canvas 2D und Web Worker. Eigene Strategien werden im integrierten JavaScript-Editor entwickelt.
+Browser-Labor für Algorithmusexperimente mit einer deterministischen Raster-Arena, Wegsuche auf echten Straßen und einem Simulator für Lehrgraphen. Vue 3, Composition API, TypeScript, Vite, Canvas 2D und Web Worker. Eigene Strategien werden im integrierten JavaScript-Editor entwickelt.
 
 ## Entwicklung
 
@@ -49,7 +49,7 @@ Der Canvas trennt logische Auflösung und Anzeigegröße, berücksichtigt Displa
 
 ## Eigene Strategien und Editor
 
-Das [Editor-Handbuch](public/docs/editor-handbuch.html) ist in beiden Editoren verlinkt und [direkt online lesbar](https://algofights.de/docs/editor-handbuch.html). Es erklärt beide APIs, Ein- und Rückgaben, Beispiele, Speichern und Fehlersuche. Algo Sim öffnet nur den Quellcode des ausgewählten Verfahrens; „Eigenen Algorithmus bauen“ beginnt mit einem leeren Codefeld. Vier zusätzliche Arena-Beispiele lassen sich direkt laden.
+Das [Editor-Handbuch](public/docs/editor-handbuch.html) ist in allen Editoren verlinkt und [direkt online lesbar](https://algofights.de/docs/editor-handbuch.html). Es erklärt die APIs, Ein- und Rückgaben, Beispiele, Speichern und Fehlersuche. Algo Sim und Graph Sim öffnen nur den Quellcode des ausgewählten Verfahrens. „Eigenen Algorithmus bauen“ beginnt mit einem leeren Codefeld. Vier zusätzliche Arena-Beispiele lassen sich direkt laden.
 
 ```js
 function nextMove(state, memory) {
@@ -84,6 +84,14 @@ Am Ende von Algo Sim vergleicht eine dauerhaft sichtbare Tabelle alle sechs eing
 - Es sind reale Stadt-Ausschnitte, nicht die kompletten Städte. Wasser-/Parkkonturen sind vereinfachte Orientierung. Ausschnittsgrenzen können Verbindungen abschneiden.
 - Datenschnappschüsse stehen unter `public/maps/` mit Bounding Box und Zeitstempeln. Copyright und ODbL: [public/maps/LICENSE.md](public/maps/LICENSE.md). Die Rohdaten sind direkt herunterladbar. `src/routing/cities.json` definiert Namen, Ausschnitte und gültige Standard-Endpunkte gemeinsam für Oberfläche und Downloadskript. `node scripts/fetch-city-maps.mjs` aktualisiert alle Städte bewusst manuell; angehängte Stadt-IDs wählen einzelne Downloads aus. Normale Builds laden keine externen Kartendaten.
 
+## Graph Sim: Wegsuche auf Lehrgraphen
+
+Fünf Vorlagen reichen von der **Abkürzung** mit fünf Knoten über **Verzweigter Baum**, **Leiternetz** und **Rastergraph** bis zum **Clusternetz** mit 32 Knoten. Gewichte und Richtungen sind unabhängig schaltbar. Ungerichtete Kanten gelten in beide Richtungen. Ohne Gewichte kostet jede Kante 1. Start und Ziel sind frei wählbar.
+
+Die sechs Suchverfahren verwenden dieselben Implementierungen wie Algo Sim. Die Kosten der Kanten sind positiv. A* verwendet den geradlinigen Modellabstand, skaliert mit dem kleinsten Verhältnis aus Kantenkosten und geometrischer Kantenlänge. Die Wiedergabe markiert Knoten und Suchkanten, spielt den gefundenen Weg animiert ein und trennt Suchschritte, Wegkanten und Gesamtkosten. Ein Schritt entspricht einem `trace`-Aufruf. Nach 1 bis 500 protokollierten Schritten beendet ein weiterer Aufruf die Suche mit der bis dahin erzeugten Spur. Die Wiedergabe ist unabhängig vom Suchlimit und lässt sich pausieren, spulen und schrittweise steuern.
+
+Der Graph-Editor nutzt `findRoute(graph)` und speichert eigene Varianten getrennt von Algo Sim. Für eigene Algorithmen gelten das Schrittlimit für `graph.trace()` und zusätzlich fünf Sekunden Laufzeit im isolierten Worker. Details und Beispielcode stehen im [Editor-Handbuch](public/docs/editor-handbuch.html#graph-sim).
+
 ## Quellstruktur
 
 Die UI verwendet Systemschriften und neutrale Bedienelemente. Farben kennzeichnen Daten und Zustände; Regeln: [docs/ui-guidelines.md](docs/ui-guidelines.md).
@@ -91,11 +99,12 @@ Die UI verwendet Systemschriften und neutrale Bedienelemente. Farben kennzeichne
 ```text
 src/core/        Arenaregeln, Strategien, Masken, Seed-Zufall und Replay-Typen
 src/routing/     OSM-Graph, Entfernungen und sechs echte Suchalgorithmen
+src/graph/       Lehrgraphen, Schrittlimit, Heuristik und SVG-Stile
 src/workers/     Simulation, Wegsuche und Ausführungsbudgets
 src/render/      Arena- und Straßenkarten-Renderer
 src/content/     Ladbare Beispiele und unveränderte Originalquellen für die Editoren
 src/services/    Worker-Lebenszyklus, Sandbox und lokale Speicherung
-src/components/ Arena, Code-Editor und Algo Sim
+src/components/ Arena, Code-Editor, Algo Sim und Graph Sim
 public/docs/    Editor-Handbuch mit Funktionsreferenz und Beispielen
 public/maps/    Reale OSM-Datenschnappschüsse und Lizenznachweis
 ```

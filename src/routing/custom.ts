@@ -1,4 +1,4 @@
-import type { RoadGraph, RouteResult } from "./types";
+import type { SearchNetwork, RouteResult } from "./types";
 
 export interface RouteOutput {
   path: number[] | Uint32Array | null;
@@ -6,9 +6,10 @@ export interface RouteOutput {
   traceEdges: number[] | Int32Array;
   traceSides: number[] | Uint8Array;
   milliseconds: number;
+  limited?: boolean;
 }
 export function validateRouteOutput(
-  graph: RoadGraph,
+  graph: SearchNetwork,
   start: number,
   target: number,
   raw: RouteOutput,

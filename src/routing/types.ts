@@ -37,6 +37,12 @@ export interface Arc {
   length: number;
   segment: number;
 }
+export interface SearchNetwork {
+  nodes: Array<{ id: number }>;
+  arcs: Array<Pick<Arc, "from" | "to" | "length">>;
+  outgoing: number[][];
+  incoming: number[][];
+}
 export interface RoadGraph {
   id: string;
   name: string;
