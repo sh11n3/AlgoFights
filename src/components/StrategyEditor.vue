@@ -6,6 +6,7 @@ import { oneDark } from "@codemirror/theme-one-dark";
 import {
   Check,
   CheckCheck,
+  Copy,
   Download,
   FileCode2,
   LoaderCircle,
@@ -29,6 +30,7 @@ import { routeProbe } from "../routing/probe";
 import { validateRouteOutput } from "../routing/custom";
 import { PRESETS } from "../graph/presets";
 import { createGraph, graphHeuristic } from "../graph/simulation";
+import CodeReference from "./CodeReference.vue";
 const documentationUrl = `${import.meta.env.BASE_URL}docs/editor-handbuch.html`;
 const example = ref("");
 
@@ -59,11 +61,48 @@ const host = ref<HTMLElement>(),
   notice = ref(""),
   valid = ref(false),
   checking = ref(false);
+const languages = {
+  javascript: "JavaScript",
+  java: "Java",
+  pseudocode: "Pseudocode",
+} as const;
+const language = ref<keyof typeof languages>("javascript");
+const copyNotice = ref("");
+const original = computed(() =>
+  originals.find((s) => `builtin:${s.id}` === selected.value),
+);
+const activeExample = ref<(typeof STRATEGY_EXAMPLES)[number]>();
+const reference = computed(() => original.value ?? activeExample.value);
+const referenceCode = computed(() =>
+  language.value === "javascript"
+    ? ""
+    : (reference.value?.[language.value] ?? ""),
+);
 const filename = computed(() => {
+  if (language.value === "java")
+    return isRoute ? "RouteSearch.java" : "ArenaStrategy.java";
+  if (language.value === "pseudocode") return reference.value?.name;
   if (!isRoute) return "nextMove.js";
-  const original = originals.find((s) => `builtin:${s.id}` === selected.value);
-  return original ? `${original.id}.js` : "eigener-algorithmus.js";
+  return original.value ? `${original.value.id}.js` : "eigener-algorithmus.js";
 });
+const shownLineCount = computed(() =>
+  language.value === "javascript"
+    ? lineCount.value
+    : referenceCode.value.split("\n").length,
+);
+watch([language, referenceCode], () => {
+  copyNotice.value = "";
+});
+async function copyReference() {
+  const code = referenceCode.value;
+  try {
+    await navigator.clipboard.writeText(code);
+    if (code === referenceCode.value) copyNotice.value = "Kopiert.";
+  } catch {
+    if (code === referenceCode.value)
+      copyNotice.value = "Bitte den Code markieren und kopieren.";
+  }
+}
 const input = ref<HTMLInputElement>();
 const lineCount = ref(1);
 let editor: EditorView | null = null,
@@ -84,10 +123,12 @@ function replace(code: string) {
 }
 function select() {
   stopCheck();
-  const original = originals.find((s) => `builtin:${s.id}` === selected.value);
-  if (original) {
-    name.value = `${original.name} – eigene Version`.slice(0, 40);
-    replace(original.code);
+  if (isRoute && !selected.value) language.value = "javascript";
+  example.value = "";
+  activeExample.value = undefined;
+  if (original.value) {
+    name.value = `${original.value.name} – eigene Version`.slice(0, 40);
+    replace(original.value.code);
     notice.value =
       "Originalcode geladen. Speichern erstellt eine eigene Kopie; das eingebaute Original bleibt erhalten.";
     return;
@@ -95,6 +136,7 @@ function select() {
   const strategy = props.strategies.find((s) => s.id === selected.value);
   name.value =
     strategy?.name ?? (isRoute ? "Mein Algorithmus" : "Meine Strategie");
+  if (!strategy && !isRoute) activeExample.value = STRATEGY_EXAMPLES[0];
   replace(strategy?.code ?? template);
 }
 function stopCheck() {
@@ -241,6 +283,8 @@ async function save() {
     : `${prefix}${crypto.randomUUID()}`;
   emit("save", { id, name: name.value.trim().slice(0, 40), code: draft });
   selected.value = id;
+  activeExample.value = undefined;
+  example.value = "";
   notice.value = isRoute
     ? `Algorithmus gespeichert. Er ist jetzt in ${isGraph ? "Graph Sim" : "Algo Sim"} auswählbar.`
     : "Strategie gespeichert. Du kannst sie jetzt als Teilnehmer auswählen.";
@@ -250,16 +294,15 @@ function saveCopy() {
   save();
 }
 function reset() {
-  stopCheck();
   selected.value = "";
-  name.value = isRoute ? "Mein Algorithmus" : "Meine Strategie";
-  replace(template);
+  select();
 }
 function loadExample() {
   const item = STRATEGY_EXAMPLES.find((item) => item.name === example.value);
   if (!item) return;
   stopCheck();
   selected.value = "";
+  activeExample.value = item;
   name.value = item.name;
   replace(item.code);
 }
@@ -301,6 +344,8 @@ async function importCode(event: Event) {
       throw new Error("Keine gültige AlgoFIghts-Strategiedatei.");
     stopCheck();
     selected.value = "";
+    activeExample.value = undefined;
+    example.value = "";
     name.value = parsed.name.slice(0, 40);
     replace(parsed.code);
     notice.value =
@@ -352,7 +397,7 @@ onMounted(() => {
   if (props.sourceId) {
     selected.value = props.sourceId === "new" ? "" : props.sourceId;
     select();
-  }
+  } else if (!isRoute) activeExample.value = STRATEGY_EXAMPLES[0];
   emit("ready");
 });
 watch(
@@ -430,86 +475,134 @@ onBeforeUnmount(() => {
             </select></label
           ><label>Name<input v-model="name" maxlength="40" /></label>
         </div>
-        <div class="editor-filename">
+        <div class="editor-languages" role="group" aria-label="Codesprache">
+          <button
+            v-for="(label, id) in languages"
+            :key="id"
+            :aria-pressed="language === id"
+            @click="language = id"
+          >
+            {{ label }}
+          </button>
+        </div>
+        <div
+          v-if="language === 'javascript' || referenceCode"
+          class="editor-filename"
+        >
           <FileCode2 :size="15" />
           {{ filename }}
           <span
-            >JavaScript · {{ lineCount }}
-            {{ lineCount === 1 ? "Zeile" : "Zeilen" }}</span
+            >{{ languages[language] }} · {{ shownLineCount }}
+            {{ shownLineCount === 1 ? "Zeile" : "Zeilen" }}</span
           >
         </div>
-        <div ref="host" class="code-editor"></div>
         <div
-          v-if="notice"
-          class="editor-notice"
-          :class="{ success: valid }"
-          role="status"
-        >
-          <Check v-if="valid" :size="16" />{{ notice }}
-        </div>
-        <div class="editor-actions">
-          <button class="primary-button" :disabled="checking" @click="save">
-            <Save :size="16" /> Speichern</button
-          ><button
-            class="secondary-button"
-            :disabled="checking"
-            @click="validate"
-          >
-            <LoaderCircle v-if="checking" class="spin" :size="16" /><CheckCheck
-              v-else
-              :size="16"
+          v-show="language === 'javascript'"
+          ref="host"
+          class="code-editor"
+        ></div>
+        <template v-if="language !== 'javascript'">
+          <template v-if="referenceCode">
+            <CodeReference
+              :key="language"
+              :code="referenceCode"
+              :language="language"
             />
-            Prüfen</button
-          ><button
-            class="icon-button"
-            title="Vorlage zurücksetzen"
-            aria-label="Auf Vorlage zurücksetzen"
-            @click="reset"
+            <div class="file-actions editor-reference-actions">
+              <button @click="copyReference">
+                <Copy :size="14" /> Kopieren
+              </button>
+              <span role="status">{{
+                copyNotice ||
+                (language === "java"
+                  ? "Java 17 · Referenz zum Original"
+                  : "Pseudocode · Referenz zum Original")
+              }}</span>
+            </div>
+          </template>
+          <div v-else class="editor-reference-empty">
+            <p>
+              Wähle einen eingebauten Algorithmus oder ein Beispiel, um die
+              Referenz zu lesen. Eigener Code steht unter JavaScript.
+            </p>
+            <button class="secondary-button" @click="language = 'javascript'">
+              Zum JavaScript-Editor
+            </button>
+          </div>
+        </template>
+        <template v-if="language === 'javascript'">
+          <div
+            v-if="notice"
+            class="editor-notice"
+            :class="{ success: valid }"
+            role="status"
           >
-            <RotateCcw :size="17" /></button
-          ><button
-            v-if="selected.startsWith(prefix)"
-            class="icon-button danger"
-            aria-label="Strategie löschen"
-            @click="
-              emit('remove', selected);
-              reset();
-            "
-          >
-            <Trash2 :size="17" />
-          </button>
-        </div>
-        <div class="file-actions">
-          <button
-            v-if="selected.startsWith(prefix)"
-            :disabled="checking"
-            @click="saveCopy"
-          >
-            Als neue Kopie speichern
-          </button>
-          <button
-            v-if="checking"
-            @click="
-              stopCheck();
-              notice = 'Prüfung abgebrochen.';
-            "
-          >
-            Prüfung abbrechen
-          </button>
-        </div>
-        <div class="file-actions">
-          <button @click="input?.click()">
-            <Upload :size="14" /> Importieren</button
-          ><button @click="exportCode">
-            <Download :size="14" /> Exportieren</button
-          ><input
-            ref="input"
-            hidden
-            type="file"
-            accept=".json,application/json"
-            @change="importCode"
-          /><span>Nur eigenen, vertrauten Code verwenden.</span>
-        </div>
+            <Check v-if="valid" :size="16" />{{ notice }}
+          </div>
+          <div class="editor-actions">
+            <button class="primary-button" :disabled="checking" @click="save">
+              <Save :size="16" /> Speichern</button
+            ><button
+              class="secondary-button"
+              :disabled="checking"
+              @click="validate"
+            >
+              <LoaderCircle
+                v-if="checking"
+                class="spin"
+                :size="16"
+              /><CheckCheck v-else :size="16" /> Prüfen</button
+            ><button
+              class="icon-button"
+              title="Vorlage zurücksetzen"
+              aria-label="Auf Vorlage zurücksetzen"
+              @click="reset"
+            >
+              <RotateCcw :size="17" /></button
+            ><button
+              v-if="selected.startsWith(prefix)"
+              class="icon-button danger"
+              aria-label="Strategie löschen"
+              @click="
+                emit('remove', selected);
+                reset();
+              "
+            >
+              <Trash2 :size="17" />
+            </button>
+          </div>
+          <div class="file-actions">
+            <button
+              v-if="selected.startsWith(prefix)"
+              :disabled="checking"
+              @click="saveCopy"
+            >
+              Als neue Kopie speichern
+            </button>
+            <button
+              v-if="checking"
+              @click="
+                stopCheck();
+                notice = 'Prüfung abgebrochen.';
+              "
+            >
+              Prüfung abbrechen
+            </button>
+          </div>
+          <div class="file-actions">
+            <button @click="input?.click()">
+              <Upload :size="14" /> Importieren</button
+            ><button @click="exportCode">
+              <Download :size="14" /> Exportieren</button
+            ><input
+              ref="input"
+              hidden
+              type="file"
+              accept=".json,application/json"
+              @change="importCode"
+            /><span>Nur eigenen, vertrauten Code verwenden.</span>
+          </div>
+        </template>
       </div>
       <aside v-if="isRoute" class="api-docs">
         <h3>Wegsuche-Schnittstelle</h3>

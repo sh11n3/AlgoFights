@@ -76,7 +76,8 @@
 }
 .graph-edge,
 .graph-solution,
-.graph-edge-flash {
+.graph-motion-line,
+.graph-motion-halo {
   fill: none;
   stroke-linecap: round;
   stroke-linejoin: round;
@@ -93,25 +94,54 @@
 .graph-edge.visited.backward {
   stroke: #8581bd;
 }
-.graph-edge-flash {
-  stroke: var(--graph-search);
-  stroke-width: 3;
-  stroke-dasharray: 1;
-  animation: graph-draw 210ms ease-out both;
+.graph-search-motion {
+  --motion-color: var(--graph-search);
 }
-.graph-edge-flash.backward {
-  stroke: var(--graph-backward);
+.graph-search-motion.backward {
+  --motion-color: var(--graph-backward);
+}
+.graph-route-motion {
+  --motion-color: var(--graph-route);
+}
+.graph-motion-line,
+.graph-motion-halo {
+  stroke: var(--motion-color);
+  stroke-dasharray: 1;
+  animation: graph-draw var(--motion-duration) linear both;
+}
+.graph-motion-line {
+  stroke-width: 2.7;
+}
+.graph-motion-halo {
+  stroke-width: 8;
+  opacity: 0.18;
+}
+.graph-route-motion .graph-motion-line {
+  stroke-width: 3.4;
+}
+.graph-route-motion .graph-motion-halo {
+  stroke-width: 10;
+}
+.graph-traveler {
+  pointer-events: none;
+  animation: graph-travel var(--motion-duration) linear both;
+}
+.graph-traveler-halo {
+  fill: var(--motion-color);
+  opacity: 0.26;
+}
+.graph-traveler-core {
+  fill: #f2fff9;
+  stroke: var(--motion-color);
+  stroke-width: 1.6;
+  filter: drop-shadow(0 0 4px var(--motion-color));
 }
 .graph-solution {
   stroke: var(--graph-route);
   stroke-width: 3;
 }
-.graph-solution-line {
-  stroke-dasharray: 1;
-  animation: graph-draw 260ms ease-out var(--edge-delay) both;
-}
 .graph-solution-arrow {
-  animation: graph-appear 160ms ease-out calc(var(--edge-delay) + 160ms) both;
+  animation: graph-appear 170ms ease-out var(--edge-delay) both;
 }
 .graph-weight {
   fill: #c1cddd;
@@ -186,6 +216,41 @@
 .graph-node.target .graph-node-pulse {
   stroke: var(--graph-target);
 }
+.graph-route-arrival {
+  fill: none;
+  stroke: var(--graph-route);
+  stroke-width: 1.5;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: graph-arrival 480ms ease-out var(--arrival) both;
+}
+.graph-route-arrival.goal {
+  stroke-width: 2.7;
+  animation-duration: 720ms;
+}
+@keyframes graph-travel {
+  0%,
+  100% {
+    opacity: 0;
+  }
+  15%,
+  83% {
+    opacity: 1;
+  }
+}
+@keyframes graph-arrival {
+  0% {
+    opacity: 0;
+    transform: scale(0.86);
+  }
+  23% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0.68;
+    transform: scale(1.12);
+  }
+}
 @keyframes graph-draw {
   from {
     stroke-dashoffset: 1;
@@ -232,14 +297,14 @@
   height: 2px;
   background: var(--key);
 }
-.graph-legend .start-key {
+.graph-legend .graph-start-key {
   --key: var(--graph-start);
 }
-.graph-legend .target-key {
+.graph-legend .graph-target-key {
   --key: var(--graph-target);
 }
-.graph-legend .start-key::before,
-.graph-legend .target-key::before {
+.graph-legend .graph-start-key::before,
+.graph-legend .graph-target-key::before {
   width: 7px;
   height: 7px;
   border: 1px solid var(--key);
@@ -404,5 +469,12 @@
   .graph-board * {
     animation: none !important;
     transition: none !important;
+  }
+  .graph-traveler {
+    display: none;
+  }
+  .graph-motion-halo,
+  .graph-motion-line {
+    stroke-dasharray: none;
   }
 }

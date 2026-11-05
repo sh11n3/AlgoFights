@@ -1107,6 +1107,35 @@ kbd {
   padding: 12px;
   color: #b2c2d8;
 }
+.editor-languages {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+.editor-languages button {
+  padding: 7px 11px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  color: #a9b8ca;
+  font-size: 12px;
+}
+.editor-languages button[aria-pressed="true"] {
+  border-color: #526074;
+  background: #26303e;
+  color: #f1f4f8;
+}
+.editor-reference-empty {
+  display: grid;
+  justify-items: start;
+  gap: 13px;
+  padding: 18px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: #b2c2d8;
+  font-size: 13px;
+  line-height: 1.55;
+}
 .editor-filename > svg {
   color: #aebcce;
 }

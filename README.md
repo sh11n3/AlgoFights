@@ -51,6 +51,8 @@ Der Canvas trennt logische Auflösung und Anzeigegröße, berücksichtigt Displa
 
 Das [Editor-Handbuch](public/docs/editor-handbuch.html) ist in allen Editoren verlinkt und [direkt online lesbar](https://algofights.de/docs/editor-handbuch.html). Es erklärt die APIs, Ein- und Rückgaben, Beispiele, Speichern und Fehlersuche. Algo Sim und Graph Sim öffnen nur den Quellcode des ausgewählten Verfahrens. „Eigenen Algorithmus bauen“ beginnt mit einem leeren Codefeld. Vier zusätzliche Arena-Beispiele lassen sich direkt laden.
 
+Zu jedem eingebauten Algorithmus und Arena-Beispiel gibt es neben dem ausführbaren JavaScript eine kopierbare Java-17-Referenz und Pseudocode. Die Java-Varianten verwenden Java-Datenstrukturen und passende Eingabetypen. Bei gleichen Prioritäten kann sich die Besuchsreihenfolge von JavaScript unterscheiden. Eigene Strategien werden in JavaScript geschrieben und ausgeführt.
+
 ```js
 function nextMove(state, memory) {
   const choices = state.availableMoves;

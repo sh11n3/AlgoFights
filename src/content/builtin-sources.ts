@@ -6,13 +6,16 @@ import bfsSource from "../routing/algorithms/bfs.js?raw";
 import dfsSource from "../routing/algorithms/dfs.js?raw";
 import greedySource from "../routing/algorithms/greedy.js?raw";
 import { LABELS } from "../core/types";
-import { ROUTE_ALGORITHMS } from "../routing/types";
+import { ROUTE_ALGORITHMS, type RouteAlgorithm } from "../routing/types";
+import { arenaReference } from "./arena-references";
+import { routeReference } from "./route-references";
 
 // The readable source is the same module used by the built-in implementations.
 const editable = (source: string) => source.replace(/^export /gm, "");
 export const ARENA_SOURCES = Object.entries(LABELS).map(([id, name]) => ({
   id,
   name,
+  ...arenaReference(id),
   code: `// Original: ${name}. Ändere die Prioritäten oder die Bewertung unten.
 // Der Adapter übersetzt die Editor-API in die gemeinsame Implementierung.
 function nextMove(state, memory) {
@@ -50,6 +53,7 @@ export const ROUTING_SOURCES = Object.entries(ROUTE_ALGORITHMS).map(
   ([id, info]) => ({
     id,
     name: info.name,
+    ...routeReference(id as RouteAlgorithm),
     code: routeSources[id as keyof typeof routeSources].replace(
       /^export default /m,
       "",

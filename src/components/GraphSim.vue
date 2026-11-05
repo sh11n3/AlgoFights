@@ -97,7 +97,8 @@ const trace = computed(() => {
   }
   const current = run.traceNodes[step.value - 1];
   const arc = graph.value.arcs[run.traceEdges[step.value - 1]];
-  return { visited, edges, current, currentEdge: arc?.segment };
+  const source = run.traceSides[step.value - 1] === 1 ? arc?.to : arc?.from;
+  return { visited, edges, current, source };
 });
 const status = computed(() => {
   if (busy.value) return "Suche wird berechnet";
@@ -319,14 +320,15 @@ onBeforeUnmount(() => {
           :visited="trace.visited"
           :search-edges="trace.edges"
           :current="trace.current"
-          :current-edge="trace.currentEdge"
+          :source="trace.source"
+          :tempo="delay"
           :step="step"
           :path="shownPath"
           @select="selectNode"
         />
         <div class="graph-legend">
-          <span class="start-key">Start</span
-          ><span class="target-key">Ziel</span
+          <span class="graph-start-key">Start</span
+          ><span class="graph-target-key">Ziel</span
           ><span class="search-key">Suche</span>
           <span
             v-if="algorithm === 'bidirectional' || custom"

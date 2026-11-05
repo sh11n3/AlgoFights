@@ -196,6 +196,11 @@
       exportieren.
     </p>
 
+    <p>
+      Die Sprachschalter im Editor zeigen JavaScript, Java 17 und Pseudocode.
+      Java und Pseudocode sind Referenzen für eingebaute Algorithmen und
+      Arena-Beispiele. Eigene Varianten werden als JavaScript ausgeführt.
+    </p>
     <h2 id="modell">2. Regeln der Arena</h2>
     <ul>
       <li>
@@ -343,6 +348,24 @@ function nextMove(state, memory) {
       validiert jeden Zug; eigener Code verändert den echten Spielzustand nicht
       direkt.
     </p>
+
+    <details>
+      <summary>Java · Ausschnitt aus ArenaStrategy</summary>
+      <pre><code>record Move(Direction direction, int decisions) {}
+
+static Move nextMove(State s, int decisions) {
+  var moves = s.availableMoves();
+  var direction = moves.contains(s.facing()) ? s.facing()
+      : moves.get((int) (s.random().getAsDouble() * moves.size()));
+  return new Move(direction, decisions + 1);
+}</code></pre>
+    </details>
+    <details>
+      <summary>Pseudocode</summary>
+      <pre><code>WENN geradeaus frei ist: zug ← geradeaus
+SONST: zug ← Seed-Zufallsauswahl aus freien Nachbarn
+GIB zug und den um 1 erhöhten Entscheidungszähler ZURÜCK</code></pre>
+    </details>
 
     <h2 id="wegsuche">4. Algo-Sim-API: findRoute(graph)</h2>
     <p id="eigene-wegsuche">
@@ -507,6 +530,39 @@ function nextMove(state, memory) {
   }
   return { path: null };
 }</code></pre>
+    <details>
+      <summary>Java · Ausschnitt aus RouteSearch</summary>
+      <pre><code>static List&lt;Integer&gt; findRoute(Graph g) {
+  var queue = new ArrayDeque&lt;Integer&gt;();
+  var seen = new boolean[g.outgoing().size()];
+  var previous = new int[seen.length];
+  queue.addLast(g.start());
+  seen[g.start()] = true;
+  while (!queue.isEmpty()) {
+    int node = queue.removeFirst();
+    if (node == g.target()) return path(g, previous, node);
+    for (int edge : g.outgoing().get(node)) {
+      int next = g.arcs().get(edge).to();
+      if (seen[next]) continue;
+      seen[next] = true;
+      previous[next] = edge;
+      queue.addLast(next);
+    }
+  }
+  return null;
+}</code></pre>
+    </details>
+    <details>
+      <summary>Pseudocode</summary>
+      <pre><code>offen ← FIFO-Warteschlange mit start; gesehen ← {start}
+SOLANGE offen nicht leer ist
+    knoten ← vordersten Eintrag entfernen
+    WENN knoten = ziel: GIB Weg über Vorgängerkanten ZURÜCK
+    FÜR JEDE Kante von knoten zu einem ungesehenen nachbar
+        merke nachbar als gesehen; speichere seine Vorgängerkante
+        füge nachbar hinten in offen ein
+GIB »kein Weg« ZURÜCK</code></pre>
+    </details>
     <h3>Prioritäten verändern: Dijkstra und A*</h3>
     <p>
       Öffne Dijkstra im Editor. Seine Warteschlange bevorzugt den kleinsten
@@ -518,6 +574,19 @@ queue.push(arc.to, candidate);
 
 // A*: bisheriger Weg plus geschätzter Restweg:
 queue.push(arc.to, candidate + graph.heuristic(arc.to));</code></pre>
+    <details>
+      <summary>Java · Prioritäten in RouteSearch</summary>
+      <pre><code>// Dijkstra
+pending.add(new Entry(next, candidate));
+
+// A*
+pending.add(new Entry(next, candidate + g.heuristic().applyAsDouble(next)));</code></pre>
+    </details>
+    <details>
+      <summary>Pseudocode</summary>
+      <pre><code>Dijkstra: Priorität ← bisherige Kosten bis nachbar
+A*: Priorität ← bisherige Kosten bis nachbar + geschätzte Restkosten ab nachbar</code></pre>
+    </details>
     <p>
       Die Luftlinie überschätzt die verbleibende Straßenlänge nicht. Ein
       größerer Faktor vor der Heuristik kann die Suche stärker zum Ziel lenken,
@@ -572,6 +641,23 @@ queue.push(arc.to, candidate + graph.heuristic(arc.to));</code></pre>
   }
   return { path: null };
 }</code></pre>
+    <details>
+      <summary>Java · Direkte Kante prüfen</summary>
+      <pre><code>static List&lt;Integer&gt; findDirectRoute(Graph g) {
+  if (g.start() == g.target()) return List.of();
+  for (int edge : g.outgoing().get(g.start())) {
+    if (g.arcs().get(edge).to() == g.target()) return List.of(edge);
+  }
+  return null;
+}</code></pre>
+    </details>
+    <details>
+      <summary>Pseudocode</summary>
+      <pre><code>WENN start = ziel: GIB leeren Weg ZURÜCK
+FÜR JEDE ausgehende Kante vom Start
+    WENN die Kante zum Ziel führt: GIB diese Kante als Weg ZURÜCK
+GIB »kein direkter Weg« ZURÜCK</code></pre>
+    </details>
     <p>
       Im Ergebnis ist die Zahl der Suchschritte von der Zahl der Kanten im
       gefundenen Weg und dessen Gesamtkosten getrennt. Eigener Code wird beim

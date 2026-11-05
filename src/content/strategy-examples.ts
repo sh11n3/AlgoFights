@@ -1,8 +1,10 @@
 import { TEMPLATE } from "../services/storage";
+import { EXAMPLE_REFERENCES } from "./arena-references";
 export const STRATEGY_EXAMPLES = [
-  { name: "Seed-Zufall", code: TEMPLATE },
+  { name: "Seed-Zufall", code: TEMPLATE, ...EXAMPLE_REFERENCES.random },
   {
     name: "Rechtsregel",
+    ...EXAMPLE_REFERENCES.right,
     code: `function nextMove(state, memory) {
   const directions = ["up", "right", "down", "left"];
   const facing = directions.indexOf(state.direction);
@@ -16,6 +18,7 @@ export const STRATEGY_EXAMPLES = [
   },
   {
     name: "Geradeaus mit Gedächtnis",
+    ...EXAMPLE_REFERENCES.memory,
     code: `function nextMove(state, memory) {
   // Nach einem Rücklauf einen neuen Plan beginnen.
   if (state.afterReturn) memory = {};
@@ -31,6 +34,7 @@ export const STRATEGY_EXAMPLES = [
   },
   {
     name: "Begrenzte Freiraumsuche",
+    ...EXAMPLE_REFERENCES.room,
     code: `function nextMove(state, memory) {
   const offsets = { up: [0,-1], right: [1,0], down: [0,1], left: [-1,0] };
   function room(direction) {

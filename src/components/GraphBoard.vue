@@ -13,11 +13,38 @@ const props = defineProps<{
   visited: Map<number, number>;
   searchEdges: Map<number, number>;
   current: number | undefined;
-  currentEdge: number | undefined;
+  source: number | undefined;
+  tempo: number;
   step: number;
   path: Uint32Array | undefined;
 }>();
 const emit = defineEmits<{ select: [node: number] }>();
+const travelFrames = new WeakMap<SVGGElement, number>();
+const vTravel = {
+  mounted(element: SVGGElement, { value: duration }: { value: number }) {
+    if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const path =
+      element.parentElement?.querySelector<SVGPathElement>(
+        ".graph-motion-line",
+      );
+    if (!path) return;
+    const startTime = performance.now();
+    const length = path.getTotalLength();
+    const draw = (time: number) => {
+      const progress = Math.max(0, Math.min(1, (time - startTime) / duration));
+      const point = path.getPointAtLength(length * progress);
+      element.setAttribute("transform", `translate(${point.x} ${point.y})`);
+      if (progress < 1) travelFrames.set(element, requestAnimationFrame(draw));
+      else travelFrames.delete(element);
+    };
+    draw(startTime);
+  },
+  unmounted(element: SVGGElement) {
+    const frame = travelFrames.get(element);
+    if (frame !== undefined) cancelAnimationFrame(frame);
+    travelFrames.delete(element);
+  },
+};
 const svg = ref<SVGSVGElement>();
 const width = ref(720),
   height = ref(440);
@@ -74,6 +101,34 @@ const routeSegments = computed(() => {
   });
   return list;
 });
+const searchLine = computed(() => {
+  if (props.source === undefined || props.current === undefined) return "";
+  const a = points.value[props.source],
+    b = points.value[props.current];
+  return `M ${a.x} ${a.y} L ${b.x} ${b.y}`;
+});
+const searchDuration = computed(() => Math.min(props.tempo, 420));
+const route = computed(() => {
+  const path = props.path;
+  const arrivals = new Map<number, number>();
+  if (!path || path.length > 2000) return { line: "", duration: 0, arrivals };
+  const a = points.value[props.start];
+  let line = `M ${a.x} ${a.y}`,
+    total = 0,
+    previous = a;
+  arrivals.set(props.start, 0);
+  for (const arc of path) {
+    const next = points.value[props.graph.arcs[arc].to];
+    total += Math.hypot(next.x - previous.x, next.y - previous.y);
+    line += ` L ${next.x} ${next.y}`;
+    if (!arrivals.has(next.id)) arrivals.set(next.id, total);
+    previous = next;
+  }
+  const duration = total > 0 ? Math.min(1800, 500 + path.length * 85) : 0;
+  for (const [node, distance] of arrivals)
+    arrivals.set(node, total ? (distance / total) * duration : 0);
+  return { line: total ? line : "", duration, arrivals };
+});
 </script>
 
 <template>
@@ -97,25 +152,43 @@ const routeSegments = computed(() => {
         <path :d="segment.line" />
         <path v-if="directed" :d="segment.arrow" />
       </g>
-      <path
-        v-if="currentEdge !== undefined && !path"
+      <g
+        v-if="searchLine && !path"
         :key="step"
-        class="graph-edge-flash"
-        :class="{ backward: searchEdges.get(currentEdge) === 1 }"
-        :d="segments[currentEdge].line"
-        pathLength="1"
-      />
+        class="graph-search-motion"
+        :class="{
+          backward: current !== undefined && visited.get(current) === 1,
+        }"
+        :style="{ '--motion-duration': `${searchDuration}ms` }"
+      >
+        <path class="graph-motion-halo" :d="searchLine" pathLength="1" />
+        <path class="graph-motion-line" :d="searchLine" pathLength="1" />
+        <g v-travel="searchDuration" class="graph-traveler">
+          <circle class="graph-traveler-halo" r="8" />
+          <circle class="graph-traveler-core" r="3" />
+        </g>
+      </g>
+      <g
+        v-if="route.line"
+        class="graph-route-motion"
+        :style="{ '--motion-duration': `${route.duration}ms` }"
+      >
+        <path class="graph-motion-halo" :d="route.line" pathLength="1" />
+        <path class="graph-motion-line" :d="route.line" pathLength="1" />
+        <g v-travel="route.duration" class="graph-traveler">
+          <circle class="graph-traveler-halo" r="11" />
+          <circle class="graph-traveler-core" r="4" />
+        </g>
+      </g>
       <g
         v-for="[segment, index] in routeSegments"
         :key="segment"
         class="graph-solution"
-        :style="{ '--edge-delay': `${Math.min(index, 28) * 38}ms` }"
+        :style="{
+          '--edge-delay': `${route.arrivals.get(graph.arcs[path![index]].to) ?? 0}ms`,
+        }"
       >
-        <path
-          :d="segments[segment].line"
-          pathLength="1"
-          class="graph-solution-line"
-        />
+        <path v-if="!route.line" :d="segments[segment].line" />
         <path
           v-if="directed"
           :d="segments[segment].arrow"
@@ -153,10 +226,18 @@ const routeSegments = computed(() => {
     >
       <circle :r="radius + 7" class="graph-node-hit" />
       <circle
-        v-if="point.id === current"
+        v-if="point.id === current && !path"
         :key="step"
         :r="radius + 4"
         class="graph-node-pulse"
+        aria-hidden="true"
+      />
+      <circle
+        v-if="route.arrivals.has(point.id)"
+        :r="radius + 3"
+        class="graph-route-arrival"
+        :class="{ goal: point.id === target }"
+        :style="{ '--arrival': `${route.arrivals.get(point.id)}ms` }"
         aria-hidden="true"
       />
       <circle :r="radius" class="graph-node-body" />
