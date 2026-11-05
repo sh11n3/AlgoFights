@@ -1,24 +1,41 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from "vue";
-import type { GraphPreset } from "../graph/presets";
+import type { GraphPreset, Point } from "../graph/presets";
 import type { TeachingGraph } from "../graph/simulation";
 
-const props = defineProps<{
-  preset: GraphPreset;
-  graph: TeachingGraph;
-  directed: boolean;
-  weighted: boolean;
-  start: number;
-  target: number;
-  visited: Map<number, number>;
-  searchEdges: Map<number, number>;
-  current: number | undefined;
-  source: number | undefined;
-  tempo: number;
-  step: number;
-  path: Uint32Array | undefined;
+const props = withDefaults(
+  defineProps<{
+    preset: GraphPreset;
+    graph: TeachingGraph;
+    directed: boolean;
+    weighted: boolean;
+    start: number;
+    target: number;
+    visited?: Map<number, number>;
+    searchEdges?: Map<number, number>;
+    current?: number;
+    source?: number;
+    tempo?: number;
+    step?: number;
+    path?: Uint32Array;
+    builder?: {
+      selectedNode: number | null;
+      selectedEdge: number | null;
+      edgeMode: boolean;
+    };
+  }>(),
+  {
+    visited: () => new Map(),
+    searchEdges: () => new Map(),
+    tempo: 360,
+    step: 0,
+  },
+);
+const emit = defineEmits<{
+  select: [node: number];
+  place: [point: Point];
+  selectEdge: [edge: number];
 }>();
-const emit = defineEmits<{ select: [node: number] }>();
 const travelFrames = new WeakMap<SVGGElement, number>();
 const vTravel = {
   mounted(element: SVGGElement, { value: duration }: { value: number }) {
@@ -60,39 +77,67 @@ onMounted(() => {
 onBeforeUnmount(() => observer?.disconnect());
 
 const radius = computed(() => (width.value < 520 ? 12 : 16));
+const padding = computed(() => radius.value + (width.value < 520 ? 11 : 16));
 const points = computed(() => {
-  const padding = radius.value + (width.value < 520 ? 11 : 16);
-  const plotWidth = width.value - 2 * padding;
-  const plotHeight = height.value - 2 * padding;
+  const inset = padding.value;
+  const plotWidth = width.value - 2 * inset;
+  const plotHeight = height.value - 2 * inset;
   return props.graph.nodes.map((node) => ({
     ...node,
-    x: padding + node.x * plotWidth,
-    y: padding + node.y * plotHeight,
+    x: inset + node.x * plotWidth,
+    y: inset + node.y * plotHeight,
   }));
 });
-const segments = computed(() =>
-  props.preset.edges.map(([from, to, cost]) => {
+function placePoint(event: MouseEvent) {
+  if (!props.builder || !svg.value) return;
+  const bounds = svg.value.getBoundingClientRect();
+  const inset = padding.value;
+  const coordinate = (value: number, length: number) =>
+    Math.max(0, Math.min(1, (value - inset) / (length - 2 * inset)));
+  emit("place", [
+    coordinate(event.clientX - bounds.left, bounds.width),
+    coordinate(event.clientY - bounds.top, bounds.height),
+  ]);
+}
+const segments = computed(() => {
+  const labels: Point[] = [];
+  return props.preset.edges.map(([from, to, cost]) => {
     const a = points.value[from],
       b = points.value[to];
     const length = Math.hypot(b.x - a.x, b.y - a.y);
     const ux = (b.x - a.x) / length,
       uy = (b.y - a.y) / length;
-    const gap = radius.value + 1;
+    const gap = Math.min(radius.value + 1, length * 0.36);
     const head = Math.min(7, (length - 2 * gap) * 0.65);
     const labelOffset = length - 2 * gap < 26 ? -10 : 0;
     const x1 = a.x + ux * gap,
       y1 = a.y + uy * gap;
     const x2 = b.x - ux * gap,
       y2 = b.y - uy * gap;
+    const labelAt = (t: number): Point => [
+      a.x + (b.x - a.x) * t - uy * labelOffset,
+      a.y + (b.y - a.y) * t + ux * labelOffset,
+    ];
+    const [x, y] =
+      [0.5, 0.38, 0.62, 0.29, 0.71]
+        .map(labelAt)
+        .find(
+          ([x, y]) =>
+            labels.every(([lx, ly]) => Math.hypot(lx - x, ly - y) >= 16) &&
+            points.value.every(
+              (node) => Math.hypot(node.x - x, node.y - y) >= radius.value + 4,
+            ),
+        ) ?? labelAt(0.5);
+    labels.push([x, y]);
     return {
       cost,
       line: `M ${x1} ${y1} L ${x2} ${y2}`,
       arrow: `M ${x2 - ux * head - uy * 3.5} ${y2 - uy * head + ux * 3.5} L ${x2} ${y2} L ${x2 - ux * head + uy * 3.5} ${y2 - uy * head - ux * 3.5}`,
-      x: (a.x + b.x) / 2 - uy * labelOffset,
-      y: (a.y + b.y) / 2 + ux * labelOffset,
+      x,
+      y,
     };
-  }),
-);
+  });
+});
 const routeSegments = computed(() => {
   const list = new Map<number, number>();
   props.path?.forEach((arc, index) => {
@@ -135,10 +180,20 @@ const route = computed(() => {
   <svg
     ref="svg"
     class="graph-board"
+    :class="{ 'graph-board-builder': builder }"
     role="group"
     aria-label="Interaktiver Graph"
     :viewBox="`0 0 ${width} ${height}`"
+    @click="placePoint"
   >
+    <text
+      v-if="builder && !points.length"
+      :x="width / 2"
+      :y="height / 2"
+      class="graph-builder-empty"
+    >
+      Ersten Knoten auf der Fläche setzen
+    </text>
     <g aria-hidden="true">
       <g
         v-for="(segment, index) in segments"
@@ -147,10 +202,17 @@ const route = computed(() => {
         :class="{
           visited: searchEdges.has(index),
           backward: searchEdges.get(index) === 1,
+          'edge-selected': builder?.selectedEdge === index,
         }"
       >
         <path :d="segment.line" />
         <path v-if="directed" :d="segment.arrow" />
+        <path
+          v-if="builder?.edgeMode"
+          :d="segment.line"
+          class="graph-edge-hit"
+          @click.stop="emit('selectEdge', index)"
+        />
       </g>
       <g
         v-if="searchLine && !path"
@@ -217,10 +279,11 @@ const route = computed(() => {
         target: point.id === target,
         visited: visited.has(point.id),
         backward: visited.get(point.id) === 1,
+        'node-selected': builder?.selectedNode === point.id,
       }"
       :aria-label="`Knoten ${point.label}${point.id === start ? ', Start' : ''}${point.id === target ? ', Ziel' : ''}`"
       :transform="`translate(${point.x} ${point.y})`"
-      @click="emit('select', point.id)"
+      @click.stop="emit('select', point.id)"
       @keydown.enter.prevent="emit('select', point.id)"
       @keydown.space.prevent="emit('select', point.id)"
     >

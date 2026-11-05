@@ -10,9 +10,11 @@ import {
   watch,
 } from "vue";
 import {
+  ArrowLeft,
   ArrowLeftRight,
   CodeXml,
   LoaderCircle,
+  Network,
   Pause,
   Play,
   RotateCcw,
@@ -20,7 +22,15 @@ import {
   SkipForward,
 } from "lucide-vue-next";
 import GraphBoard from "./GraphBoard.vue";
+import GraphBuilder from "./GraphBuilder.vue";
 import { PRESETS } from "../graph/presets";
+import {
+  cloneLayout,
+  LAYOUT_STORAGE_KEY,
+  MAX_LAYOUTS,
+  readLayouts,
+  type GraphLayout,
+} from "../graph/layouts";
 import {
   createGraph,
   GRAPH_ALGORITHMS,
@@ -42,10 +52,17 @@ const editorSource = ref(""),
   editorShown = ref(false),
   editorHost = ref<HTMLElement>();
 const storageNotice = ref("");
+const layoutNotice = ref("");
+const layouts = ref(readLayouts());
+const builder = shallowRef<GraphLayout>();
+const graphHost = ref<HTMLElement>();
 const presetId = ref(PRESETS[0].id),
   algorithm = ref("dijkstra");
 const preset = computed(
-  () => PRESETS.find((item) => item.id === presetId.value)!,
+  () =>
+    layouts.value.find((item) => item.id === presetId.value) ??
+    PRESETS.find((item) => item.id === presetId.value) ??
+    PRESETS[0],
 );
 const weighted = ref(true),
   directed = ref(false);
@@ -215,6 +232,62 @@ function selectNode(node: number) {
 function swap() {
   [start.value, target.value] = [target.value, start.value];
 }
+function openBuilder(copy: boolean) {
+  pause();
+  cancel();
+  if (copy) {
+    const current = preset.value;
+    const own = layouts.value.some((item) => item.id === current.id);
+    builder.value = cloneLayout({
+      ...current,
+      weighted: weighted.value,
+      directed: directed.value,
+      start: start.value,
+      target: target.value,
+      id: own ? current.id : "",
+      name: own ? current.name : `${current.name} – Kopie`.slice(0, 48),
+      description: "Lokal erstellter Graph.",
+    });
+  } else {
+    builder.value = {
+      id: "",
+      name: "Mein Graph",
+      description: "Lokal erstellter Graph.",
+      weighted: true,
+      directed: false,
+      points: [],
+      edges: [],
+      start: -1,
+      target: -1,
+    };
+  }
+  graphHost.value?.scrollIntoView({ block: "start", behavior: "instant" });
+}
+function persistLayouts() {
+  layoutNotice.value = store(LAYOUT_STORAGE_KEY, layouts.value)
+    ? ""
+    : "Der Browser konnte die Änderung nicht dauerhaft speichern.";
+}
+function saveLayout(layout: GraphLayout) {
+  if (layout.id)
+    layouts.value = layouts.value.map((item) =>
+      item.id === layout.id ? layout : item,
+    );
+  else {
+    if (layouts.value.length >= MAX_LAYOUTS) return;
+    layout.id = `layout:${crypto.randomUUID()}`;
+    layouts.value = [...layouts.value, layout];
+  }
+  presetId.value = layout.id;
+  persistLayouts();
+  builder.value = undefined;
+}
+function removeLayout(id: string) {
+  if (presetId.value === id) presetId.value = PRESETS[0].id;
+  layouts.value = layouts.value.filter((item) => item.id !== id);
+  persistLayouts();
+  builder.value = undefined;
+}
 async function openEditor() {
   pause();
   editorSource.value =
@@ -254,6 +327,8 @@ function removeStrategy(id: string) {
 watch(preset, (item) => {
   start.value = item.start;
   target.value = item.target;
+  if (item.weighted !== undefined) weighted.value = item.weighted;
+  if (item.directed !== undefined) directed.value = item.directed;
 });
 watch([preset, weighted, directed, start, target, algorithm, stepLimit], clear);
 watch(algorithm, (value) => {
@@ -272,25 +347,46 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <section class="graph-sim" aria-label="Graph Sim">
+  <section ref="graphHost" class="graph-sim" aria-label="Graph Sim">
     <header class="graph-heading">
       <div>
-        <h1>Graph Sim</h1>
-        <p>Wegsuche auf fünf Graphen</p>
+        <h1>{{ builder ? "Graph Builder" : "Graph Sim" }}</h1>
+        <p>
+          {{
+            builder
+              ? "Knoten und Kanten zeichnen"
+              : `${PRESETS.length} Vorlagen und eigene Graphen`
+          }}
+        </p>
       </div>
-      <button class="secondary-button" @click="openEditor">
-        <CodeXml :size="17" /> Code-Editor
+      <div v-if="!builder" class="graph-heading-actions">
+        <button class="secondary-button" @click="openEditor">
+          <CodeXml :size="17" /> Code-Editor
+        </button>
+        <button class="primary-button" @click="openBuilder(false)">
+          <Network :size="17" /> Graph Builder
+        </button>
+      </div>
+      <button v-else class="secondary-button" @click="builder = undefined">
+        <ArrowLeft :size="15" /> Abbrechen
       </button>
     </header>
 
-    <div class="graph-layout">
+    <GraphBuilder
+      v-if="builder"
+      :initial="builder"
+      :can-save="!!builder.id || layouts.length < MAX_LAYOUTS"
+      @save="saveLayout"
+      @remove="removeLayout"
+    />
+    <div v-else class="graph-layout">
       <section class="panel graph-panel" aria-label="Graph und Wiedergabe">
         <div class="graph-readout">
           <div class="graph-readout-title">
             <h2>{{ preset.name }}</h2>
             <span
-              >{{ graph.nodes.length }} Knoten ·
-              {{ preset.edges.length }} Kanten</span
+              >{{ graph.nodes.length }} Knoten · {{ preset.edges.length }}
+              {{ preset.edges.length === 1 ? "Kante" : "Kanten" }}</span
             >
           </div>
           <div>
@@ -422,12 +518,25 @@ onBeforeUnmount(() => {
         <h2>Suche konfigurieren</h2>
         <label
           >Graph<select v-model="presetId">
-            <option v-for="item in PRESETS" :key="item.id" :value="item.id">
-              {{ item.name }}
-            </option>
+            <optgroup label="Vorlagen">
+              <option v-for="item in PRESETS" :key="item.id" :value="item.id">
+                {{ item.name }}
+              </option>
+            </optgroup>
+            <optgroup v-if="layouts.length" label="Eigene Graphen">
+              <option v-for="item in layouts" :key="item.id" :value="item.id">
+                {{ item.name }}
+              </option>
+            </optgroup>
           </select></label
         >
         <p class="graph-field-help">{{ preset.description }}</p>
+        <button
+          class="secondary-button graph-edit-button"
+          @click="openBuilder(true)"
+        >
+          <Network :size="14" /> Im Builder öffnen
+        </button>
         <div
           class="graph-toggles"
           role="group"
@@ -548,7 +657,15 @@ onBeforeUnmount(() => {
       </section>
     </div>
 
-    <div v-if="editorShown" ref="editorHost" class="graph-editor-host">
+    <p v-if="layoutNotice" class="graph-field-help" role="status">
+      {{ layoutNotice }}
+    </p>
+    <div
+      v-if="editorShown"
+      v-show="!builder"
+      ref="editorHost"
+      class="graph-editor-host"
+    >
       <StrategyEditor
         mode="graph"
         :source-id="editorSource"

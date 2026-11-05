@@ -78,7 +78,9 @@ export function graphHeuristic(graph: TeachingGraph, target: number) {
   const scale = Math.min(
     ...graph.arcs.map(({ from, to, length }) => length / distance(from, to)),
   );
-  return graph.nodes.map((node) => distance(node.id, target) * scale);
+  return graph.nodes.map((node) =>
+    Number.isFinite(scale) ? distance(node.id, target) * scale : 0,
+  );
 }
 
 export function searchTeachingGraph(

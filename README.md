@@ -88,7 +88,9 @@ Am Ende von Algo Sim vergleicht eine dauerhaft sichtbare Tabelle alle sechs eing
 
 ## Graph Sim: Wegsuche auf Lehrgraphen
 
-Fünf Vorlagen reichen von der **Abkürzung** mit fünf Knoten über **Verzweigter Baum**, **Leiternetz** und **Rastergraph** bis zum **Clusternetz** mit 32 Knoten. Gewichte und Richtungen sind unabhängig schaltbar. Ungerichtete Kanten gelten in beide Richtungen. Ohne Gewichte kostet jede Kante 1. Start und Ziel sind frei wählbar.
+Elf Vorlagen reichen von der **Abkürzung** mit fünf Knoten über Baum, Leiternetz, Zyklus, Stern, bipartite und vollständige Graphen bis zum **Clusternetz** mit 32 Knoten. Ein gerichteter Schichtgraph und getrennte Komponenten zeigen, wie Kantenrichtungen und Erreichbarkeit zusammenhängen. Gewichte und Richtungen sind unabhängig schaltbar. Ungerichtete Kanten gelten in beide Richtungen. Ohne Gewichte kostet jede Kante 1. Start und Ziel sind frei wählbar.
+
+Der **Graph Builder** legt eigene Graphen an oder öffnet eine Kopie der gewählten Vorlage. Die Zeichenfläche unterstützt Knotenplatzierung, Verschieben und das Verbinden zweier Knoten. Kosten und Richtung lassen sich nachträglich ändern. Pro Graph sind bis zu 32 Knoten, 96 Kanten und ganzzahlige Kosten von 1 bis 999 möglich. Pro Knotenpaar gibt es höchstens eine Verbindung. Start, Ziel und Kanteneinstellungen werden mit bis zu 30 eigenen Graphen im Browser gespeichert. Eigene Graphen nutzen dieselbe Wiedergabe und dieselben Algorithmen wie die Vorlagen.
 
 Die sechs Suchverfahren verwenden dieselben Implementierungen wie Algo Sim. Die Kosten der Kanten sind positiv. A* verwendet den geradlinigen Modellabstand, skaliert mit dem kleinsten Verhältnis aus Kantenkosten und geometrischer Kantenlänge. Die Wiedergabe markiert Knoten und Suchkanten, spielt den gefundenen Weg animiert ein und trennt Suchschritte, Wegkanten und Gesamtkosten. Ein Schritt entspricht einem `trace`-Aufruf. Nach 1 bis 500 protokollierten Schritten beendet ein weiterer Aufruf die Suche mit der bis dahin erzeugten Spur. Die Wiedergabe ist unabhängig vom Suchlimit und lässt sich pausieren, spulen und schrittweise steuern.
 
