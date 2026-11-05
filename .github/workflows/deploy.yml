@@ -38,3 +38,5 @@ jobs:
           SFTP_PASSWORD: ${{ secrets.SFTP_PASSWORD }}
           SFTP_PATH: ${{ secrets.SFTP_PATH }}
           SFTP_FINGERPRINT: ${{ secrets.SFTP_FINGERPRINT }}
+          SITE_ACCESS_REQUIRED: "true"
+          SITE_HTPASSWD: ${{ secrets.SITE_HTPASSWD }}

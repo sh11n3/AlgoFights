@@ -18,6 +18,16 @@ process.stdin.on("data", async (chunk) => {
   try {
     const config = JSON.parse(input.trim());
     input = "";
+    if (config.action === "site-access") {
+      if (
+        !/^[a-zA-Z0-9_-]+:\$2y\$\d{2}\$[./a-zA-Z0-9]{53}$/.test(
+          config.passwordEntry,
+        )
+      )
+        throw new Error("Ein bcrypt-htpasswd-Eintrag wird benötigt.");
+      await setSecrets({ SITE_HTPASSWD: config.passwordEntry });
+      return;
+    }
     if (config.action === "github-status") {
       const token = githubToken();
       const runs = await github(token, "/actions/runs?per_page=3");
@@ -96,35 +106,14 @@ process.stdin.on("data", async (chunk) => {
       const existing = await sftp.exists(target);
       if (!existing) await sftp.mkdir(target, true);
       else if (existing !== "d") throw new Error("Ziel ist kein Verzeichnis.");
-      const token = githubToken();
-      const me = await github(token, "", { user: true });
-      if (me.login !== "sh11n3")
-        throw new Error(
-          "Authentifizierter GitHub-Account stimmt nicht überein.",
-        );
-      const key = await github(token, "/actions/secrets/public-key");
-      await sodium.ready;
-      for (const [name, value] of Object.entries({
+      await setSecrets({
         SFTP_HOST: config.host,
         SFTP_PORT: String(config.port || 22),
         SFTP_USER: config.user,
         SFTP_PASSWORD: config.password,
         SFTP_PATH: target,
         SFTP_FINGERPRINT: fingerprint,
-      })) {
-        const encrypted_value = sodium.to_base64(
-          sodium.crypto_box_seal(
-            sodium.from_string(value),
-            sodium.from_base64(key.key, sodium.base64_variants.ORIGINAL),
-          ),
-          sodium.base64_variants.ORIGINAL,
-        );
-        await github(token, `/actions/secrets/${name}`, {
-          method: "PUT",
-          body: { encrypted_value, key_id: key.key_id },
-        });
-        console.log(`GitHub-Secret eingerichtet: ${name}`);
-      }
+      });
       console.log(
         "Deployment-Secrets im Account sh11n3 erfolgreich eingerichtet.",
       );
@@ -152,6 +141,27 @@ process.stdin.on("data", async (chunk) => {
     process.stdin.unref?.();
   }
 });
+async function setSecrets(values) {
+  const token = githubToken();
+  const me = await github(token, "", { user: true });
+  if (me.login !== "sh11n3")
+    throw new Error("Authentifizierter GitHub-Account stimmt nicht überein.");
+  const key = await github(token, "/actions/secrets/public-key");
+  await sodium.ready;
+  const variant = sodium.base64_variants.ORIGINAL;
+  const publicKey = sodium.from_base64(key.key, variant);
+  for (const [name, value] of Object.entries(values)) {
+    const encrypted_value = sodium.to_base64(
+      sodium.crypto_box_seal(sodium.from_string(value), publicKey),
+      variant,
+    );
+    await github(token, `/actions/secrets/${name}`, {
+      method: "PUT",
+      body: { encrypted_value, key_id: key.key_id },
+    });
+    console.log(`GitHub-Secret eingerichtet: ${name}`);
+  }
+}
 function githubToken() {
   const credential = execFileSync("git", ["credential", "fill"], {
     input: "protocol=https\nhost=github.com\n\n",
