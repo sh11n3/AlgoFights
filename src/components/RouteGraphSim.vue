@@ -48,6 +48,13 @@ import { readStrategies, store } from "../services/storage";
 import type { CustomStrategy } from "../core/types";
 import type { RouteAlgorithm } from "../routing/types";
 import "../graph/style.css";
+import ShareExample from "./ShareExample.vue";
+import { readExample, snapshotGraph, type Example } from "../sharing/examples";
+const props = defineProps<{
+  initial?: Extract<Example, { kind: "graph-route" }>;
+  compact?: boolean;
+}>();
+const linkedGraph = shallowRef<GraphLayout>();
 
 const StrategyEditor = defineAsyncComponent(
   () => import("./StrategyEditor.vue"),
@@ -67,6 +74,7 @@ const presetId = ref(PRESETS[0].id),
   algorithm = ref("dijkstra");
 const preset = computed(
   () =>
+    (presetId.value === "linked" ? linkedGraph.value : undefined) ??
     layouts.value.find((item) => item.id === presetId.value) ??
     PRESETS.find((item) => item.id === presetId.value) ??
     PRESETS[0],
@@ -364,6 +372,53 @@ watch(algorithm, (value) => {
 function onVisibilityChange() {
   if (document.hidden) pause();
 }
+let initialVersion = 0;
+watch(
+  () => props.initial,
+  async (value) => {
+    if (!value) return;
+    const e = readExample(value);
+    if (e.kind !== "graph-route") return;
+    const version = ++initialVersion;
+    linkedGraph.value = { ...e.graph, id: "linked" };
+    presetId.value = "linked";
+    algorithm.value = e.algorithm;
+    await nextTick();
+    if (version !== initialVersion) return;
+    start.value = e.graph.start;
+    target.value = e.graph.target;
+    weighted.value = e.graph.weighted;
+    directed.value = e.graph.directed;
+    limitInput.value = e.limit;
+    delay.value = e.delay;
+  },
+  { immediate: true },
+);
+function getExample(): Example | null {
+  if (custom.value || algorithm.value === "new") return null;
+  return readExample({
+    v: 1,
+    kind: "graph-route",
+    graph: snapshotGraph(
+      preset.value,
+      weighted.value,
+      directed.value,
+      start.value,
+      target.value,
+    ),
+    algorithm: algorithm.value,
+    limit: stepLimit.value,
+    delay: delay.value,
+  });
+}
+const shared = computed(() => {
+  try {
+    return getExample();
+  } catch {
+    return null;
+  }
+});
+defineExpose({ run, getExample });
 onMounted(() =>
   document.addEventListener("visibilitychange", onVisibilityChange),
 );
@@ -374,7 +429,12 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <section ref="graphHost" class="graph-sim" aria-label="Graph Sim">
+  <section
+    ref="graphHost"
+    class="graph-sim"
+    :class="{ 'simulation-compact': compact }"
+    aria-label="Graph Sim"
+  >
     <header class="graph-heading">
       <div>
         <h1>{{ builder ? "Graph Builder" : "Graph Sim" }}</h1>
@@ -387,6 +447,7 @@ onBeforeUnmount(() => {
         </p>
       </div>
       <div v-if="!builder" class="graph-heading-actions">
+        <ShareExample :example="shared" />
         <button class="secondary-button" @click="showNotation">
           <Sigma :size="16" /> Notation
         </button>
@@ -406,6 +467,8 @@ onBeforeUnmount(() => {
       v-if="builder"
       :initial="builder"
       :can-save="!!builder.id || layouts.length < MAX_LAYOUTS"
+      share-mode="route"
+      :share-algorithm="algorithm"
       @save="saveLayout"
       @remove="removeLayout"
     />
@@ -557,6 +620,9 @@ onBeforeUnmount(() => {
         <label
           >Graph<select v-model="presetId">
             <optgroup label="Vorlagen">
+              <option v-if="linkedGraph" value="linked">
+                {{ linkedGraph.name }} · aus Link
+              </option>
               <option v-for="item in PRESETS" :key="item.id" :value="item.id">
                 {{ item.name }}
               </option>

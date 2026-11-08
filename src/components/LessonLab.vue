@@ -32,8 +32,14 @@ import { store } from "../services/storage";
 import { runLesson } from "../services/lesson-runner";
 import type { LabInput, LabResult } from "../lab/types";
 import "../lab/style.css";
+import ShareExample from "./ShareExample.vue";
+import { readExample, snapshotGraph, type Example } from "../sharing/examples";
 const LessonEditor = defineAsyncComponent(() => import("./LessonEditor.vue"));
-const props = defineProps<{ kind: "graph" | "string" }>();
+const props = defineProps<{
+  kind: "graph" | "string";
+  initial?: Example;
+  compact?: boolean;
+}>();
 const isGraph = props.kind === "graph",
   lessons = isGraph ? GRAPH_LESSONS : STRING_LESSONS;
 const categories = [...new Set(lessons.map((l) => l.category))];
@@ -54,8 +60,10 @@ const lesson = computed(
 const layouts = ref(readLayouts()),
   presets = [...PRESETS, ...LAB_PRESETS],
   presetId = ref(PRESETS[0].id);
+const linkedGraph = shallowRef<GraphLayout>();
 const preset = computed(
   () =>
+    (presetId.value === "linked" ? linkedGraph.value : undefined) ??
     layouts.value.find((v) => v.id === presetId.value) ??
     presets.find((v) => v.id === presetId.value) ??
     PRESETS[0],
@@ -537,11 +545,82 @@ watch(preset, (value) => {
   v.value = Math.min(1, value.points.length - 1);
 });
 watch([input, selected], clear);
+let initialVersion = 0;
+watch(
+  () => props.initial,
+  async (value) => {
+    if (!value) return;
+    const example = readExample(value),
+      version = ++initialVersion;
+    if (example.kind !== "graph-lesson" && example.kind !== "string") return;
+    selected.value = example.algorithm;
+    category.value = lessons.find((l) => l.id === example.algorithm)!.category;
+    if (example.kind === "graph-lesson") {
+      linkedGraph.value = { ...example.graph, id: "linked" };
+      presetId.value = "linked";
+      xmlMode.value = false;
+    } else {
+      s.value = example.s;
+      t.value = example.t;
+    }
+    await nextTick();
+    if (version !== initialVersion) return;
+    limit.value = example.limit;
+    delay.value = example.delay;
+    if (example.kind === "graph-lesson") {
+      weighted.value = example.graph.weighted;
+      directed.value = example.graph.directed;
+      start.value = example.graph.start;
+      target.value = example.graph.target;
+      mode.value = example.mode;
+    }
+  },
+  { immediate: true },
+);
+function getExample(): Example | null {
+  if (activeOwn.value || selected.value === "new") return null;
+  return readExample(
+    isGraph
+      ? {
+          v: 1,
+          kind: "graph-lesson",
+          algorithm: selected.value,
+          graph: snapshotGraph(
+            effective.value,
+            xmlMode.value ? false : weighted.value,
+            xmlMode.value || directed.value,
+            start.value,
+            target.value,
+          ),
+          mode: input.value.mode,
+          limit: Number(limit.value),
+          delay: delay.value,
+        }
+      : {
+          v: 1,
+          kind: "string",
+          algorithm: selected.value,
+          s: s.value,
+          t: t.value,
+          limit: Number(limit.value),
+          delay: delay.value,
+        },
+  );
+}
+const shared = computed(() => {
+  try {
+    return getExample();
+  } catch {
+    return null;
+  }
+});
+defineExpose({ run: () => run(), getExample });
 onBeforeUnmount(cancel);
 </script>
 <template>
   <section
     class="graph-sim lesson-lab"
+    :class="{ 'simulation-compact': compact }"
     :aria-label="isGraph ? 'Graph-Lehrlabor' : 'String Sim'"
   >
     <header class="graph-heading">
@@ -556,6 +635,10 @@ onBeforeUnmount(cancel);
         </p>
       </div>
       <div class="graph-heading-actions">
+        <ShareExample
+          :example="shared"
+          reason="Eigener Programmcode wird nicht über Links geteilt."
+        />
         <button class="secondary-button" @click="openEditor()">
           <CodeXml :size="17" /> Code-Editor</button
         ><button v-if="isGraph" class="secondary-button" @click="build(false)">
@@ -569,6 +652,7 @@ onBeforeUnmount(cancel);
       ><GraphBuilder
         :initial="builder"
         :can-save="!!builder.id || layouts.length < MAX_LAYOUTS"
+        :share-algorithm="lesson.id"
         @save="saveLayout"
         @remove="removeLayout"
     /></template>
@@ -695,7 +779,11 @@ onBeforeUnmount(cancel);
           ><label
             >Graph<select v-model="presetId" @change="xmlMode = false">
               <option
-                v-for="item in [...presets, ...layouts]"
+                v-for="item in [
+                  ...presets,
+                  ...layouts,
+                  ...(linkedGraph ? [linkedGraph] : []),
+                ]"
                 :key="item.id"
                 :value="item.id"
               >

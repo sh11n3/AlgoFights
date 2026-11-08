@@ -20,8 +20,51 @@ import {
 } from "../graph/layouts";
 import type { Point } from "../graph/presets";
 import { createGraph } from "../graph/simulation";
+import { GRAPH_LESSONS } from "../lab/catalog";
+import { ROUTE_ALGORITHMS } from "../routing/types";
+import { snapshotGraph, type Example } from "../sharing/examples";
+import ShareExample from "./ShareExample.vue";
 
-const props = defineProps<{ initial: GraphLayout; canSave: boolean }>();
+const props = defineProps<{
+  initial: GraphLayout;
+  canSave: boolean;
+  shareMode?: "route";
+  shareAlgorithm?: string;
+}>();
+const shareChoices =
+  props.shareMode === "route"
+    ? Object.entries(ROUTE_ALGORITHMS).map(([id, item]) => ({
+        id,
+        name: item.name,
+      }))
+    : GRAPH_LESSONS;
+const shareAlgorithm = ref(
+  shareChoices.some((c) => c.id === props.shareAlgorithm)
+    ? props.shareAlgorithm!
+    : shareChoices[0].id,
+);
+const shared = computed<Example | null>(() => {
+  if (!draft.value.points.length || !draft.value.name.trim()) return null;
+  const graph = snapshotGraph(draft.value);
+  return props.shareMode === "route"
+    ? {
+        v: 1,
+        kind: "graph-route",
+        graph,
+        algorithm: shareAlgorithm.value,
+        limit: 100,
+        delay: 360,
+      }
+    : {
+        v: 1,
+        kind: "graph-lesson",
+        graph,
+        algorithm: shareAlgorithm.value,
+        mode: "source",
+        limit: 2000,
+        delay: 450,
+      };
+});
 const emit = defineEmits<{
   save: [layout: GraphLayout];
   remove: [id: string];
@@ -377,6 +420,21 @@ function save() {
         >
           <Save :size="16" /> Speichern und öffnen
         </button>
+        <label
+          >Verfahren für Beispiel-Link<select v-model="shareAlgorithm">
+            <option
+              v-for="item in shareChoices"
+              :key="item.id"
+              :value="item.id"
+            >
+              {{ item.name }}
+            </option>
+          </select></label
+        >
+        <ShareExample
+          :example="shared"
+          reason="Zuerst mindestens einen Knoten und einen Namen anlegen."
+        />
         <div v-if="draft.id && !confirming" class="builder-tools">
           <button class="secondary-button" @click="confirming = true">
             <Trash2 :size="16" /> Gespeicherten Graph löschen

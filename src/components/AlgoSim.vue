@@ -36,6 +36,13 @@ import CITIES from "../routing/cities.json";
 import { readStrategies, store } from "../services/storage";
 import { runRouteCode } from "../services/route-sandbox";
 import type { CustomStrategy } from "../core/types";
+import ShareExample from "./ShareExample.vue";
+import { readExample, type Example } from "../sharing/examples";
+const props = defineProps<{
+  initial?: Extract<Example, { kind: "city" }>;
+  compact?: boolean;
+}>();
+let initialPointsApplied = false;
 const StrategyEditor = defineAsyncComponent(
   () => import("./StrategyEditor.vue"),
 );
@@ -50,8 +57,8 @@ const editorHost = ref<HTMLElement>();
 let customRun: AbortController | null = null;
 const dataBase = import.meta.env.BASE_URL;
 
-const city = ref("mannheim"),
-  algorithm = ref<string>("dijkstra"),
+const city = ref(props.initial?.city ?? "mannheim"),
+  algorithm = ref<string>(props.initial?.algorithm ?? "dijkstra"),
   graph = shallowRef<RoadGraph | null>(null),
   result = shallowRef<RouteResult | null>(null);
 const start = ref(0),
@@ -63,7 +70,7 @@ const start = ref(0),
   hint = ref("");
 const progress = ref(0),
   playing = ref(false),
-  duration = ref(12),
+  duration = ref(props.initial?.duration ?? 12),
   canvas = ref<HTMLCanvasElement>();
 const comparison = ref<RouteComparisonRow[]>([]);
 let worker: Worker | null = null,
@@ -219,6 +226,22 @@ function clearRoute() {
   error.value = "";
 }
 function defaultPoints(g: RoadGraph) {
+  if (
+    !initialPointsApplied &&
+    props.initial?.city === city.value &&
+    props.initial.start &&
+    props.initial.target
+  ) {
+    const a = project(...props.initial.start, g.center),
+      b = project(...props.initial.target, g.center);
+    start.value = nearestNode(g, a[0], a[1]);
+    target.value = nearestNode(g, b[0], b[1]);
+    initialPointsApplied = true;
+    if (props.initial.snapshot && props.initial.snapshot !== g.osmTimestamp)
+      hint.value =
+        "Die Kartendaten wurden seit Erstellung des Links aktualisiert. Endpunkte wurden auf das aktuelle Straßennetz gesetzt.";
+    return;
+  }
   const corners = [cityInfo.value.start, cityInfo.value.target];
   const a = project(corners[0]![0]!, corners[0]![1]!, g.center),
     b = project(corners[1]![0]!, corners[1]![1]!, g.center);
@@ -247,7 +270,7 @@ function createWorker() {
         renderer = new CityMapRenderer(canvas.value, data.graph);
         renderer.setEndpoints(start.value, target.value);
       }
-      run();
+      if (!props.compact) run();
     }
     if (data.id !== undefined && data.id !== request) return;
     if (data.type === "result") {
@@ -487,6 +510,30 @@ function saveResult() {
 function visibility() {
   if (document.hidden) pause();
 }
+function getExample(): Example | null {
+  const g = graph.value;
+  if (!g || custom.value || algorithm.value === "new") return null;
+  const a = g.nodes[start.value],
+    b = g.nodes[target.value];
+  return readExample({
+    v: 1,
+    kind: "city",
+    city: city.value,
+    algorithm: algorithm.value,
+    start: [a.lat, a.lon],
+    target: [b.lat, b.lon],
+    snapshot: g.osmTimestamp,
+    duration: duration.value,
+  });
+}
+const shared = computed(() => {
+  try {
+    return getExample();
+  } catch {
+    return null;
+  }
+});
+defineExpose({ run, getExample });
 watch(city, load);
 watch(algorithm, () => {
   clearRoute();
@@ -512,13 +559,17 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <section class="algo-sim" aria-label="Algo Sim – Wegsuche auf echten Straßen">
+  <section
+    class="algo-sim"
+    :class="{ 'simulation-compact': compact }"
+    aria-label="Algo Sim – Wegsuche auf echten Straßen"
+  >
     <div class="sim-heading">
       <div>
         <h1>Algo Sim</h1>
         <p>Wegsuche auf realen Straßen von OpenStreetMap.</p>
       </div>
-      <span>{{ status }}</span>
+      <ShareExample :example="shared" /><span>{{ status }}</span>
     </div>
     <div v-if="error" class="error-banner" role="alert">
       {{ error }} <button v-if="!graph" @click="load">Karte neu laden</button
@@ -814,6 +865,7 @@ onBeforeUnmount(() => {
       </p>
     </details>
     <RouteComparison
+      v-if="!compact"
       :graph="graph"
       :start="start"
       :target="target"

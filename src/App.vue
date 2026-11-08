@@ -27,6 +27,9 @@ import {
   X,
 } from "lucide-vue-next";
 import ArenaCanvas from "./components/ArenaCanvas.vue";
+import ShareExample from "./components/ShareExample.vue";
+import { exampleFromHash, readExample, type Example } from "./sharing/examples";
+import "./lecture/style.css";
 import { createArena } from "./core/arena";
 import {
   COLORS,
@@ -61,6 +64,17 @@ const GraphSim = defineAsyncComponent(
 const StringSim = defineAsyncComponent(
   () => import("./components/LessonLab.vue"),
 );
+const LectureMode = defineAsyncComponent(
+  () => import("./components/LectureMode.vue"),
+);
+const ExamplePlayer = defineAsyncComponent(
+  () => import("./components/ExamplePlayer.vue"),
+);
+const ExampleCatalog = defineAsyncComponent(
+  () => import("./components/ExampleCatalog.vue"),
+);
+const sharedExample = ref<Example>(),
+  routeError = ref("");
 const tab = ref("arena"),
   editorSource = ref(""),
   help = ref(false),
@@ -105,6 +119,17 @@ const shapePreviews = Object.fromEntries(
   }),
 );
 const currentSettings = computed(() => replay.value?.settings ?? settings);
+const arenaExample = computed(() => {
+  try {
+    return readExample({
+      v: 1,
+      kind: "arena",
+      settings: currentSettings.value,
+    });
+  } catch {
+    return null;
+  }
+});
 const frame = computed(() =>
   Math.floor(playback.value * (replay.value?.steps ?? 0)),
 );
@@ -170,7 +195,39 @@ watch(help, (open) => {
 });
 watch(tab, (value) => {
   if (value !== "arena") pause();
+  if (!["lecture", "example", "examples"].includes(value)) {
+    history.replaceState(null, "", location.pathname + location.search);
+    if (value === "arena" && !replay.value && !preparing.value) void start();
+  }
 });
+function readHashRoute() {
+  routeError.value = "";
+  const hash = location.hash;
+  if (hash === "#vorlesung") {
+    tab.value = "lecture";
+    return;
+  }
+  if (hash === "#beispiele") {
+    tab.value = "examples";
+    return;
+  }
+  if (hash.startsWith("#beispiel")) {
+    tab.value = "example";
+    try {
+      sharedExample.value = exampleFromHash(hash);
+      if (!sharedExample.value)
+        throw Error("Dieser Beispiel-Link ist ungültig.");
+    } catch (cause) {
+      sharedExample.value = undefined;
+      routeError.value = cause instanceof Error ? cause.message : String(cause);
+    }
+    return;
+  }
+  tab.value = "arena";
+}
+function openSection(hash: string) {
+  location.hash = hash;
+}
 function notify(message: string) {
   toast.value = message;
   clearTimeout(toastTimer);
@@ -358,7 +415,12 @@ function exportResult() {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 function onKey(event: KeyboardEvent) {
-  if (event.code === "Space" && event.target === document.body && !help.value) {
+  if (
+    tab.value === "arena" &&
+    event.code === "Space" &&
+    event.target === document.body &&
+    !help.value
+  ) {
     event.preventDefault();
     togglePlay();
   }
@@ -370,13 +432,16 @@ function onVisibility() {
 onMounted(() => {
   addEventListener("keydown", onKey);
   document.addEventListener("visibilitychange", onVisibility);
-  start();
+  addEventListener("hashchange", readHashRoute);
+  readHashRoute();
+  if (tab.value === "arena") void start();
 });
 onBeforeUnmount(() => {
   document.body.style.overflow = "";
   pause();
   clearTimeout(toastTimer);
   removeEventListener("keydown", onKey);
+  removeEventListener("hashchange", readHashRoute);
   document.removeEventListener("visibilitychange", onVisibility);
 });
 </script>
@@ -414,6 +479,18 @@ onBeforeUnmount(() => {
           @click="tab = 'stringsim'"
         >
           String Sim
+        </button>
+        <button
+          :class="{ selected: tab === 'lecture' }"
+          @click="openSection('vorlesung')"
+        >
+          Vorlesung
+        </button>
+        <button
+          :class="{ selected: tab === 'examples' || tab === 'example' }"
+          @click="openSection('beispiele')"
+        >
+          Beispiele
         </button>
       </nav>
       <div class="header-right">
@@ -458,6 +535,7 @@ onBeforeUnmount(() => {
               <span class="arena-state">{{ statusLabel }}</span>
             </div>
             <div class="arena-toolbar-right">
+              <ShareExample :example="arenaExample" />
               <span
                 >{{ SHAPES[currentSettings.shape] }} <span class="dim">/</span>
                 {{ number.format(currentSettings.resolution) }}²</span
@@ -863,6 +941,26 @@ onBeforeUnmount(() => {
       <AlgoSim v-if="tab === 'algosim'" />
       <GraphSim v-if="tab === 'graphsim'" />
       <StringSim v-if="tab === 'stringsim'" kind="string" />
+      <LectureMode v-if="tab === 'lecture'" />
+      <ExamplePlayer
+        v-if="tab === 'example' && sharedExample"
+        :example="sharedExample"
+      />
+      <div
+        v-if="tab === 'example' && routeError"
+        class="error-banner"
+        role="alert"
+      >
+        {{ routeError }} <a href="#beispiele">Zur Beispielauswahl</a>
+      </div>
+      <section v-if="tab === 'examples'" class="examples-page panel">
+        <h1>Beispiele</h1>
+        <p>
+          Feste Links zu vorbereiteten Simulationen. Für eigene Eingaben den
+          „Beispiel-Link“ direkt im Simulator oder Graph Builder erstellen.
+        </p>
+        <ExampleCatalog />
+      </section>
     </main>
     <footer class="site-footer">
       <span

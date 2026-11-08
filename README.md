@@ -6,7 +6,7 @@ Browser-Labor für Algorithmusexperimente mit deterministischer Raster-Arena, We
 
 ## Entwicklung
 
-Node.js 22.12+ oder 24 und npm:
+Node.js 22.13+ oder 24+ und npm:
 
 ```sh
 npm ci
@@ -19,6 +19,14 @@ npm run preview # Vorschau des fertigen Builds
 ```
 
 `dist/` enthält ausschließlich statische Dateien. Relative Assetpfade erlauben ein Unterverzeichnis. Die Anwendung benötigt HTTP(S), JavaScript, Web Worker und sandboxed Iframes; kein Backend und kein serverseitiges Routing. Kartendaten liegen lokal im Build, ohne externe Karten- oder Routing-Anfragen während einer Vorführung.
+
+## Vorlesungsmodus und Beispiel-Links
+
+Unter **Vorlesung** lässt sich eine lokale PDF öffnen und mit interaktiven Simulationen auf einzelnen Folien ergänzen. Die Beispiele werden über der PDF angezeigt, lassen sich verschieben, skalieren und bei Bedarf ohne Neustart vergrößern. **Präsentieren** öffnet die Folien im Vollbild; Pfeiltasten wechseln die Seiten. Die PDF bleibt unverändert auf dem Rechner. Folienzuordnungen und Simulationseingaben werden lokal gespeichert und lassen sich als JSON-Projekt exportieren. Zum Wiederöffnen oder Weitergeben werden Projektdatei und zugehörige PDF benötigt.
+
+Der Reiter **Beispiele** enthält 39 feste Links für Arena, Straßenkarten, Graph- und String-Verfahren, beispielsweise [`#beispiel/graph-dijkstra`](https://algofights.de/#beispiel/graph-dijkstra) und [`#beispiel/string-kmp`](https://algofights.de/#beispiel/string-kmp). **Beispiel-Link** im Simulator speichert die aktuellen Eingaben im URL-Fragment. Im **Graph Builder** enthält dieser Link den vollständigen gebauten Graphen, Gewichte, Richtungen, Start/Ziel und das ausgewählte Verfahren. Er funktioniert ohne vorherigen Import auf einem anderen Rechner. **In Vorlesung verwenden** übernimmt das Beispiel in die Folienauswahl.
+
+Links und Vorlesungsprojekte verwenden ausschließlich eingebaute Verfahren und enthalten keinen ausführbaren Benutzercode, keine PDF und keine Zugangsdaten. Ein bestehender Website-Passwortschutz gilt weiterhin. Einzelheiten und Grenzen: [Vorlesungsmodus](docs/vorlesungsmodus.md).
 
 ## Arena und Spielregeln
 
@@ -117,6 +125,8 @@ src/core/        Arenaregeln, Strategien, Masken, Seed-Zufall und Replay-Typen
 src/routing/     OSM-Graph, Entfernungen und sechs echte Suchalgorithmen
 src/graph/       Lehrgraphen, Builder, Heuristik und SVG-Stile
 src/lab/         Lehrverfahren, Notation, Java-Referenzen und allgemeine Replays
+src/sharing/     Validierte Simulations-Snapshots und feste Beispiel-Links
+src/lecture/     Lokales Vorlesungsprojekt und PDF-/Simulationslayout
 src/workers/     Simulation, Wegsuche und Ausführungsbudgets
 src/render/      Arena- und Straßenkarten-Renderer
 src/content/     Ladbare Beispiele und unveränderte Originalquellen für die Editoren
@@ -124,6 +134,7 @@ src/services/    Worker-Lebenszyklus, Sandbox und lokale Speicherung
 src/components/ Arena, Code-Editor, Algo Sim und Graph Sim
 public/docs/    Editor-Handbuch mit Funktionsreferenz und Beispielen
 public/maps/    Reale OSM-Datenschnappschüsse und Lizenznachweis
+public/pdf-assets/ Beim Start/Build kopierte PDF.js-Schriften, CMaps und WASM
 ```
 
 Neue Arenaformen werden als Maskenfunktionen ergänzt. Routing-Algorithmen verwenden dieselben Graphen und dieselbe Kostenfunktion, damit Vergleiche fachlich nachvollziehbar bleiben. Die Arena verwendet `builtin-arena.js`; die sechs Routing-Verfahren liegen einzeln in `src/routing/algorithms/`. Worker und Editor nutzen dieselben Originaldateien. Die Editoransicht lädt genau das gewählte Verfahren als Rohtext, ohne Importzeile. `graph.createQueue()` stellt einen binären Min-Heap bereit; eigene Datenstrukturen sind ebenfalls möglich. TypeScript-Deklarationen typisieren die Schnittstellen.
