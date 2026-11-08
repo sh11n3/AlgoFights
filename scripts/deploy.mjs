@@ -80,40 +80,76 @@ try {
         ? await sftp.get(sftpPasswordPath)
         : null;
     const baseConfig = await readFile(join(directory, ".htaccess"), "utf8");
-    const authentication = `
+    const guardedFile = ".htpasswd-algofights";
+    const guardedPath = posix.join(webroot, guardedFile);
+    const guardedConfig = (path) => Buffer.from(`${baseConfig}
 AuthType Basic
 AuthName "AlgoFights"
 AuthBasicProvider file
-AuthUserFile "${serverPasswordPath}"
+AuthUserFile "${path}"
 Require valid-user
+
+<FilesMatch "^\\.+htpasswd-algofights(?:\\.next)?$">
+  AuthType None
+  Require all denied
+</FilesMatch>
 
 <IfModule mod_headers.c>
   Header always set Cache-Control "private, no-store"
 </IfModule>
-`;
-    await replaceFile(sftpPasswordPath, Buffer.from(`${passwordEntry}\n`));
-    try {
-      await replaceFile(accessConfig, Buffer.from(baseConfig + authentication));
-      const response = await fetch("https://algofights.de/", {
+`);
+    const passwordContent = Buffer.from(`${passwordEntry}\n`);
+    const probe = async (path = "/", credentials = false) => {
+      const headers = credentials
+        ? { Authorization: `Basic ${Buffer.from(`${passwordEntry.split(":")[0]}:invalid-access-probe`).toString("base64")}` }
+        : undefined;
+      const response = await fetch(new URL(path, "https://algofights.de/"), {
+        headers,
         redirect: "manual",
         cache: "no-store",
         signal: AbortSignal.timeout(15000),
       });
-      if (
-        response.status !== 401 ||
-        !response.headers.get("www-authenticate")?.startsWith("Basic ")
-      )
-        throw new Error(
-          `Passwortschutz antwortet unerwartet mit HTTP ${response.status}.`,
-        );
       await response.body?.cancel();
-      console.log("Passwortschutz aktiv (HTTP 401 ohne Anmeldung).");
+      return response;
+    };
+    const install = async (passwordPath) => {
+      await replaceFile(accessConfig, guardedConfig(passwordPath));
+      const response = await probe("/", true);
+      return response.status === 401 && /^Basic\b/i.test(response.headers.get("www-authenticate") ?? "");
+    };
+    const previousGuarded = (await sftp.exists(guardedPath)) === "-"
+      ? await sftp.get(guardedPath) : null;
+    let wroteGuarded = false;
+    try {
+      await replaceFile(sftpPasswordPath, passwordContent);
+      let active = await install(serverPasswordPath);
+      if (!active) {
+        for (const path of [guardedFile, `.${guardedFile}.next`]) {
+          if ((await probe(`/${path}`)).status !== 403)
+            throw new Error("Der Webserver blockiert die Passwortdatei nicht zuverlässig.");
+        }
+        wroteGuarded = true;
+        await replaceFile(guardedPath, passwordContent);
+        // Hetzner exposes the web files to Apache under its separate web directory.
+        const webDirectory = `/usr/www/users/${process.env.SFTP_USER}`;
+        for (const candidate of [webDirectory, `${webDirectory}${webroot}`, serverWebroot]) {
+          active = await install(posix.join(candidate, guardedFile));
+          if (active) break;
+        }
+      }
+      if (!active || (await probe()).status !== 401)
+        throw new Error("Der Passwortschutz konnte auf algofights.de nicht verifiziert werden.");
+      console.log("Passwortschutz aktiv (HTTP 401 ohne gültige Anmeldung).");
     } catch (error) {
-      if (previousConfig) await replaceFile(accessConfig, previousConfig);
-      else if (await sftp.exists(accessConfig)) await sftp.delete(accessConfig);
+      if (wroteGuarded) {
+        if (previousGuarded) await replaceFile(guardedPath, previousGuarded);
+        else if (await sftp.exists(guardedPath)) await sftp.delete(guardedPath);
+      }
       if (previousPassword)
         await replaceFile(sftpPasswordPath, previousPassword);
-      else await sftp.delete(sftpPasswordPath);
+      else if (await sftp.exists(sftpPasswordPath)) await sftp.delete(sftpPasswordPath);
+      if (previousConfig) await replaceFile(accessConfig, previousConfig);
+      else if (await sftp.exists(accessConfig)) await sftp.delete(accessConfig);
       throw error;
     }
   }
