@@ -680,6 +680,61 @@ GIB »kein direkter Weg« ZURÜCK</code></pre>
       von <code>dis</code> und <code>pre</code>.
     </p>
 
+    <h3 id="lehrlabor">Lehrlabor und String Sim: run(input, api)</h3>
+    <p>
+      Graph Sim hat zusätzlich einen Lehrmodus für vollständige Traversierungen,
+      kürzeste Pfade, Komponenten, Spannbäume und Baumbeziehungen. String Sim
+      zeigt Editierdistanz, gemeinsame Teilzeichenketten/-folgen und
+      Mustersuche. Die Code-Editoren öffnen genau das gewählte Verfahren.
+      JavaScript wird ausgeführt; Java und Pseudocode sind unabhängig
+      bearbeitbare Referenzen.
+    </p>
+    <pre><code>function run(input, api) {
+  const zahlen = [0, 0, 0];
+  api.emit("Initialisierung", {
+    arrays: [{ name: "zahlen", values: zahlen }]
+  });
+  zahlen[1] = 7;
+  api.emit("Eintrag geändert", {
+    arrays: [{ name: "zahlen", values: zahlen }]
+  });
+  return "Fertig";
+}</code></pre>
+    <p>
+      <code>input</code> ist unveränderlich. Graphen enthalten
+      <code>nodes</code> mit id/label/x/y und <code>edges</code> mit
+      from/to/weight sowie directed, start, target und mode. Eine ungerichtete
+      Kante steht nur einmal in edges. Zeichenketten stehen in
+      <code>input.s</code> und <code>input.t</code>; bei Mustersuche ist s das
+      Muster.
+    </p>
+    <p>
+      <code>api.emit(text, state)</code> speichert einen Schritt. state kann
+      <code>arrays: [{name, values, kind}]</code> enthalten; kind "nodes"
+      übersetzt Knoten-IDs in Buchstaben.
+      <code>matrices: [{name, values, active, sources}]</code> zeigt
+      Zeilenarrays mit aktiver Zelle [i,j] und erklärenden Quellzellen.
+      current/edge markieren Knoten und Kante; queue, stack und order zeigen
+      Folgen; colors verwendet 0/1/2, groups Komponentenrepräsentanten.
+      selected/rejected enthalten Kantenindizes.
+      <code>api.label(id)</code> liefert die Knotenbeschriftung.
+    </p>
+    <p>
+      <code>string: {i, j, offset, result, marks, edits}</code> zeigt Zeichen,
+      Musterversatz, Ergebnis, passende Positionspaare und Editieroperationen.
+      Jeder Schritt kopiert die Werte. run arbeitet synchron und gibt einen
+      Ergebnistext zurück.
+    </p>
+    <p>
+      „Eigenen Algorithmus bauen“ öffnet ein leeres Feld. Varianten mit Name,
+      eigener Erklärung und allen drei Codeansichten lassen sich lokal speichern
+      und als JSON importieren/exportieren. Pro Lauf: 5 Sekunden, maximal 5.000
+      Ereignisse und etwa 24 MiB Aufzeichnung. „Code prüfen“ erprobt höchstens
+      100 Schritte mit der aktuellen Eingabe; mathematische Korrektheit wird
+      dadurch nicht bewiesen. Abbruch oder Zeitlimit beendet den isolierten
+      Worker.
+    </p>
+
     <h2 id="speichern">6. Prüfen, speichern und ausführen</h2>
     <ul>
       <li>

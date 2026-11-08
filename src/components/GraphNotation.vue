@@ -38,6 +38,7 @@ const matrix = computed(() =>
     : model.value.matrix(representation.value),
 );
 const displayNumber = (n: number) => (Number.isFinite(n) ? n : "∞");
+const label = (id: number) => props.graph.nodes[id]?.label ?? String(id);
 const referenceDistance = computed(() => {
   const { graph, start, target } = props;
   const { path } = searchTeachingGraph(
@@ -66,7 +67,11 @@ const evaluatedPath = computed(() => {
   if (shortened) nodes.push("…", props.target);
   const weights = visibleEdges.map((edge) => props.graph.arcs[edge].length);
   const terms = weights.join(" + ") + (shortened ? " + …" : "");
-  return { sequence: `⟨${nodes.join(", ")}⟩`, terms, length: path.length };
+  return {
+    sequence: `⟨${nodes.map((v) => (typeof v === "number" ? label(v) : v)).join(", ")}⟩`,
+    terms,
+    length: path.length,
+  };
 });
 </script>
 
@@ -85,8 +90,8 @@ const evaluatedPath = computed(() => {
           {{ weighted ? "gewichtet" : "ungewichtet" }}
         </p>
         <p class="notation-endpoints">
-          <code>s = {{ start }}</code> ({{ graph.nodes[start].label }}) ·
-          <code>t = {{ target }}</code> ({{ graph.nodes[target].label }})
+          <code>s = {{ label(start) }}</code> ·
+          <code>t = {{ label(target) }}</code>
         </p>
 
         <details :open="model.edgeTerms.length <= 12">
@@ -94,7 +99,7 @@ const evaluatedPath = computed(() => {
             Knotenmenge, Kantenmenge<span v-if="weighted"> und Gewichte</span>
           </summary>
           <div class="notation-set" data-set="vertices">
-            <b>V =</b><span>{ {{ model.ids.join(", ") }} }</span>
+            <b>V =</b><span>{ {{ model.ids.map(label).join(", ") }} }</span>
           </div>
           <div class="notation-set" data-set="edges">
             <b>E =</b
@@ -161,7 +166,6 @@ const evaluatedPath = computed(() => {
               <thead>
                 <tr>
                   <th scope="col">v</th>
-                  <th scope="col">Im Graph</th>
                   <th scope="col">
                     {{ directed ? "Nachfolger" : "Nachbarn" }}
                   </th>
@@ -171,9 +175,8 @@ const evaluatedPath = computed(() => {
               </thead>
               <tbody>
                 <tr v-for="v in model.ids" :key="v">
-                  <th scope="row">{{ v }}</th>
-                  <td>{{ graph.nodes[v].label }}</td>
-                  <td>{{ model.adjacency[v].join(", ") || "∅" }}</td>
+                  <th scope="row">{{ label(v) }}</th>
+                  <td>{{ model.adjacency[v].map(label).join(", ") || "∅" }}</td>
                   <td v-if="directed">{{ graph.incoming[v].length }}</td>
                   <td>{{ graph.outgoing[v].length }}</td>
                 </tr>
@@ -190,12 +193,14 @@ const evaluatedPath = computed(() => {
               <thead>
                 <tr>
                   <th scope="col">u \ v</th>
-                  <th v-for="v in model.ids" :key="v" scope="col">{{ v }}</th>
+                  <th v-for="v in model.ids" :key="v" scope="col">
+                    {{ label(v) }}
+                  </th>
                 </tr>
               </thead>
               <tbody>
                 <tr v-for="(row, u) in matrix" :key="u">
-                  <th scope="row">{{ u }}</th>
+                  <th scope="row">{{ label(u) }}</th>
                   <td v-for="(value, v) in row" :key="v">
                     {{ displayNumber(value) }}
                   </td>
@@ -287,9 +292,7 @@ const evaluatedPath = computed(() => {
             >
           </p>
           <p v-if="current !== undefined && !result" class="notation-current">
-            Suchschritt {{ step }} · Knoten <code>{{ current }}</code> ({{
-              graph.nodes[current].label
-            }})
+            Suchschritt {{ step }} · Knoten <code>{{ label(current) }}</code>
           </p>
           <div
             v-if="result"
@@ -316,7 +319,7 @@ const evaluatedPath = computed(() => {
               }}
             </p>
             <div class="notation-math">
-              δ({{ start }}, {{ target }}) =
+              δ({{ label(start) }}, {{ label(target) }}) =
               {{ displayNumber(referenceDistance) }}
             </div>
             <p v-if="evaluatedPath">

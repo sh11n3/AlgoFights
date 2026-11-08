@@ -51,7 +51,7 @@ const hint = computed(() => {
       : `Tippe auf die neue Position für Knoten ${nameOf(selectedNode.value)}.`;
   return selectedNode.value === null
     ? "Wähle den ersten Knoten oder eine vorhandene Kante."
-    : `Wähle den zweiten Knoten für die Kante ab ${nameOf(selectedNode.value)}.`;
+    : `Wähle das Ziel ab ${nameOf(selectedNode.value)}.${draft.value.directed ? " Erneuter Klick auf denselben Knoten erzeugt eine Schlinge." : ""}`;
 });
 
 function setMode(value: typeof mode.value) {
@@ -61,7 +61,7 @@ function setMode(value: typeof mode.value) {
   message.value = "";
 }
 function cost(value: unknown) {
-  return Math.max(1, Math.min(999, Math.trunc(Number(value) || 1)));
+  return Math.max(-999, Math.min(999, Math.trunc(Number(value) || 0)));
 }
 function available([x, y]: Point, except: number | null = null) {
   return draft.value.points.every(
@@ -121,12 +121,16 @@ function selectNode(node: number) {
   const from = selectedNode.value;
   selectedEdge.value = null;
   message.value = "";
-  if (mode.value !== "edge" || from === null || from === node) {
+  if (
+    mode.value !== "edge" ||
+    from === null ||
+    (from === node && !draft.value.directed)
+  ) {
     selectedNode.value = mode.value === "edge" && from === node ? null : node;
     return;
   }
   const existing = draft.value.edges.findIndex((edge) =>
-    samePair(from, node, edge),
+    samePair(from, node, edge, draft.value.directed),
   );
   if (existing >= 0) {
     selectEdge(existing);
@@ -149,7 +153,32 @@ function updateCost() {
 function reverseEdge() {
   if (!selected.value) return;
   const edge = selected.value;
+  if (
+    draft.value.edges.some(
+      (other, id) =>
+        id !== selectedEdge.value &&
+        other[0] === edge[1] &&
+        other[1] === edge[0],
+    )
+  ) {
+    message.value = "Die umgekehrte Kante existiert bereits.";
+    return;
+  }
   [edge[0], edge[1]] = [edge[1], edge[0]];
+}
+function toggleDirected() {
+  if (
+    draft.value.directed &&
+    (draft.value.edges.some((e) => e[0] === e[1]) ||
+      draft.value.edges.some((e, i) =>
+        draft.value.edges.some((f, j) => j < i && samePair(e[0], e[1], f)),
+      ))
+  ) {
+    message.value =
+      "Vor dem Umschalten Schlingen und doppelte Gegenverbindungen entfernen. Deine Kanten bleiben erhalten.";
+    return;
+  }
+  draft.value.directed = !draft.value.directed;
 }
 function deleteEdge() {
   if (selectedEdge.value === null) return;
@@ -230,10 +259,7 @@ function save() {
           >
             Gewichtet
           </button>
-          <button
-            :aria-pressed="draft.directed"
-            @click="draft.directed = !draft.directed"
-          >
+          <button :aria-pressed="draft.directed" @click="toggleDirected">
             Gerichtet
           </button>
         </div>
@@ -315,7 +341,7 @@ function save() {
           }}<input
             v-model="edgeCost"
             type="number"
-            min="1"
+            min="-999"
             max="999"
             step="1"
             @change="updateCost"

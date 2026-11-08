@@ -2,6 +2,7 @@
 import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 import type { GraphPreset, Point } from "../graph/presets";
 import type { TeachingGraph } from "../graph/simulation";
+import type { LabState } from "../lab/types";
 
 const props = withDefaults(
   defineProps<{
@@ -18,6 +19,8 @@ const props = withDefaults(
     tempo?: number;
     step?: number;
     path?: Uint32Array;
+    lesson?: LabState;
+    marked?: number[];
     builder?: {
       selectedNode: number | null;
       selectedEdge: number | null;
@@ -77,7 +80,31 @@ onMounted(() => {
 onBeforeUnmount(() => observer?.disconnect());
 
 const radius = computed(() => (width.value < 520 ? 12 : 16));
-const padding = computed(() => radius.value + (width.value < 520 ? 11 : 16));
+const padding = computed(
+  () =>
+    radius.value +
+    (props.preset.edges.some((e) => e[0] === e[1])
+      ? 48
+      : width.value < 520
+        ? 11
+        : 16),
+);
+const componentColors = [
+  "#84c9dc",
+  "#dab1dc",
+  "#a6cba7",
+  "#dfc084",
+  "#a4b6e7",
+  "#dda898",
+  "#b4d5ca",
+  "#c3b5df",
+];
+const componentStyle = (id: number) => {
+  const group = props.lesson?.groups?.[id];
+  return group !== undefined && group >= 0
+    ? { "--component-color": componentColors[group % componentColors.length] }
+    : undefined;
+};
 const points = computed(() => {
   const inset = padding.value;
   const plotWidth = width.value - 2 * inset;
@@ -104,6 +131,20 @@ const segments = computed(() => {
   return props.preset.edges.map(([from, to, cost]) => {
     const a = points.value[from],
       b = points.value[to];
+    if (from === to) {
+      const r = radius.value,
+        x1 = a.x - r * 0.65,
+        y1 = a.y - r * 0.75,
+        x2 = a.x + r * 0.65,
+        y2 = y1;
+      return {
+        cost,
+        line: `M ${x1} ${y1} C ${a.x - 55} ${a.y - 70}, ${a.x + 55} ${a.y - 70}, ${x2} ${y2}`,
+        arrow: `M ${x2 + 1} ${y2 - 8} L ${x2} ${y2} L ${x2 + 8} ${y2 - 2}`,
+        x: a.x,
+        y: a.y - 48,
+      };
+    }
     const length = Math.hypot(b.x - a.x, b.y - a.y);
     const ux = (b.x - a.x) / length,
       uy = (b.y - a.y) / length;
@@ -114,6 +155,25 @@ const segments = computed(() => {
       y1 = a.y + uy * gap;
     const x2 = b.x - ux * gap,
       y2 = b.y - uy * gap;
+    if (
+      props.directed &&
+      props.preset.edges.some((e) => e[0] === to && e[1] === from)
+    ) {
+      const cx = (a.x + b.x) / 2 - uy * 35,
+        cy = (a.y + b.y) / 2 + ux * 35;
+      const tx = x2 - cx,
+        ty = y2 - cy,
+        tl = Math.hypot(tx, ty),
+        dx = tx / tl,
+        dy = ty / tl;
+      return {
+        cost,
+        line: `M ${x1} ${y1} Q ${cx} ${cy} ${x2} ${y2}`,
+        arrow: `M ${x2 - dx * head - dy * 3.5} ${y2 - dy * head + dx * 3.5} L ${x2} ${y2} L ${x2 - dx * head + dy * 3.5} ${y2 - dy * head - dx * 3.5}`,
+        x: (a.x + b.x) / 2 - uy * 22,
+        y: (a.y + b.y) / 2 + ux * 22,
+      };
+    }
     const labelAt = (t: number): Point => [
       a.x + (b.x - a.x) * t - uy * labelOffset,
       a.y + (b.y - a.y) * t + ux * labelOffset,
@@ -147,6 +207,8 @@ const routeSegments = computed(() => {
   return list;
 });
 const searchLine = computed(() => {
+  if (props.lesson?.edge !== undefined)
+    return segments.value[props.lesson.edge]?.line ?? "";
   if (props.source === undefined || props.current === undefined) return "";
   const a = points.value[props.source],
     b = points.value[props.current];
@@ -203,6 +265,9 @@ const route = computed(() => {
           visited: searchEdges.has(index),
           backward: searchEdges.get(index) === 1,
           'edge-selected': builder?.selectedEdge === index,
+          'lab-edge-selected': lesson?.selected?.includes(index),
+          'lab-edge-rejected': lesson?.rejected?.includes(index),
+          'lab-edge-current': lesson?.edge === index,
         }"
       >
         <path :d="segment.line" />
@@ -280,9 +345,14 @@ const route = computed(() => {
         visited: visited.has(point.id),
         backward: visited.get(point.id) === 1,
         'node-selected': builder?.selectedNode === point.id,
+        'lab-node-open': lesson?.colors?.[point.id] === 1,
+        'lab-node-closed': lesson?.colors?.[point.id] === 2,
+        'lab-node-group': (lesson?.groups?.[point.id] ?? -1) >= 0,
+        'lab-node-marked': marked?.includes(point.id),
       }"
       :aria-label="`Knoten ${point.label}${point.id === start ? ', Start' : ''}${point.id === target ? ', Ziel' : ''}`"
       :transform="`translate(${point.x} ${point.y})`"
+      :style="componentStyle(point.id)"
       @click.stop="emit('select', point.id)"
       @keydown.enter.prevent="emit('select', point.id)"
       @keydown.space.prevent="emit('select', point.id)"

@@ -1,8 +1,8 @@
 # AlgoFights
 
-Beide Code-Editoren öffnen die Originalimplementierungen der eingebauten Verfahren als editierbare Kopie. Eigene Varianten lassen sich benennen, prüfen, lokal speichern, importieren und exportieren. Algo Sim verwendet `findRoute(graph)` mit gerichteten Kanten, Längen, Luftlinien-Heuristik und aufgezeichneten Expansionen. Ein eigener Worker unter isolierter Herkunft beendet Endlosschleifen nach fünf Sekunden; ein getrennter Kern validiert die zurückgegebene Route. Die API und lauffähige Beispiele stehen im [Editor-Handbuch](public/docs/editor-handbuch.html#eigene-wegsuche).
+Die Code-Editoren öffnen die Originalimplementierungen der eingebauten Verfahren als editierbare Kopie. Eigene Varianten lassen sich benennen, prüfen, lokal speichern, importieren und exportieren. Algo Sim und die Start-Ziel-Ansicht von Graph Sim verwenden `findRoute(graph)`. Das Graph-Lehrlabor und String Sim verwenden `run(input, api)` mit einer Aufzeichnung beliebiger Arrays und Matrizen. Eigener Code läuft im Worker unter isolierter Herkunft mit fünf Sekunden Zeitlimit. Die APIs stehen im [Editor-Handbuch](public/docs/editor-handbuch.html), die Themen und Implementierungsdetails im [Lehrlabor-Handbuch](docs/lehrlabor.md).
 
-Browser-Labor für Algorithmusexperimente mit einer deterministischen Raster-Arena, Wegsuche auf echten Straßen und einem Simulator für Lehrgraphen. Vue 3, Composition API, TypeScript, Vite, Canvas 2D und Web Worker. Eigene Strategien werden im integrierten JavaScript-Editor entwickelt.
+Browser-Labor für Algorithmusexperimente mit deterministischer Raster-Arena, Wegsuche auf echten Straßen, Graphanalysen und Zeichenkettenverfahren. Vue 3, Composition API, TypeScript, Vite, Canvas 2D, SVG und Web Worker. Eigene Strategien werden im integrierten JavaScript-Editor entwickelt.
 
 ## Entwicklung
 
@@ -90,15 +90,23 @@ Am Ende von Algo Sim vergleicht eine dauerhaft sichtbare Tabelle alle sechs eing
 
 Elf Vorlagen reichen von der **Abkürzung** mit fünf Knoten über Baum, Leiternetz, Zyklus, Stern, bipartite und vollständige Graphen bis zum **Clusternetz** mit 32 Knoten. Ein gerichteter Schichtgraph und getrennte Komponenten zeigen, wie Kantenrichtungen und Erreichbarkeit zusammenhängen. Gewichte und Richtungen sind unabhängig schaltbar. Ungerichtete Kanten gelten in beide Richtungen. Ohne Gewichte kostet jede Kante 1. Start und Ziel sind frei wählbar.
 
-Der **Graph Builder** legt eigene Graphen an oder öffnet eine Kopie der gewählten Vorlage. Die Zeichenfläche unterstützt Knotenplatzierung, Verschieben und das Verbinden zweier Knoten. Kosten und Richtung lassen sich nachträglich ändern. Pro Graph sind bis zu 32 Knoten, 96 Kanten und ganzzahlige Kosten von 1 bis 999 möglich. Pro Knotenpaar gibt es höchstens eine Verbindung. Start, Ziel und Kanteneinstellungen werden mit bis zu 30 eigenen Graphen im Browser gespeichert. Eigene Graphen nutzen dieselbe Wiedergabe und dieselben Algorithmen wie die Vorlagen.
+Der **Graph Builder** legt eigene Graphen an oder öffnet eine Kopie der gewählten Vorlage. Die Zeichenfläche unterstützt Knotenplatzierung, Verschieben und das Verbinden zweier Knoten. Kosten und Richtung lassen sich nachträglich ändern. Pro Graph sind bis zu 32 Knoten, 96 Kanten und ganzzahlige Kosten von −999 bis 999 möglich. Pro gerichtetem Knotenpaar gibt es höchstens eine Kante; Gegenkanten und gerichtete Schlingen sind erlaubt. Start, Ziel und Kanteneinstellungen werden mit bis zu 30 eigenen Graphen im Browser gespeichert. Eigene Graphen nutzen dieselbe Wiedergabe und dieselben Algorithmen wie die Vorlagen.
 
 Unter **Notation** erscheinen Knoten- und Kantenmenge, Kantengewichte, Grade, Adjazenzliste und Matrizen für den aktuell eingestellten Graphen. Die Auswertung trennt Pfadlänge `k`, Pfadgewicht `w(p)` und den durch eine unabhängige Dijkstra-Suche berechneten Referenzwert `δ(s,t)`. Eingebaute Algorithmen zeigen ihre Auswahl- und Aktualisierungsregeln. Eigene Algorithmen können eine optionale mathematische Beschreibung im Editor hinterlegen. Sie wird lokal gespeichert und mit dem JSON-Codeexport übertragen.
 
-Direkt unter dem Graphen zeigt der **Suchverlauf als Arrays** den Initialzustand und nach jedem Suchschritt die aufgezeichneten Werte von `dis` und `pre`. Hervorgehobene Einträge haben sich gegenüber dem vorherigen Schritt geändert. Eigener Code kann seine Live-Arrays mit `graph.track(dis, previous)` registrieren. Die Vorgängerkanten-IDs werden für die Anzeige in Knoten-IDs übersetzt.
+Direkt unter dem Graphen zeigt der **Suchverlauf als Arrays** den Initialzustand und nach jedem Suchschritt die aufgezeichneten Werte von `dis` und `pre`. Hervorgehobene Einträge haben sich gegenüber dem vorherigen Schritt geändert. Eigener Code kann seine Live-Arrays mit `graph.track(dis, previous)` registrieren. Die Vorgängerkanten-IDs werden für die Anzeige in Knotenbeschriftungen übersetzt.
 
-Die sechs Suchverfahren verwenden dieselben Implementierungen wie Algo Sim. Die Kosten der Kanten sind positiv. A* verwendet den geradlinigen Modellabstand, skaliert mit dem kleinsten Verhältnis aus Kantenkosten und geometrischer Kantenlänge. Die Wiedergabe markiert Knoten und Suchkanten, spielt den gefundenen Weg animiert ein und trennt Suchschritte, Wegkanten und Gesamtkosten. Ein Schritt entspricht einem `trace`-Aufruf. Nach 1 bis 500 protokollierten Schritten beendet ein weiterer Aufruf die Suche mit der bis dahin erzeugten Spur. Die Wiedergabe ist unabhängig vom Suchlimit und lässt sich pausieren, spulen und schrittweise steuern.
+Die sechs Suchverfahren verwenden dieselben Implementierungen wie Algo Sim. Die Start-Ziel-Wegsuche setzt nichtnegative Kantenkosten voraus; negative Kosten werden im Lehrlabor mit Bellman–Ford und Floyd–Warshall untersucht. A* verwendet den geradlinigen Modellabstand, skaliert mit dem kleinsten Verhältnis aus Kantenkosten und geometrischer Kantenlänge. Die Wiedergabe markiert Knoten und Suchkanten, spielt den gefundenen Weg animiert ein und trennt Suchschritte, Wegkanten und Gesamtkosten. Ein Schritt entspricht einem `trace`-Aufruf. Nach 1 bis 500 protokollierten Schritten beendet ein weiterer Aufruf die Suche mit der bis dahin erzeugten Spur. Die Wiedergabe ist unabhängig vom Suchlimit und lässt sich pausieren, spulen und schrittweise steuern.
 
 Der Graph-Editor nutzt `findRoute(graph)` und speichert eigene Varianten getrennt von Algo Sim. Für eigene Algorithmen gelten das Schrittlimit für `graph.trace()` und zusätzlich fünf Sekunden Laufzeit im isolierten Worker. Details und Beispielcode stehen im [Editor-Handbuch](public/docs/editor-handbuch.html#graph-sim).
+
+## Graph-Lehrlabor und String Sim
+
+Das Graph-Lehrlabor enthält vollständige BFS/DFS mit Farben und Zeitstempeln, Kantenklassen und Zyklenerkennung, topologisches Sortieren, Pfadaufzählung, Dijkstra mit indiziertem Heap, Bellman–Ford, Floyd–Warshall, Union-Find, Komponenten-DFS, Kosaraju, Kruskal, Prim und Baum-/XML-Analysen mit XPath. Die zentralen Zustände lassen sich Schritt für Schritt verfolgen; negative Zyklen und getrennte Komponenten werden ausdrücklich behandelt.
+
+String Sim ergänzt naive und dynamische Levenshtein-Distanz, naive und dynamische längste gemeinsame Teilzeichenketten, längste gemeinsame Teilfolgen, naive Mustersuche und KMP samt Verschiebungstabelle. DP-Tabellen zeigen aktuelle Zellen, benötigte Nachbarn und Rekonstruktionswege.
+
+Für 21 Lehrverfahren stehen einzeln editierbare JavaScript-Funktionen sowie Java-17- und Pseudocode-Referenzen bereit. Eine gemeinsame Replay-Schnittstelle erlaubt eigenen Algorithmen beliebige Arrays und Matrizen. Der statische Build enthält alle Daten und Ressourcen. Details, API, Voraussetzungen und Begrenzungen: [Lehrlabor-Handbuch](docs/lehrlabor.md).
 
 ## Quellstruktur
 
@@ -107,7 +115,8 @@ Die UI verwendet Systemschriften und neutrale Bedienelemente. Farben kennzeichne
 ```text
 src/core/        Arenaregeln, Strategien, Masken, Seed-Zufall und Replay-Typen
 src/routing/     OSM-Graph, Entfernungen und sechs echte Suchalgorithmen
-src/graph/       Lehrgraphen, Schrittlimit, Heuristik und SVG-Stile
+src/graph/       Lehrgraphen, Builder, Heuristik und SVG-Stile
+src/lab/         Lehrverfahren, Notation, Java-Referenzen und allgemeine Replays
 src/workers/     Simulation, Wegsuche und Ausführungsbudgets
 src/render/      Arena- und Straßenkarten-Renderer
 src/content/     Ladbare Beispiele und unveränderte Originalquellen für die Editoren

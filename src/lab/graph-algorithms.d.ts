@@ -1,0 +1,13 @@
+export const bfs: Function,
+  dfs: Function,
+  topology: Function,
+  bellman: Function,
+  dijkstra: Function,
+  floyd: Function,
+  union: Function,
+  components: Function,
+  kosaraju: Function,
+  kruskal: Function,
+  prim: Function,
+  trees: Function,
+  paths: Function;

@@ -58,6 +58,9 @@ const AlgoSim = defineAsyncComponent(() => import("./components/AlgoSim.vue"));
 const GraphSim = defineAsyncComponent(
   () => import("./components/GraphSim.vue"),
 );
+const StringSim = defineAsyncComponent(
+  () => import("./components/LessonLab.vue"),
+);
 const tab = ref("arena"),
   editorSource = ref(""),
   help = ref(false),
@@ -405,6 +408,12 @@ onBeforeUnmount(() => {
           @click="tab = 'graphsim'"
         >
           Graph Sim
+        </button>
+        <button
+          :class="{ selected: tab === 'stringsim' }"
+          @click="tab = 'stringsim'"
+        >
+          String Sim
         </button>
       </nav>
       <div class="header-right">
@@ -853,6 +862,7 @@ onBeforeUnmount(() => {
       </div>
       <AlgoSim v-if="tab === 'algosim'" />
       <GraphSim v-if="tab === 'graphsim'" />
+      <StringSim v-if="tab === 'stringsim'" kind="string" />
     </main>
     <footer class="site-footer">
       <span
@@ -938,3 +948,14 @@ onBeforeUnmount(() => {
     </div>
   </div>
 </template>
+
+<style>
+.main-nav {
+  min-width: 0;
+  overflow-x: auto;
+}
+.main-nav button {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+</style>

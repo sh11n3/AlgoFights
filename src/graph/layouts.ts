@@ -5,6 +5,21 @@ export const MAX_EDGES = 96;
 export const MAX_LAYOUTS = 30;
 export const LAYOUT_STORAGE_KEY = "graph-layouts";
 
+// Projection only: the saved directed graph keeps its original opposite edges and loops.
+export function projectEdges(edges: Edge[], directed: boolean): Edge[] {
+  if (directed) return edges.map((e) => [...e] as Edge);
+  const pairs = new Map<string, Edge>();
+  for (const [a, b, cost] of edges) {
+    if (a === b) continue;
+    const from = Math.min(a, b),
+      to = Math.max(a, b),
+      key = `${from}:${to}`,
+      previous = pairs.get(key);
+    if (!previous || cost < previous[2]) pairs.set(key, [from, to, cost]);
+  }
+  return [...pairs.values()];
+}
+
 export interface GraphLayout extends GraphPreset {
   weighted: boolean;
   directed: boolean;
@@ -20,8 +35,13 @@ export function cloneLayout(preset: GraphPreset): GraphLayout {
   };
 }
 
-export function samePair(a: number, b: number, [from, to]: Edge) {
-  return (a === from && b === to) || (a === to && b === from);
+export function samePair(
+  a: number,
+  b: number,
+  [from, to]: Edge,
+  directed = false,
+) {
+  return (a === from && b === to) || (!directed && a === to && b === from);
 }
 
 export function removeGraphNode(layout: GraphLayout, node: number) {
@@ -88,14 +108,14 @@ function isLayout(value: unknown): value is GraphLayout {
   return edges.every((edge: Edge) => {
     if (!Array.isArray(edge) || edge.length !== 3) return false;
     const [from, to, cost] = edge;
-    const pair = from < to ? `${from}:${to}` : `${to}:${from}`;
+    const pair = directed || from < to ? `${from}:${to}` : `${to}:${from}`;
     if (
       !nodeId(from) ||
       !nodeId(to) ||
-      from === to ||
+      (!directed && from === to) ||
       seen.has(pair) ||
       !Number.isInteger(cost) ||
-      cost < 1 ||
+      cost < -999 ||
       cost > 999
     )
       return false;

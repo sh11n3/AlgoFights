@@ -102,8 +102,11 @@ export function graphNotation(
   weighted: boolean,
 ) {
   const ids = graph.nodes.map(({ id }) => id);
+  const label = (id: number) => graph.nodes[id].label;
   const edgeTerms = preset.edges.map(([u, v]) =>
-    directed ? `(${u}, ${v})` : `{${Math.min(u, v)}, ${Math.max(u, v)}}`,
+    directed
+      ? `(${label(u)}, ${label(v)})`
+      : `{${label(Math.min(u, v))}, ${label(Math.max(u, v))}}`,
   );
   const adjacency = graph.outgoing.map((outgoing) =>
     outgoing.map((edge) => graph.arcs[edge].to),
