@@ -959,7 +959,7 @@ onBeforeUnmount(() => {
   flex-shrink: 0;
   white-space: nowrap;
 }
-.main-nav button.selected:after {
+.topbar .main-nav button.selected:after {
   bottom: 0;
 }
 </style>
