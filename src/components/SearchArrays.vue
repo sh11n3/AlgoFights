@@ -23,6 +23,7 @@ const rows = computed(() => {
       name: name + suffix,
       values,
       before,
+      nodeValues: name === "pre",
     });
     return [
       ...(state.dis ? [row("dis", state.dis, last?.dis)] : []),
@@ -30,8 +31,11 @@ const rows = computed(() => {
     ];
   });
 });
-const shownOrder = computed(
-  () => props.order?.subarray(0, props.step).join(" | ") ?? "",
+const nodeLabel = (id: number) => props.nodes[id]?.label ?? String(id);
+const shownOrder = computed(() =>
+  props.order
+    ? Array.from(props.order.subarray(0, props.step), nodeLabel).join(" | ")
+    : "",
 );
 const format = (value: number) =>
   value === Infinity ? "∞" : value === -1 ? "−1" : String(value);
@@ -67,7 +71,7 @@ watch(
           step === 0 ? "Initialzustand" : `Schritt ${step} / ${order.length}`
         }}
         <template v-if="activeNode !== undefined"
-          >· Knoten {{ activeNode }} ({{ nodes[activeNode].label }})</template
+          >· Knoten {{ nodeLabel(activeNode) }}</template
         >
         <template v-if="dual && step > 0"
           >· {{ side === 1 ? "rückwärts" : "vorwärts" }}</template
@@ -94,7 +98,7 @@ watch(
                 :title="`Knoten ${node.label}`"
                 :class="{ 'array-active-node': node.id === activeNode }"
               >
-                {{ node.id }}
+                {{ node.label }}
               </th>
               <td aria-hidden="true"></td>
             </tr>
@@ -111,7 +115,9 @@ watch(
                   'array-changed': row.before && row.before[index] !== value,
                 }"
               >
-                {{ format(value) }}
+                {{
+                  row.nodeValues && value >= 0 ? nodeLabel(value) : format(value)
+                }}
               </td>
               <td class="array-bracket">]</td>
             </tr>
