@@ -953,9 +953,13 @@ onBeforeUnmount(() => {
 .main-nav {
   min-width: 0;
   overflow-x: auto;
+  overflow-y: hidden;
 }
 .main-nav button {
   flex-shrink: 0;
   white-space: nowrap;
+}
+.main-nav button.selected:after {
+  bottom: 0;
 }
 </style>
