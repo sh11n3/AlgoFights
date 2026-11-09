@@ -25,6 +25,10 @@ const props = defineProps<{
   input: LabInput;
   limit: number;
 }>();
+const heading = computed(
+  () =>
+    `${props.lesson.kind === "graph" ? "Graph Sim" : "String Sim"} · Code-Editor`,
+);
 const emit = defineEmits<{
   save: [value: OwnLesson];
   run: [value: OwnLesson];
@@ -181,9 +185,12 @@ async function upload(event: Event) {
 onBeforeUnmount(stop);
 </script>
 <template>
-  <section class="panel lesson-editor" aria-label="Lehrlabor Code-Editor">
+  <section class="panel lesson-editor" :aria-label="heading">
     <div class="lab-editor-heading">
-      <h2><CodeXml :size="18" /> Eigene Variante</h2>
+      <h2>
+        <CodeXml :size="18" />
+        {{ heading }}
+      </h2>
       <button
         class="icon-button"
         aria-label="Editor schließen"

@@ -43,6 +43,7 @@ const props = defineProps<{
 }>();
 const isGraph = props.mode === "graph";
 const isRoute = isGraph || props.mode === "route";
+const heading = `${isGraph ? "Graph Sim" : isRoute ? "Algo Sim" : "Arena"} · Code-Editor`;
 const originals = isRoute ? ROUTING_SOURCES : ARENA_SOURCES;
 const template = isRoute ? ROUTING_TEMPLATE : TEMPLATE;
 const prefix = isGraph ? "graph:" : isRoute ? "route:" : "custom:";
@@ -428,22 +429,14 @@ onBeforeUnmount(() => {
 });
 </script>
 <template>
-  <section class="code-lab panel" aria-label="Strategie-Editor">
+  <section class="code-lab panel" :aria-label="heading">
     <div class="section-heading">
       <div>
-        <h2>
-          {{
-            isGraph
-              ? "Graph Sim · Code-Editor"
-              : isRoute
-                ? "Algo Sim · Code-Editor"
-                : "Strategie-Editor"
-          }}
-        </h2>
+        <h2>{{ heading }}</h2>
       </div>
       <button
         class="icon-button"
-        aria-label="Code-Labor schließen"
+        aria-label="Code-Editor schließen"
         @click="emit('close')"
       >
         <X :size="20" />

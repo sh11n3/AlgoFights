@@ -76,12 +76,10 @@ const ExampleCatalog = defineAsyncComponent(
 const sharedExample = ref<Example>(),
   routeError = ref("");
 const tab = ref("arena"),
-  editorSource = ref(""),
   help = ref(false),
   toast = ref("");
 const navigation = [
   { id: "arena", hash: "arena", label: "Arena" },
-  { id: "code", hash: "code-labor", label: "Code-Labor" },
   { id: "algosim", hash: "algo-sim", label: "Algo Sim" },
   { id: "graphsim", hash: "graph-sim", label: "Graph Sim" },
   { id: "stringsim", hash: "string-sim", label: "String Sim" },
@@ -91,6 +89,12 @@ const navigation = [
 const mainContent = ref<HTMLElement>(),
   rulesDialog = ref<HTMLDialogElement>();
 const arenaSetupOpen = ref(false);
+const arenaEditorOpen = ref(false),
+  arenaEditorSource = ref("new"),
+  arenaEditorKey = ref(0),
+  arenaEditorHost = ref<HTMLElement>(),
+  arenaEditorButton = ref<HTMLButtonElement>();
+let arenaEditorTrigger: HTMLElement | undefined;
 const playing = ref(false),
   playback = ref(0),
   stats = ref<FrameStats>({
@@ -207,12 +211,22 @@ watch(help, (open) => {
   else if (!open) rulesDialog.value?.close();
 });
 watch(tab, (value) => {
-  if (value !== "arena") pause();
+  if (value !== "arena") {
+    pause();
+    arenaEditorOpen.value = false;
+    arenaEditorTrigger = undefined;
+  }
   if (value === "arena" && !replay.value && !preparing.value) void start();
 });
 function readHashRoute() {
   routeError.value = "";
   const hash = location.hash;
+  if (hash === "#code-labor") {
+    tab.value = "arena";
+    history.replaceState(history.state, "", "#arena");
+    openArenaEditor();
+    return;
+  }
   const section = navigation.find((item) => `#${item.hash}` === hash);
   if (section) {
     tab.value = section.id;
@@ -235,9 +249,6 @@ function readHashRoute() {
 function onHashChange() {
   readHashRoute();
   window.scrollTo(0, 0);
-}
-function openSection(hash: string) {
-  location.hash = hash;
 }
 function notify(message: string) {
   toast.value = message;
@@ -390,8 +401,37 @@ async function expand() {
     notify("Vollbild wird in diesem Browser nicht unterstützt.");
   }
 }
-function openLab() {
-  openSection("code-labor");
+function revealArenaEditor() {
+  const host = arenaEditorHost.value;
+  if (!host) return;
+  host.focus({ preventScroll: true });
+  host.scrollIntoView({
+    behavior: matchMedia("(prefers-reduced-motion: reduce)").matches
+      ? "instant"
+      : "smooth",
+    block: "start",
+  });
+}
+function openArenaEditor(source?: string, event?: Event) {
+  arenaEditorTrigger = event?.currentTarget as HTMLElement | undefined;
+  pause();
+  if (source) {
+    arenaEditorSource.value = source;
+    arenaEditorKey.value++;
+  } else if (arenaEditorOpen.value) {
+    revealArenaEditor();
+  }
+  arenaEditorOpen.value = true;
+}
+async function closeArenaEditor() {
+  arenaEditorOpen.value = false;
+  const trigger = arenaEditorTrigger;
+  arenaEditorTrigger = undefined;
+  await nextTick();
+  (trigger?.getClientRects().length
+    ? trigger
+    : arenaEditorButton.value
+  )?.focus();
 }
 function exportResult() {
   if (!replay.value) return;
@@ -507,7 +547,7 @@ onBeforeUnmount(() => {
 
     <main id="hauptinhalt" ref="mainContent" tabindex="-1">
       <div
-        v-if="savedWarning && (tab === 'arena' || tab === 'code')"
+        v-if="savedWarning && tab === 'arena'"
         class="notice-banner"
         role="status"
       >
@@ -533,6 +573,15 @@ onBeforeUnmount(() => {
               <span class="arena-state">{{ statusLabel }}</span>
             </div>
             <div class="arena-toolbar-right">
+              <button
+                ref="arenaEditorButton"
+                class="secondary-button arena-editor-button"
+                :aria-expanded="arenaEditorOpen"
+                aria-controls="arena-code-editor"
+                @click="openArenaEditor(undefined, $event)"
+              >
+                <CodeXml :size="15" /> Code-Editor
+              </button>
               <ShareExample :example="arenaExample" />
               <span
                 >{{ SHAPES[currentSettings.shape] }} <span class="dim">/</span>
@@ -767,12 +816,14 @@ onBeforeUnmount(() => {
                 ><button
                   class="remove-participant"
                   :aria-label="`Code von Teilnehmer ${id + 1} öffnen`"
-                  title="Originalcode öffnen / eigene Version"
+                  title="Strategie im Code-Editor öffnen"
                   @click="
-                    editorSource = p.strategy.startsWith('custom:')
-                      ? p.strategy
-                      : `builtin:${p.strategy}`;
-                    openLab();
+                    openArenaEditor(
+                      p.strategy.startsWith('custom:')
+                        ? p.strategy
+                        : `builtin:${p.strategy}`,
+                      $event,
+                    )
                   "
                 >
                   <CodeXml :size="14" /></button
@@ -792,7 +843,10 @@ onBeforeUnmount(() => {
               @click="addParticipant"
             >
               <Plus :size="14" /> Teilnehmer hinzufügen</button
-            ><button class="create-strategy" @click="openLab">
+            ><button
+              class="create-strategy"
+              @click="openArenaEditor('new', $event)"
+            >
               Eigene Strategie entwickeln
               <ArrowRight :size="14" />
             </button>
@@ -954,13 +1008,24 @@ onBeforeUnmount(() => {
         </div>
       </section>
 
-      <div v-if="tab === 'code'" class="lab-wrapper">
+      <div
+        v-if="tab === 'arena'"
+        v-show="arenaEditorOpen"
+        id="arena-code-editor"
+        ref="arenaEditorHost"
+        class="lab-wrapper"
+        tabindex="-1"
+      >
         <StrategyEditor
-          :source-id="editorSource"
+          v-if="arenaEditorOpen"
+          :key="arenaEditorKey"
+          mode="arena"
+          :source-id="arenaEditorSource"
           :strategies="strategies"
           @save="saveStrategy"
           @remove="removeStrategy"
-          @close="openSection('arena')"
+          @close="closeArenaEditor"
+          @ready="revealArenaEditor"
         />
       </div>
       <AlgoSim v-if="tab === 'algosim'" />

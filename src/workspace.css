@@ -45,8 +45,14 @@
 .lecture-mobile-setup {
   display: none;
 }
-.arena-toolbar-right .share-example > button {
+.arena-toolbar-right :is(.arena-editor-button, .share-example > button) {
   font-family: var(--sans);
+}
+.arena-editor-button {
+  white-space: nowrap;
+}
+:fullscreen .arena-editor-button {
+  display: none;
 }
 .rules-modal {
   width: min(570px, calc(100vw - 28px));
@@ -400,7 +406,7 @@
   }
   .topbar .main-nav {
     display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
   .main-nav a {
     padding-inline: 4px;
@@ -433,9 +439,11 @@
     min-height: 49px;
     gap: 6px;
     padding: 7px 12px;
+    flex-wrap: wrap;
   }
   .arena-toolbar-right {
     gap: 6px;
+    flex-wrap: wrap;
   }
   .arena-toolbar-right > span {
     display: none;
