@@ -107,6 +107,7 @@ onBeforeUnmount(() => {
         max="1000"
         :value="progress * 1000"
         :disabled="!replay"
+        :style="{ '--progress': `${progress * 100}%` }"
         aria-label="Arena-Fortschritt"
         @input="seek"
       /><span class="graph-frame">{{ Math.round(progress * 100) }} %</span>

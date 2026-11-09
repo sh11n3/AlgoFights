@@ -49,7 +49,6 @@ import { runRouteCode } from "../services/route-sandbox";
 import { readStrategies, store } from "../services/storage";
 import type { CustomStrategy } from "../core/types";
 import type { RouteAlgorithm } from "../routing/types";
-import "../graph/style.css";
 import ShareExample from "./ShareExample.vue";
 import { readExample, snapshotGraph, type Example } from "../sharing/examples";
 const props = defineProps<{

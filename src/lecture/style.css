@@ -205,16 +205,17 @@
   margin-bottom: 12px;
 }
 .arena-example-canvas {
-  height: 450px;
-  position: relative;
+  width: min(100%, 65svh, 620px);
+  margin-inline: auto;
 }
-.arena-example .arena-canvas {
+.arena-example-canvas > canvas.arena-canvas {
   display: block;
   width: 100%;
-  height: 100%;
+  height: auto;
+  aspect-ratio: 1;
 }
 .simulation-compact .arena-example-canvas {
-  height: 240px;
+  width: min(100%, 240px);
 }
 .arena-example-scores {
   display: flex;
@@ -596,9 +597,6 @@
     top: 15vh;
     width: auto;
     z-index: 1150;
-  }
-  .arena-example-canvas {
-    height: 300px;
   }
 }
 @media (prefers-reduced-motion: reduce) {

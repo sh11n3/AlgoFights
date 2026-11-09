@@ -893,15 +893,9 @@ onBeforeUnmount(cancel);
                 : `${Array.from(s).length} / ${Array.from(t).length} Zeichen`
             }}</span>
           </div>
-          <div>
-            <span>Schritt</span
-            ><strong
-              >{{ step }} <small>/ {{ maxStep }}</small></strong
-            >
-          </div>
-          <div>
+          <div v-if="result">
             <span>Berechnung</span
-            ><strong>{{ `${result?.milliseconds.toFixed(1)} ms` }}</strong>
+            ><strong>{{ result.milliseconds.toFixed(1) }} ms</strong>
           </div>
         </div>
         <GraphBoard

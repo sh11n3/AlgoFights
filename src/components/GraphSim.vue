@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { defineAsyncComponent, ref } from "vue";
-import "../graph/style.css";
 import "../lab/style.css";
 const RouteGraphSim = defineAsyncComponent(() => import("./RouteGraphSim.vue"));
 const LessonLab = defineAsyncComponent(() => import("./LessonLab.vue"));
