@@ -3,7 +3,9 @@ import {
   computed,
   defineAsyncComponent,
   nextTick,
+  onActivated,
   onBeforeUnmount,
+  onDeactivated,
   onMounted,
   ref,
   shallowRef,
@@ -55,6 +57,7 @@ const props = defineProps<{
   compact?: boolean;
 }>();
 const linkedGraph = shallowRef<GraphLayout>();
+const visualPanel = ref<HTMLElement>();
 
 const StrategyEditor = defineAsyncComponent(
   () => import("./StrategyEditor.vue"),
@@ -221,7 +224,7 @@ async function run() {
   try {
     if (network.arcs.some((arc) => arc.length < 0))
       throw new Error(
-        "Negative Gewichte bitte im Lehrlabor mit Bellman–Ford oder Floyd–Warshall untersuchen. Die Start–Ziel-Wegsuche ist auf nichtnegative Kosten beschränkt.",
+        "Negative Gewichte lassen sich unter Graph-Verfahren mit Bellman–Ford oder Floyd–Warshall untersuchen. Diese Start–Ziel-Suche braucht nichtnegative Kosten.",
       );
     const output = custom.value
       ? await runRouteCode(
@@ -244,6 +247,10 @@ async function run() {
     if (activeRun !== controller) return;
     result.value = graphResult(network, from, to, output);
     play();
+    if (!props.compact && matchMedia("(max-width: 900px)").matches) {
+      await nextTick();
+      visualPanel.value?.scrollIntoView({ block: "start" });
+    }
   } catch (cause) {
     if (activeRun === controller)
       error.value = `${custom.value?.name ?? "Suche"}: ${cause instanceof Error ? cause.message : String(cause)}`;
@@ -419,6 +426,16 @@ const shared = computed(() => {
   }
 });
 defineExpose({ run, getExample });
+onActivated(() => {
+  if (layoutNotice.value) return;
+  const stored = readLayouts();
+  if (JSON.stringify(stored) !== JSON.stringify(layouts.value))
+    layouts.value = stored;
+});
+onDeactivated(() => {
+  pause();
+  cancel();
+});
 onMounted(() =>
   document.addEventListener("visibilitychange", onVisibilityChange),
 );
@@ -437,12 +454,12 @@ onBeforeUnmount(() => {
   >
     <header class="graph-heading">
       <div>
-        <h1>{{ builder ? "Graph Builder" : "Graph Sim" }}</h1>
+        <h1>{{ builder ? "Graph Builder" : "Start–Ziel-Wegsuche" }}</h1>
         <p>
           {{
             builder
               ? "Knoten und Kanten zeichnen"
-              : `${PRESETS.length} Vorlagen und eigene Graphen`
+              : "Einen Weg zwischen zwei Knoten finden und vergleichen."
           }}
         </p>
       </div>
@@ -454,12 +471,12 @@ onBeforeUnmount(() => {
         <button class="secondary-button" @click="openEditor">
           <CodeXml :size="17" /> Code-Editor
         </button>
-        <button class="primary-button" @click="openBuilder(false)">
+        <button class="secondary-button" @click="openBuilder(false)">
           <Network :size="17" /> Graph Builder
         </button>
       </div>
       <button v-else class="secondary-button" @click="builder = undefined">
-        <ArrowLeft :size="15" /> Abbrechen
+        <ArrowLeft :size="15" /> Zurück zur Simulation
       </button>
     </header>
 
@@ -472,27 +489,167 @@ onBeforeUnmount(() => {
       @save="saveLayout"
       @remove="removeLayout"
     />
-    <div v-else class="graph-layout">
-      <section class="panel graph-panel" aria-label="Graph und Wiedergabe">
+    <div v-else class="graph-layout experiment-layout">
+      <aside
+        class="panel graph-settings experiment-settings"
+        aria-label="Suche konfigurieren"
+      >
+        <h2>Suche einstellen</h2>
+        <label
+          >Algorithmus<select v-model="algorithm">
+            <optgroup label="Eingebaute Algorithmen">
+              <option
+                v-for="(info, id) in GRAPH_ALGORITHMS"
+                :key="id"
+                :value="id"
+              >
+                {{ info.name }}
+              </option>
+            </optgroup>
+            <optgroup v-if="customStrategies.length" label="Eigene Algorithmen">
+              <option
+                v-for="item in customStrategies"
+                :key="item.id"
+                :value="item.id"
+              >
+                {{ item.name }}
+              </option>
+            </optgroup>
+            <option value="new">Eigenen Algorithmus bauen</option>
+          </select></label
+        >
+        <label
+          >Graph<select v-model="presetId">
+            <optgroup label="Vorlagen">
+              <option v-if="linkedGraph" value="linked">
+                {{ linkedGraph.name }} · aus Link
+              </option>
+              <option v-for="item in PRESETS" :key="item.id" :value="item.id">
+                {{ item.name }}
+              </option>
+            </optgroup>
+            <optgroup v-if="layouts.length" label="Eigene Graphen">
+              <option v-for="item in layouts" :key="item.id" :value="item.id">
+                {{ item.name }}
+              </option>
+            </optgroup>
+          </select></label
+        >
+        <div class="graph-endpoints">
+          <label
+            >Start<select v-model="start">
+              <option
+                v-for="node in graph.nodes"
+                :key="node.id"
+                :value="node.id"
+              >
+                {{ node.label }}
+              </option>
+            </select></label
+          >
+          <button
+            class="icon-button"
+            title="Start und Ziel tauschen"
+            aria-label="Start und Ziel tauschen"
+            @click="swap"
+          >
+            <ArrowLeftRight :size="17" />
+          </button>
+          <label
+            >Ziel<select v-model="target">
+              <option
+                v-for="node in graph.nodes"
+                :key="node.id"
+                :value="node.id"
+              >
+                {{ node.label }}
+              </option>
+            </select></label
+          >
+        </div>
+        <div class="experiment-actions">
+          <button v-if="busy" class="secondary-button" @click="cancel">
+            <LoaderCircle :size="17" class="spin" /> Suche abbrechen
+          </button>
+          <button
+            v-else
+            class="primary-button"
+            :disabled="algorithm === 'new'"
+            @click="run"
+          >
+            <Play :size="17" /> Suche starten
+          </button>
+        </div>
+        <details class="experiment-options">
+          <summary>Weitere Einstellungen</summary>
+          <p class="graph-field-help">{{ preset.description }}</p>
+          <button
+            class="secondary-button graph-edit-button"
+            @click="openBuilder(true)"
+          >
+            <Network :size="14" /> Graph bearbeiten
+          </button>
+          <div
+            class="graph-toggles"
+            role="group"
+            aria-label="Kanteneigenschaften"
+          >
+            <button :aria-pressed="weighted" @click="weighted = !weighted">
+              Gewichtet
+            </button>
+            <button :aria-pressed="directed" @click="directed = !directed">
+              Gerichtet
+            </button>
+          </div>
+          <div class="experiment-inputs">
+            <label
+              >Schrittlimit<input
+                v-model="limitInput"
+                type="number"
+                min="1"
+                max="500"
+                step="1"
+                @blur="limitInput = stepLimit"
+            /></label>
+            <label
+              >Tempo<select v-model="delay">
+                <option v-if="![720, 360, 160].includes(delay)" :value="delay">
+                  {{ delay }} ms / Schritt
+                </option>
+                <option :value="720">Langsam</option>
+                <option :value="360">Normal</option>
+                <option :value="160">Schnell</option>
+              </select></label
+            >
+          </div>
+          <p class="graph-field-help">
+            Das Limit zählt expandierte Knoten, einschließlich des Starts.
+          </p>
+          <p class="graph-field-help">{{ description }}</p>
+        </details>
+      </aside>
+      <section
+        ref="visualPanel"
+        class="panel graph-panel experiment-visual"
+        aria-label="Graph und Wiedergabe"
+      >
         <div class="graph-readout">
           <div class="graph-readout-title">
             <h2>{{ preset.name }}</h2>
             <span
-              >{{ graph.nodes.length }} Knoten · {{ preset.edges.length }}
-              {{ preset.edges.length === 1 ? "Kante" : "Kanten" }}</span
+              >{{ graph.nodes.length }} Knoten · {{ viewPreset.edges.length }}
+              {{ viewPreset.edges.length === 1 ? "Kante" : "Kanten" }}</span
+            >
+            <span
+              >{{ directed ? "Gerichtet" : "Ungerichtet"
+              }}{{ weighted ? " · gewichtet" : "" }}</span
             >
           </div>
-          <div>
-            <span>Suchschritte</span
-            ><strong class="search-value"
-              >{{ step }} <small v-if="result">/ {{ total }}</small></strong
-            >
-          </div>
-          <div>
+          <div v-if="shownPath">
             <span>Wegkanten</span
             ><strong>{{ shownPath?.length ?? "—" }}</strong>
           </div>
-          <div>
+          <div v-if="shownPath">
             <span>Kosten</span
             ><strong class="path-value">{{
               shownPath ? result?.distance : "—"
@@ -526,14 +683,25 @@ onBeforeUnmount(() => {
           >
           <span class="route-key">Gefundener Weg</span>
         </div>
-        <SearchArrays
-          :nodes="graph.nodes"
-          :frames="result?.arrayFrames"
-          :order="result?.traceNodes"
-          :step="step"
-          :side="result?.traceSides[step - 1]"
-          :breadth-first="algorithm === 'bfs'"
-        />
+        <div
+          class="graph-toggles graph-pick"
+          role="group"
+          aria-label="Klick im Graphen setzt"
+        >
+          <span>Knotenklick setzt:</span>
+          <button
+            :aria-pressed="selecting === 'start'"
+            @click="selecting = 'start'"
+          >
+            Start
+          </button>
+          <button
+            :aria-pressed="selecting === 'target'"
+            @click="selecting = 'target'"
+          >
+            Ziel
+          </button>
+        </div>
         <div class="graph-playback">
           <button
             class="icon-button"
@@ -585,6 +753,14 @@ onBeforeUnmount(() => {
           />
           <span class="graph-frame">{{ step }} / {{ total }}</span>
         </div>
+        <SearchArrays
+          :nodes="graph.nodes"
+          :frames="result?.arrayFrames"
+          :order="result?.traceNodes"
+          :step="step"
+          :side="result?.traceSides[step - 1]"
+          :breadth-first="algorithm === 'bfs'"
+        />
         <div class="graph-result">
           <strong role="status">{{ status }}</strong>
           <span v-if="error" role="alert">{{ error }}</span>
@@ -613,151 +789,6 @@ onBeforeUnmount(() => {
             im Graphen oder in den Einstellungen.</span
           >
         </div>
-      </section>
-
-      <section class="panel graph-settings" aria-label="Suche konfigurieren">
-        <h2>Suche konfigurieren</h2>
-        <label
-          >Graph<select v-model="presetId">
-            <optgroup label="Vorlagen">
-              <option v-if="linkedGraph" value="linked">
-                {{ linkedGraph.name }} · aus Link
-              </option>
-              <option v-for="item in PRESETS" :key="item.id" :value="item.id">
-                {{ item.name }}
-              </option>
-            </optgroup>
-            <optgroup v-if="layouts.length" label="Eigene Graphen">
-              <option v-for="item in layouts" :key="item.id" :value="item.id">
-                {{ item.name }}
-              </option>
-            </optgroup>
-          </select></label
-        >
-        <p class="graph-field-help">{{ preset.description }}</p>
-        <button
-          class="secondary-button graph-edit-button"
-          @click="openBuilder(true)"
-        >
-          <Network :size="14" /> Im Builder öffnen
-        </button>
-        <div
-          class="graph-toggles"
-          role="group"
-          aria-label="Kanteneigenschaften"
-        >
-          <button :aria-pressed="weighted" @click="weighted = !weighted">
-            Gewichtet
-          </button>
-          <button :aria-pressed="directed" @click="directed = !directed">
-            Gerichtet
-          </button>
-        </div>
-        <div class="graph-endpoints">
-          <label
-            >Start<select v-model="start">
-              <option
-                v-for="node in graph.nodes"
-                :key="node.id"
-                :value="node.id"
-              >
-                {{ node.label }}
-              </option>
-            </select></label
-          >
-          <button
-            class="icon-button"
-            title="Start und Ziel tauschen"
-            aria-label="Start und Ziel tauschen"
-            @click="swap"
-          >
-            <ArrowLeftRight :size="17" />
-          </button>
-          <label
-            >Ziel<select v-model="target">
-              <option
-                v-for="node in graph.nodes"
-                :key="node.id"
-                :value="node.id"
-              >
-                {{ node.label }}
-              </option>
-            </select></label
-          >
-        </div>
-        <div
-          class="graph-toggles graph-pick"
-          role="group"
-          aria-label="Klick im Graphen setzt"
-        >
-          <button
-            :aria-pressed="selecting === 'start'"
-            @click="selecting = 'start'"
-          >
-            Start setzen
-          </button>
-          <button
-            :aria-pressed="selecting === 'target'"
-            @click="selecting = 'target'"
-          >
-            Ziel setzen
-          </button>
-        </div>
-        <label
-          >Algorithmus<select v-model="algorithm">
-            <optgroup label="Eingebaute Algorithmen">
-              <option
-                v-for="(info, id) in GRAPH_ALGORITHMS"
-                :key="id"
-                :value="id"
-              >
-                {{ info.name }}
-              </option>
-            </optgroup>
-            <optgroup v-if="customStrategies.length" label="Eigene Algorithmen">
-              <option
-                v-for="item in customStrategies"
-                :key="item.id"
-                :value="item.id"
-              >
-                {{ item.name }}
-              </option>
-            </optgroup>
-            <option value="new">Eigenen Algorithmus bauen</option>
-          </select></label
-        >
-        <p class="graph-field-help">{{ description }}</p>
-        <label
-          >Schrittlimit<input
-            v-model="limitInput"
-            type="number"
-            min="1"
-            max="500"
-            step="1"
-            @blur="limitInput = stepLimit"
-        /></label>
-        <p class="graph-field-help">
-          Ein Schritt zählt, wenn die Suche einen Knoten expandiert. Der Start
-          zählt mit.
-        </p>
-        <label
-          >Tempo<select v-model="delay">
-            <option :value="720">Langsam</option>
-            <option :value="360">Normal</option>
-            <option :value="160">Schnell</option>
-          </select></label
-        >
-        <button v-if="busy" class="secondary-button graph-run" @click="cancel">
-          <LoaderCircle :size="17" class="spin" /> Suche abbrechen
-        </button>
-        <button
-          v-else
-          class="primary-button graph-run"
-          :disabled="algorithm === 'new'"
-          @click="run"
-        >
-          <Play :size="17" /> Suche starten
-        </button>
       </section>
     </div>
 

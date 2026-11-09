@@ -8,13 +8,16 @@ const mode = ref("lessons");
 </script>
 <template>
   <div>
-    <nav class="lab-mode-nav" aria-label="Graph-Sim-Modus">
+    <nav class="lab-mode-nav" aria-label="Graph Sim: Ansicht auswählen">
       <button :aria-pressed="mode === 'lessons'" @click="mode = 'lessons'">
-        Lehrlabor</button
+        Graph-Verfahren</button
       ><button :aria-pressed="mode === 'routes'" @click="mode = 'routes'">
         Start–Ziel-Wegsuche
       </button>
     </nav>
-    <LessonLab v-if="mode === 'lessons'" kind="graph" /><RouteGraphSim v-else />
+    <KeepAlive>
+      <LessonLab v-if="mode === 'lessons'" kind="graph" />
+      <RouteGraphSim v-else />
+    </KeepAlive>
   </div>
 </template>

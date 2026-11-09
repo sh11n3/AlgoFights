@@ -265,6 +265,10 @@ function save() {
             {{ draft.edges.length }} / {{ MAX_EDGES }} Kanten</span
           >
         </div>
+        <div class="graph-result builder-instruction">
+          <span>{{ hint }}</span>
+          <strong v-if="message" role="status">{{ message }}</strong>
+        </div>
         <GraphBoard
           :preset="draft"
           :graph="graph"
@@ -277,10 +281,6 @@ function save() {
           @place="place"
           @select-edge="selectEdge"
         />
-        <div class="graph-result builder-instruction">
-          <span>{{ hint }}</span
-          ><strong v-if="message" role="status">{{ message }}</strong>
-        </div>
       </section>
 
       <section
@@ -291,6 +291,17 @@ function save() {
         <label
           >Name des Graphen<input v-model="draft.name" maxlength="48"
         /></label>
+        <button
+          class="primary-button graph-run"
+          :disabled="!canSave || !draft.points.length || !draft.name.trim()"
+          @click="save"
+        >
+          <Save :size="16" /> Speichern und öffnen
+        </button>
+        <p v-if="!canSave" class="graph-field-help">
+          Maximal {{ MAX_LAYOUTS }} gespeicherte Graphen. Du kannst den Entwurf
+          weiterhin als Beispiel teilen.
+        </p>
         <div
           class="graph-toggles"
           role="group"
@@ -406,35 +417,23 @@ function save() {
             <Trash2 :size="16" />
           </button>
         </div>
-        <p v-if="!canSave" class="graph-field-help">
-          Maximal {{ MAX_LAYOUTS }} gespeicherte Graphen. Öffne einen eigenen
-          Graphen, um ihn zu bearbeiten oder zu löschen.
-        </p>
-        <p v-else-if="!draft.points.length" class="graph-field-help">
-          Setze mindestens einen Knoten, um zu speichern.
-        </p>
-        <button
-          class="primary-button graph-run"
-          :disabled="!canSave || !draft.points.length || !draft.name.trim()"
-          @click="save"
-        >
-          <Save :size="16" /> Speichern und öffnen
-        </button>
-        <label
-          >Verfahren für Beispiel-Link<select v-model="shareAlgorithm">
-            <option
-              v-for="item in shareChoices"
-              :key="item.id"
-              :value="item.id"
-            >
-              {{ item.name }}
-            </option>
-          </select></label
-        >
-        <ShareExample
-          :example="shared"
-          reason="Zuerst mindestens einen Knoten und einen Namen anlegen."
-        />
+        <div class="builder-share">
+          <label
+            >Verfahren für Beispiel-Link<select v-model="shareAlgorithm">
+              <option
+                v-for="item in shareChoices"
+                :key="item.id"
+                :value="item.id"
+              >
+                {{ item.name }}
+              </option>
+            </select></label
+          >
+          <ShareExample
+            :example="shared"
+            reason="Zuerst mindestens einen Knoten und einen Namen anlegen."
+          />
+        </div>
         <div v-if="draft.id && !confirming" class="builder-tools">
           <button class="secondary-button" @click="confirming = true">
             <Trash2 :size="16" /> Gespeicherten Graph löschen

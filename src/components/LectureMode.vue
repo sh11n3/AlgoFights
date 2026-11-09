@@ -64,6 +64,7 @@ const presenting = ref(false),
   selected = ref(""),
   showCatalog = ref(false),
   linkInput = ref("");
+const setupOpen = ref(false);
 const chosen = shallowRef<Example | undefined>(lectureSelection.value);
 const password = ref(""),
   passwordNeeded = ref(false);
@@ -171,6 +172,7 @@ function addWidget() {
   };
   project.value.slides[String(page.value)] = [...widgets.value, widget];
   selected.value = widget.id;
+  setupOpen.value = false;
   notice.value =
     "Simulation eingefügt. Über die Kopfzeile verschieben, an der Ecke die Größe ändern.";
 }
@@ -489,7 +491,11 @@ onBeforeUnmount(() => {
         </p>
       </div>
       <div class="lecture-toolbar">
-        <button class="secondary-button" @click="pdfInput?.click()">
+        <button
+          v-if="!presenting"
+          :class="pdf ? 'secondary-button' : 'primary-button'"
+          @click="pdfInput?.click()"
+        >
           <Upload :size="15" /> PDF öffnen</button
         ><template v-if="!presenting"
           ><button class="secondary-button" @click="projectInput?.click()">
@@ -498,8 +504,8 @@ onBeforeUnmount(() => {
             <Download :size="15" /> Projekt exportieren
           </button></template
         ><button
+          v-if="pdf && matched"
           class="primary-button"
-          :disabled="!pdf || !matched"
           @click="togglePresentation"
         >
           <Presentation :size="16" />
@@ -536,8 +542,23 @@ onBeforeUnmount(() => {
     <p v-if="notice && !presenting" class="lecture-notice" role="status">
       {{ notice }}
     </p>
-    <div class="lecture-layout">
-      <aside v-if="!presenting" class="panel lecture-sidebar">
+    <div class="lecture-layout" :class="{ 'lecture-no-pdf': !pdf }">
+      <button
+        v-if="pdf && !presenting"
+        class="secondary-button lecture-mobile-setup"
+        :aria-expanded="setupOpen"
+        aria-controls="vorlesung-einstellungen"
+        @click="setupOpen = !setupOpen"
+      >
+        {{ setupOpen ? "Folien-Einstellungen schließen" : "Folie bearbeiten" }}
+      </button>
+      <aside
+        v-if="pdf && !presenting"
+        id="vorlesung-einstellungen"
+        class="panel lecture-sidebar"
+        :class="{ 'setup-open': setupOpen }"
+        aria-label="Folie bearbeiten"
+      >
         <label
           >Vorlesungstitel<input v-model="project.title" maxlength="80"
         /></label>
@@ -556,83 +577,98 @@ onBeforeUnmount(() => {
         >
           Neue Vorlesung mit dieser PDF beginnen
         </button>
-        <button
-          class="secondary-button lecture-pick"
-          @click="showCatalog = !showCatalog"
-        >
-          {{
-            showCatalog
-              ? "Beispielauswahl schließen"
-              : "Vorhandenes Beispiel auswählen"
-          }}
-        </button>
-        <ExampleCatalog v-if="showCatalog" selectable @select="chooseExample" />
-        <label
-          >Eigenen Beispiel-Link einsetzen<input
-            v-model="linkInput"
-            placeholder="https://algofights.de/#beispiel=…"
-            @keydown.enter.prevent="fromLink" /></label
-        ><button class="secondary-button" @click="fromLink">
-          Beispiel aus Link laden
-        </button>
-        <p v-if="chosen" class="lecture-chosen">
-          Gewählt: <strong>{{ exampleTitle(chosen) }}</strong>
-        </p>
-        <button
-          class="primary-button lecture-add"
-          :disabled="!chosen || !matched || loading"
-          @click="addWidget"
-        >
-          <Plus :size="15" /> Auf Folie {{ page }} einsetzen
-        </button>
-        <template v-if="active"
-          ><div class="lecture-widget-properties">
-            <h2>Simulationsbereich</h2>
+        <template v-if="matched">
+          <h2>Simulation auf Folie {{ page }}</h2>
+          <button
+            class="secondary-button lecture-pick"
+            :aria-expanded="showCatalog"
+            @click="showCatalog = !showCatalog"
+          >
+            {{
+              showCatalog
+                ? "Beispielauswahl schließen"
+                : "Vorhandenes Beispiel auswählen"
+            }}
+          </button>
+          <ExampleCatalog
+            v-if="showCatalog"
+            selectable
+            @select="chooseExample"
+          />
+          <details class="lecture-link-entry">
+            <summary>Beispiel-Link einfügen</summary>
             <label
-              >Beschriftung<input v-model="active.title" maxlength="100"
-            /></label>
-            <div class="lecture-rectangle">
+              >Beispiel-Link<input
+                v-model="linkInput"
+                placeholder="https://algofights.de/#beispiel=…"
+                @keydown.enter.prevent="fromLink" /></label
+            ><button
+              class="secondary-button"
+              :disabled="!linkInput.trim()"
+              @click="fromLink"
+            >
+              Beispiel aus Link laden
+            </button>
+          </details>
+          <p v-if="chosen" class="lecture-chosen">
+            Gewählt: <strong>{{ exampleTitle(chosen) }}</strong>
+          </p>
+          <button
+            class="primary-button lecture-add"
+            :disabled="!chosen || !matched || loading"
+            @click="addWidget"
+          >
+            <Plus :size="15" /> Auf Folie {{ page }} einsetzen
+          </button>
+          <template v-if="active"
+            ><div class="lecture-widget-properties">
+              <h2>Simulationsbereich</h2>
               <label
-                v-for="field in ['x', 'y', 'width', 'height'] as const"
-                :key="field"
-                >{{
-                  { x: "Links", y: "Oben", width: "Breite", height: "Höhe" }[
-                    field
-                  ]
-                }}
-                (%)<input
-                  type="number"
-                  min="0"
-                  max="100"
-                  step="1"
-                  :value="Math.round(active.rect[field] * 100)"
-                  @change="updateRect(field, $event)"
+                >Beschriftung<input v-model="active.title" maxlength="100"
               /></label>
-            </div>
-            <ShareExample :example="active.example" /></div
-        ></template>
-        <details class="lecture-help">
-          <summary>Bedienung</summary>
-          <p>
-            Auf der Folie den Bereich über seine Kopfzeile verschieben oder an
-            der rechten unteren Ecke vergrößern. „Einstellungen“ öffnet die
-            normale Bedienung des Simulators. „Übernehmen“ speichert dessen
-            aktuelle Eingaben für diese Folie.
-          </p>
-          <p>
-            Im Präsentationsmodus: Pfeiltasten oder Bild auf/ab wechseln Folien.
-            Innerhalb einer Simulation bleiben deren Tasten aktiv. Escape
-            verlässt die Präsentation.
-          </p>
-          <p>
-            Die originale PDF bleibt unverändert. Zum Weitergeben PDF und
-            exportierte Projektdatei zusammen bereitstellen. Keine Zugangsdaten
-            in Links eintragen.
-          </p>
-        </details>
+              <div class="lecture-rectangle">
+                <label
+                  v-for="field in ['x', 'y', 'width', 'height'] as const"
+                  :key="field"
+                  >{{
+                    { x: "Links", y: "Oben", width: "Breite", height: "Höhe" }[
+                      field
+                    ]
+                  }}
+                  (%)<input
+                    type="number"
+                    min="0"
+                    max="100"
+                    step="1"
+                    :value="Math.round(active.rect[field] * 100)"
+                    @change="updateRect(field, $event)"
+                /></label>
+              </div>
+              <ShareExample :example="active.example" /></div
+          ></template>
+          <details class="lecture-help">
+            <summary>Bedienung</summary>
+            <p>
+              Auf der Folie den Bereich über seine Kopfzeile verschieben oder an
+              der rechten unteren Ecke vergrößern. „Einstellungen“ öffnet die
+              normale Bedienung des Simulators. „Übernehmen“ speichert dessen
+              aktuelle Eingaben für diese Folie.
+            </p>
+            <p>
+              Im Präsentationsmodus: Pfeiltasten oder Bild auf/ab wechseln
+              Folien. Innerhalb einer Simulation bleiben deren Tasten aktiv.
+              Escape verlässt die Präsentation.
+            </p>
+            <p>
+              Die originale PDF bleibt unverändert. Zum Weitergeben PDF und
+              exportierte Projektdatei zusammen bereitstellen. Keine
+              Zugangsdaten in Links eintragen.
+            </p>
+          </details>
+        </template>
       </aside>
       <div class="lecture-workspace">
-        <div class="lecture-page-controls">
+        <div v-if="pdf" class="lecture-page-controls">
           <button
             class="icon-button"
             :disabled="!pdf || page <= 1"
@@ -769,13 +805,6 @@ onBeforeUnmount(() => {
             <p>
               PDF öffnen, ein Beispiel auswählen und auf einer Folie platzieren.
             </p>
-            <button
-              class="primary-button"
-              :disabled="loading"
-              @click="pdfInput?.click()"
-            >
-              Lokale PDF auswählen
-            </button>
             <p v-if="project.pdf">
               Gespeichertes Projekt gefunden: {{ project.pdf.name }}
             </p>

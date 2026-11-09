@@ -1,11 +1,13 @@
 <script setup lang="ts">
-import { computed, ref } from "vue";
-import { Link2, Copy, Presentation } from "lucide-vue-next";
+import { computed, ref, useId, watch } from "vue";
+import { Link2, Copy, Presentation, X } from "lucide-vue-next";
 import { exampleUrl, type Example } from "../sharing/examples";
 import { useInLecture } from "../sharing/actions";
 const props = defineProps<{ example?: Example | null; reason?: string }>();
 const open = ref(false),
   notice = ref("");
+const dialog = ref<HTMLDialogElement>();
+const titleId = useId();
 const link = computed(() => {
   try {
     return props.example ? exampleUrl(props.example) : "";
@@ -13,6 +15,20 @@ const link = computed(() => {
     return "";
   }
 });
+watch(link, (value) => {
+  if (!value) dialog.value?.close();
+});
+function show() {
+  if (!link.value || !dialog.value) return;
+  notice.value = "";
+  dialog.value.showModal();
+  open.value = true;
+}
+function sendToLecture() {
+  if (!props.example) return;
+  dialog.value?.close();
+  useInLecture(props.example);
+}
 async function copy() {
   try {
     await navigator.clipboard.writeText(link.value);
@@ -30,13 +46,30 @@ async function copy() {
       :title="
         !link ? (reason ?? 'Für eingebaute Verfahren verfügbar.') : undefined
       "
-      @click="open = !open"
+      :aria-expanded="open"
+      aria-haspopup="dialog"
+      @click="show"
     >
       <Link2 :size="15" /> Beispiel-Link
     </button>
-    <div v-if="open && link" class="share-example-panel">
+    <dialog
+      ref="dialog"
+      class="share-example-panel"
+      :aria-labelledby="titleId"
+      @close="open = false"
+    >
+      <div class="share-dialog-heading">
+        <h2 :id="titleId">Beispiel teilen</h2>
+        <button
+          class="icon-button"
+          aria-label="Beispiel-Link schließen"
+          @click="dialog?.close()"
+        >
+          <X :size="18" />
+        </button>
+      </div>
       <label
-        >Festes Beispiel<input
+        >Beispiel-Link<input
           :value="link"
           readonly
           aria-label="Beispiel-Link"
@@ -47,16 +80,15 @@ async function copy() {
           <Copy :size="14" /> Kopieren</button
         ><a class="secondary-button" :href="link" target="_blank" rel="noopener"
           >Öffnen</a
-        ><button class="secondary-button" @click="useInLecture(example!)">
+        ><button class="secondary-button" @click="sendToLecture">
           <Presentation :size="14" /> In Vorlesung verwenden
         </button>
       </div>
       <p class="graph-field-help">
-        Der Link enthält Eingaben und Einstellungen. PDFs und eigener
-        Programmcode werden nicht geteilt. Der Website-Passwortschutz bleibt
-        aktiv.
+        Teilt Eingaben und Einstellungen. PDFs, eigener Code und Zugangsdaten
+        bleiben lokal.
       </p>
       <p v-if="notice" role="status" class="graph-field-help">{{ notice }}</p>
-    </div>
+    </dialog>
   </div>
 </template>

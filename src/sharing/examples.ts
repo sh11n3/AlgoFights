@@ -148,7 +148,7 @@ export function readExample(value: unknown): Example {
     if (
       !CITIES.some((c) => c.id === value.city) ||
       !has(ROUTE_ALGORITHMS, value.algorithm) ||
-      !integer(value.duration, 5, 60) ||
+      !integer(value.duration, 4, 60) ||
       (value.snapshot !== undefined && !text(value.snapshot, 80))
     )
       throw Error("Unbekannte Stadt oder Wegsuche.");

@@ -6,7 +6,9 @@ Die Texte, Implementierungen, Grafiken und Beispiele wurden für AlgoFights verf
 
 ## Graph Sim
 
-„Lehrlabor“ umfasst diese Lernbereiche:
+Unter **Graph Sim → Graph-Verfahren** stehen alle Verfahren in einem nach Themen gruppierten Menü. **Berechnen** bereitet den Ablauf vor; die Live-Werte stehen direkt unter der Wiedergabe. Suchumfang, Schrittlimit und Kanteneigenschaften sind unter **Weitere Einstellungen** zu finden.
+
+Die Ansicht umfasst diese Lernbereiche:
 
 | Bereich         | Verfahren und Darstellung                                                                                                                                                                                                             |
 | --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |

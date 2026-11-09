@@ -79,6 +79,18 @@ const tab = ref("arena"),
   editorSource = ref(""),
   help = ref(false),
   toast = ref("");
+const navigation = [
+  { id: "arena", hash: "arena", label: "Arena" },
+  { id: "code", hash: "code-labor", label: "Code-Labor" },
+  { id: "algosim", hash: "algo-sim", label: "Algo Sim" },
+  { id: "graphsim", hash: "graph-sim", label: "Graph Sim" },
+  { id: "stringsim", hash: "string-sim", label: "String Sim" },
+  { id: "lecture", hash: "vorlesung", label: "Vorlesung" },
+  { id: "examples", hash: "beispiele", label: "Beispiele" },
+];
+const mainContent = ref<HTMLElement>(),
+  rulesDialog = ref<HTMLDialogElement>();
+const arenaSetupOpen = ref(false);
 const playing = ref(false),
   playback = ref(0),
   stats = ref<FrameStats>({
@@ -91,8 +103,7 @@ const playing = ref(false),
     returnSteps: [],
   });
 const arenaPanel = ref<HTMLElement>(),
-  arenaCanvas = ref<InstanceType<typeof ArenaCanvas>>(),
-  labPanel = ref<HTMLElement>();
+  arenaCanvas = ref<InstanceType<typeof ArenaCanvas>>();
 let animation = 0,
   lastTime = 0,
   playhead = 0,
@@ -192,23 +203,19 @@ watch(
 );
 watch(help, (open) => {
   document.body.style.overflow = open ? "hidden" : "";
+  if (open && !rulesDialog.value?.open) rulesDialog.value?.showModal();
+  else if (!open) rulesDialog.value?.close();
 });
 watch(tab, (value) => {
   if (value !== "arena") pause();
-  if (!["lecture", "example", "examples"].includes(value)) {
-    history.replaceState(null, "", location.pathname + location.search);
-    if (value === "arena" && !replay.value && !preparing.value) void start();
-  }
+  if (value === "arena" && !replay.value && !preparing.value) void start();
 });
 function readHashRoute() {
   routeError.value = "";
   const hash = location.hash;
-  if (hash === "#vorlesung") {
-    tab.value = "lecture";
-    return;
-  }
-  if (hash === "#beispiele") {
-    tab.value = "examples";
+  const section = navigation.find((item) => `#${item.hash}` === hash);
+  if (section) {
+    tab.value = section.id;
     return;
   }
   if (hash.startsWith("#beispiel")) {
@@ -224,6 +231,10 @@ function readHashRoute() {
     return;
   }
   tab.value = "arena";
+}
+function onHashChange() {
+  readHashRoute();
+  window.scrollTo(0, 0);
 }
 function openSection(hash: string) {
   location.hash = hash;
@@ -347,6 +358,13 @@ async function start() {
   await nextTick();
   if (tab.value === "arena") play();
 }
+function startFromControls() {
+  void start();
+  if (matchMedia("(max-width: 900px)").matches) {
+    arenaSetupOpen.value = false;
+    arenaPanel.value?.scrollIntoView({ block: "start" });
+  }
+}
 function cancelPreparation() {
   abort();
   notify("Vorbereitung abgebrochen. Du kannst sofort neu starten.");
@@ -373,11 +391,7 @@ async function expand() {
   }
 }
 function openLab() {
-  pause();
-  tab.value = "code";
-  nextTick(() =>
-    labPanel.value?.scrollIntoView({ behavior: "smooth", block: "start" }),
-  );
+  openSection("code-labor");
 }
 function exportResult() {
   if (!replay.value) return;
@@ -432,7 +446,7 @@ function onVisibility() {
 onMounted(() => {
   addEventListener("keydown", onKey);
   document.addEventListener("visibilitychange", onVisibility);
-  addEventListener("hashchange", readHashRoute);
+  addEventListener("hashchange", onHashChange);
   readHashRoute();
   if (tab.value === "arena") void start();
 });
@@ -441,57 +455,37 @@ onBeforeUnmount(() => {
   pause();
   clearTimeout(toastTimer);
   removeEventListener("keydown", onKey);
-  removeEventListener("hashchange", readHashRoute);
+  removeEventListener("hashchange", onHashChange);
   document.removeEventListener("visibilitychange", onVisibility);
 });
 </script>
 
 <template>
   <div class="app-shell">
+    <a
+      class="skip-link"
+      href="#hauptinhalt"
+      @click.prevent="mainContent?.focus()"
+      >Zum Inhalt</a
+    >
     <header class="topbar">
-      <a
-        class="brand"
-        href="#"
-        aria-label="AlgoFights Startseite"
-        @click.prevent="tab = 'arena'"
+      <a class="brand" href="#arena" aria-label="AlgoFights Startseite"
         ><span>AlgoFights</span></a
       >
       <nav class="main-nav" aria-label="Hauptnavigation">
-        <button :class="{ selected: tab === 'arena' }" @click="tab = 'arena'">
-          Arena</button
-        ><button :class="{ selected: tab === 'code' }" @click="openLab">
-          Code-Labor
-        </button>
-        <button
-          :class="{ selected: tab === 'algosim' }"
-          @click="tab = 'algosim'"
+        <a
+          v-for="item in navigation"
+          :key="item.id"
+          :href="`#${item.hash}`"
+          :aria-current="
+            tab === item.id
+              ? 'page'
+              : tab === 'example' && item.id === 'examples'
+                ? 'location'
+                : undefined
+          "
+          >{{ item.label }}</a
         >
-          Algo Sim
-        </button>
-        <button
-          :class="{ selected: tab === 'graphsim' }"
-          @click="tab = 'graphsim'"
-        >
-          Graph Sim
-        </button>
-        <button
-          :class="{ selected: tab === 'stringsim' }"
-          @click="tab = 'stringsim'"
-        >
-          String Sim
-        </button>
-        <button
-          :class="{ selected: tab === 'lecture' }"
-          @click="openSection('vorlesung')"
-        >
-          Vorlesung
-        </button>
-        <button
-          :class="{ selected: tab === 'examples' || tab === 'example' }"
-          @click="openSection('beispiele')"
-        >
-          Beispiele
-        </button>
       </nav>
       <div class="header-right">
         <button
@@ -511,11 +505,15 @@ onBeforeUnmount(() => {
       </div>
     </header>
 
-    <main>
-      <div v-if="savedWarning" class="notice-banner" role="status">
+    <main id="hauptinhalt" ref="mainContent" tabindex="-1">
+      <div
+        v-if="savedWarning && (tab === 'arena' || tab === 'code')"
+        class="notice-banner"
+        role="status"
+      >
         {{ savedWarning }}
       </div>
-      <div v-if="error" class="error-banner" role="alert">
+      <div v-if="error && tab === 'arena'" class="error-banner" role="alert">
         {{ error }} <button @click="start">Erneut versuchen</button>
       </div>
 
@@ -639,7 +637,30 @@ onBeforeUnmount(() => {
           </div>
         </section>
 
-        <aside class="setup-column">
+        <div class="arena-mobile-actions">
+          <button
+            class="secondary-button"
+            :aria-expanded="arenaSetupOpen"
+            aria-controls="arena-einstellungen"
+            @click="arenaSetupOpen = !arenaSetupOpen"
+          >
+            Kampf einstellen
+          </button>
+          <button
+            class="primary-button"
+            :disabled="preparing"
+            @click="startFromControls"
+          >
+            <Play :size="15" />
+            {{ preparing ? "Wird berechnet …" : "Neuer Kampf" }}
+          </button>
+        </div>
+        <aside
+          id="arena-einstellungen"
+          class="setup-column"
+          :class="{ 'setup-open': arenaSetupOpen }"
+          aria-label="Kampf einstellen"
+        >
           <section class="settings-panel panel">
             <div class="section-heading compact">
               <h2>Kampf konfigurieren</h2>
@@ -775,7 +796,11 @@ onBeforeUnmount(() => {
               Eigene Strategie entwickeln
               <ArrowRight :size="14" />
             </button>
-            <button class="start-button" :disabled="preparing" @click="start">
+            <button
+              class="start-button"
+              :disabled="preparing"
+              @click="startFromControls"
+            >
               <LoaderCircle v-if="preparing" class="spin" :size="18" /><Play
                 v-else
                 :size="18"
@@ -929,13 +954,13 @@ onBeforeUnmount(() => {
         </div>
       </section>
 
-      <div v-if="tab === 'code'" ref="labPanel" class="lab-wrapper">
+      <div v-if="tab === 'code'" class="lab-wrapper">
         <StrategyEditor
           :source-id="editorSource"
           :strategies="strategies"
           @save="saveStrategy"
           @remove="removeStrategy"
-          @close="tab = 'arena'"
+          @close="openSection('arena')"
         />
       </div>
       <AlgoSim v-if="tab === 'algosim'" />
@@ -981,83 +1006,66 @@ onBeforeUnmount(() => {
         <Check :size="16" />{{ toast }}
       </div></Transition
     >
-    <div v-if="help" class="modal-backdrop" @click.self="help = false">
-      <section
-        class="rules-modal panel"
-        role="dialog"
-        aria-modal="true"
-        aria-label="So funktioniert AlgoFIghts"
-      >
-        <div class="section-heading">
-          <h2>Eine Zelle. Ein Punkt.</h2>
-          <button
-            class="icon-button"
-            aria-label="Spielregeln schließen"
-            autofocus
-            @click="help = false"
-          >
-            <X :size="20" />
-          </button>
-        </div>
-        <p>
-          Jeder Algorithmus steuert genau einen Punkt. Sein Ziel: so viele freie
-          Zellen wie möglich betreten.
-        </p>
-        <ol>
-          <li>
-            Startzellen zählen mit. Jede erstmals betretene Zelle gibt einen
-            Punkt und bleibt dauerhaft belegt.
-          </li>
-          <li>
-            Bewege dich nach oben, rechts, unten oder links. Grenzen,
-            Hindernisse und sämtliche Spuren sind gesperrt – auch die eigene.
-          </li>
-          <li>
-            Alle Strategien sehen denselben Zustand vor dem Schritt. Bei einem
-            Konflikt um dieselbe Zelle entscheidet der Seed-Zufall. Verlierer
-            warten diesen Schritt.
-          </li>
-          <li>
-            Ohne freien Nachbarn beginnt dieser Algorithmus sofort einen
-            Rücklauf, während die anderen weiterziehen. Der Kern führt ihn
-            Schritt für Schritt über belegte Zellen zum nächsten freien Bereich
-            zurück. Diese Rückläufe verändern weder Farben noch Punkte. Es gibt
-            kein Teleportieren. Nur während des automatischen Rücklaufs dürfen
-            bestehende Spuren überquert werden.
-          </li>
-          <li>
-            Der Kampf endet erst, wenn alle bespielbaren Zellen belegt sind. Bei
-            einem Strategiefehler übernimmt sichtbar die Ersatzstrategie
-            „Geradeaus“. Die meisten Punkte gewinnen; Gleichstände sind möglich.
-          </li>
-        </ol>
-        <p>
-          Die Simulation läuft vor der Wiedergabe. Pause, Spulen und
-          Wiedergabedauer ändern das Ergebnis nicht. Einstellungen gelten erst
-          für den nächsten Kampf.
-        </p>
-        <div class="rules-shortcut">
-          <kbd>Leertaste</kbd> Wiedergabe pausieren / fortsetzen
-        </div>
-        <button class="primary-button" @click="help = false">
-          Verstanden <ArrowRight :size="16" />
+    <dialog
+      ref="rulesDialog"
+      class="rules-modal panel"
+      aria-labelledby="arena-regeln"
+      @close="help = false"
+    >
+      <div class="section-heading">
+        <h2 id="arena-regeln">Arena-Spielregeln</h2>
+        <button
+          class="icon-button"
+          aria-label="Spielregeln schließen"
+          autofocus
+          @click="help = false"
+        >
+          <X :size="20" />
         </button>
-      </section>
-    </div>
+      </div>
+      <p>
+        Jeder Algorithmus steuert genau einen Punkt. Sein Ziel: so viele freie
+        Zellen wie möglich betreten.
+      </p>
+      <ol>
+        <li>
+          Startzellen zählen mit. Jede erstmals betretene Zelle gibt einen Punkt
+          und bleibt dauerhaft belegt.
+        </li>
+        <li>
+          Bewege dich nach oben, rechts, unten oder links. Grenzen, Hindernisse
+          und sämtliche Spuren sind gesperrt – auch die eigene.
+        </li>
+        <li>
+          Alle Strategien sehen denselben Zustand vor dem Schritt. Bei einem
+          Konflikt um dieselbe Zelle entscheidet der Seed-Zufall. Verlierer
+          warten diesen Schritt.
+        </li>
+        <li>
+          Ohne freien Nachbarn beginnt dieser Algorithmus sofort einen Rücklauf,
+          während die anderen weiterziehen. Der Kern führt ihn Schritt für
+          Schritt über belegte Zellen zum nächsten freien Bereich zurück. Diese
+          Rückläufe verändern weder Farben noch Punkte. Es gibt kein
+          Teleportieren. Nur während des automatischen Rücklaufs dürfen
+          bestehende Spuren überquert werden.
+        </li>
+        <li>
+          Der Kampf endet erst, wenn alle bespielbaren Zellen belegt sind. Bei
+          einem Strategiefehler übernimmt sichtbar die Ersatzstrategie
+          „Geradeaus“. Die meisten Punkte gewinnen; Gleichstände sind möglich.
+        </li>
+      </ol>
+      <p>
+        Die Simulation läuft vor der Wiedergabe. Pause, Spulen und
+        Wiedergabedauer ändern das Ergebnis nicht. Einstellungen gelten erst für
+        den nächsten Kampf.
+      </p>
+      <div class="rules-shortcut">
+        <kbd>Leertaste</kbd> Wiedergabe pausieren / fortsetzen
+      </div>
+      <button class="primary-button" @click="help = false">
+        Verstanden <ArrowRight :size="16" />
+      </button>
+    </dialog>
   </div>
 </template>
-
-<style>
-.main-nav {
-  min-width: 0;
-  overflow-x: auto;
-  overflow-y: hidden;
-}
-.main-nav button {
-  flex-shrink: 0;
-  white-space: nowrap;
-}
-.topbar .main-nav button.selected:after {
-  bottom: 0;
-}
-</style>

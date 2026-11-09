@@ -54,6 +54,7 @@ const editorShown = ref(false),
   editorSource = ref(""),
   storageNotice = ref("");
 const editorHost = ref<HTMLElement>();
+const visualPanel = ref<HTMLElement>();
 let customRun: AbortController | null = null;
 const dataBase = import.meta.env.BASE_URL;
 
@@ -307,6 +308,11 @@ function load() {
       location.href,
     ).href,
   });
+}
+function runFromSettings() {
+  void run();
+  if (!props.compact && matchMedia("(max-width: 900px)").matches)
+    visualPanel.value?.scrollIntoView({ block: "start" });
 }
 async function run() {
   if (!graph.value || !worker) return;
@@ -569,7 +575,12 @@ onBeforeUnmount(() => {
         <h1>Algo Sim</h1>
         <p>Wegsuche auf realen Straßen von OpenStreetMap.</p>
       </div>
-      <ShareExample :example="shared" /><span>{{ status }}</span>
+      <div class="graph-heading-actions">
+        <button class="secondary-button" @click="openEditor">
+          <CodeXml :size="16" /> Code-Editor
+        </button>
+        <ShareExample :example="shared" />
+      </div>
     </div>
     <div v-if="error" class="error-banner" role="alert">
       {{ error }} <button v-if="!graph" @click="load">Karte neu laden</button
@@ -578,8 +589,125 @@ onBeforeUnmount(() => {
     <div v-if="storageNotice" class="error-banner" role="status">
       {{ storageNotice }}
     </div>
-    <div class="sim-layout">
-      <div class="sim-map-panel panel">
+    <div class="sim-layout experiment-layout">
+      <aside
+        class="sim-settings panel experiment-settings"
+        aria-label="Straßensuche einstellen"
+      >
+        <h2>Suche einstellen</h2>
+        <label
+          >Stadt<select v-model="city">
+            <option v-for="item in CITIES" :key="item.id" :value="item.id">
+              {{ item.name }}
+            </option>
+          </select></label
+        >
+        <label
+          >Algorithmus<select v-model="algorithm">
+            <optgroup label="Eingebaute Algorithmen">
+              <option
+                v-for="(info, key) in ROUTE_ALGORITHMS"
+                :key="key"
+                :value="key"
+              >
+                {{ info.name }}
+              </option>
+            </optgroup>
+            <optgroup v-if="customStrategies.length" label="Eigene Algorithmen">
+              <option v-for="s in customStrategies" :key="s.id" :value="s.id">
+                {{ s.name }}
+              </option>
+            </optgroup>
+            <option value="new">Eigenen Algorithmus bauen</option>
+          </select></label
+        >
+        <div class="endpoint-actions">
+          <button
+            :class="{ selected: selecting === 'start' }"
+            :aria-pressed="selecting === 'start'"
+            @click="selecting = 'start'"
+          >
+            Start wählen</button
+          ><button
+            :class="{ selected: selecting === 'target' }"
+            :aria-pressed="selecting === 'target'"
+            @click="selecting = 'target'"
+          >
+            Ziel wählen</button
+          ><button
+            class="icon-button"
+            :disabled="!graph"
+            aria-label="Start und Ziel tauschen"
+            @click="swap"
+          >
+            <ArrowLeftRight :size="16" />
+          </button>
+        </div>
+        <p class="endpoint-name">
+          <span class="start-key">S</span>{{ pointName(start) }}
+        </p>
+        <p class="endpoint-name">
+          <span class="target-key">Z</span>{{ pointName(target) }}
+        </p>
+        <details v-if="graph" class="street-selection">
+          <summary>Punkte über Straßennamen wählen</summary>
+          <label
+            >Startstraße<select
+              :value="start"
+              @change="choose('start', $event)"
+            >
+              <option :value="start">{{ pointName(start) }}</option>
+              <option v-for="p in graph.places" :key="p.name" :value="p.node">
+                {{ p.name }}
+              </option>
+            </select></label
+          ><label
+            >Zielstraße<select
+              :value="target"
+              @change="choose('target', $event)"
+            >
+              <option :value="target">{{ pointName(target) }}</option>
+              <option v-for="p in graph.places" :key="p.name" :value="p.node">
+                {{ p.name }}
+              </option>
+            </select></label
+          >
+        </details>
+        <div class="experiment-actions">
+          <button
+            class="primary-button"
+            :disabled="!graph || computing || loading || algorithm === 'new'"
+            @click="runFromSettings"
+          >
+            <LoaderCircle v-if="computing" class="spin" :size="16" /><Play
+              v-else
+              :size="16"
+            />
+            Suche starten
+          </button>
+          <button
+            v-if="computing"
+            class="secondary-button"
+            @click="cancelSearch"
+          >
+            Berechnung abbrechen
+          </button>
+        </div>
+        <details class="experiment-options">
+          <summary>Weitere Einstellungen</summary>
+          <p class="graph-field-help">{{ cityInfo.description }}</p>
+          <label
+            >Wiedergabedauer <span>{{ duration }} s</span
+            ><input
+              v-model.number="duration"
+              type="range"
+              min="4"
+              max="60"
+              :style="{ '--progress': `${((duration - 4) / 56) * 100}%` }"
+          /></label>
+        </details>
+      </aside>
+      <div ref="visualPanel" class="sim-map-panel panel experiment-visual">
         <div class="sim-map">
           <canvas
             ref="canvas"
@@ -698,134 +826,37 @@ onBeforeUnmount(() => {
           }}
         </div>
       </div>
-      <aside class="sim-settings panel">
-        <h2>Wegsuche</h2>
-        <label
-          >Stadt<select v-model="city">
-            <option v-for="item in CITIES" :key="item.id" :value="item.id">
-              {{ item.name }}
-            </option>
-          </select></label
-        >
-        <p class="city-description">{{ cityInfo.description }}</p>
-        <label
-          >Algorithmus<select v-model="algorithm">
-            <option value="new">Eigenen Algorithmus bauen</option>
-            <optgroup label="Eingebaute Algorithmen">
-              <option
-                v-for="(info, key) in ROUTE_ALGORITHMS"
-                :key="key"
-                :value="key"
-              >
-                {{ info.name }}
-              </option>
-            </optgroup>
-            <optgroup v-if="customStrategies.length" label="Eigene Algorithmen">
-              <option v-for="s in customStrategies" :key="s.id" :value="s.id">
-                {{ s.name }}
-              </option>
-            </optgroup>
-          </select></label
-        >
-        <button class="primary-button sim-editor-button" @click="openEditor">
-          <CodeXml :size="18" /> Code-Editor öffnen
-        </button>
-        <div class="endpoint-actions">
-          <button
-            :class="{ selected: selecting === 'start' }"
-            @click="selecting = 'start'"
-          >
-            Start wählen</button
-          ><button
-            :class="{ selected: selecting === 'target' }"
-            @click="selecting = 'target'"
-          >
-            Ziel wählen</button
-          ><button
-            class="icon-button"
-            :disabled="!graph"
-            aria-label="Start und Ziel tauschen"
-            @click="swap"
-          >
-            <ArrowLeftRight :size="16" />
-          </button>
-        </div>
-        <p class="endpoint-name">
-          <span class="start-key">S</span>{{ pointName(start) }}
-        </p>
-        <p class="endpoint-name">
-          <span class="target-key">Z</span>{{ pointName(target) }}
-        </p>
-        <details v-if="graph" class="street-selection">
-          <summary>Punkte über Straßennamen wählen</summary>
-          <label
-            >Startstraße<select
-              :value="start"
-              @change="choose('start', $event)"
-            >
-              <option :value="start">{{ pointName(start) }}</option>
-              <option v-for="p in graph.places" :key="p.name" :value="p.node">
-                {{ p.name }}
-              </option>
-            </select></label
-          ><label
-            >Zielstraße<select
-              :value="target"
-              @change="choose('target', $event)"
-            >
-              <option :value="target">{{ pointName(target) }}</option>
-              <option v-for="p in graph.places" :key="p.name" :value="p.node">
-                {{ p.name }}
-              </option>
-            </select></label
-          >
-        </details>
-        <label
-          >Wiedergabedauer <span>{{ duration }} s</span
-          ><input
-            v-model.number="duration"
-            type="range"
-            min="4"
-            max="25"
-            :style="{ '--progress': `${((duration - 4) / 21) * 100}%` }"
-        /></label>
-        <button
-          class="primary-button"
-          :disabled="!graph || computing || loading || algorithm === 'new'"
-          @click="run"
-        >
-          <LoaderCircle v-if="computing" class="spin" :size="16" /><Play
-            v-else
-            :size="16"
-          />
-          Suche starten
-        </button>
-        <button v-if="computing" class="secondary-button" @click="cancelSearch">
-          Berechnung abbrechen
-        </button>
-
-        <button class="text-button" :disabled="!result" @click="saveResult">
-          <Download :size="14" /> Ergebnis exportieren
-        </button>
-        <div class="route-explanation">
-          <h3>{{ routeInfo.name }}</h3>
-          <p>{{ routeInfo.description }}</p>
-          <p>{{ routeInfo.guarantee }}</p>
-        </div>
-        <p v-if="result && !result.found" class="no-route" role="status">
-          Keine Verbindung im gerichteten Straßenausschnitt. Wähle andere
-          Punkte; es wird keine künstliche Verbindung ergänzt.
-        </p>
-        <dl v-if="result" class="route-stats">
-          <dt>Gesamtstrecke</dt>
-          <dd>{{ result.found ? km(result.distance) : "nicht erreichbar" }}</dd>
-          <dt>Expandierte Knoten</dt>
-          <dd>{{ integer.format(result.traceNodes.length) }}</dd>
-          <dt>Rechenzeit</dt>
-          <dd>{{ result.milliseconds.toFixed(2) }} ms</dd>
-        </dl>
-      </aside>
     </div>
+    <section
+      v-if="!compact"
+      class="panel sim-result-panel"
+      aria-label="Suchergebnis"
+    >
+      <div class="sim-result-title">
+        <h2>Suchergebnis</h2>
+        <span role="status">{{ status }}</span>
+      </div>
+      <details class="route-explanation experiment-options">
+        <summary>{{ routeInfo.name }} erklärt</summary>
+        <p>{{ routeInfo.description }}</p>
+        <p>{{ routeInfo.guarantee }}</p>
+      </details>
+      <p v-if="result && !result.found" class="no-route" role="status">
+        Keine Verbindung im gerichteten Straßenausschnitt. Wähle andere Punkte;
+        es wird keine künstliche Verbindung ergänzt.
+      </p>
+      <dl v-if="result" class="route-stats">
+        <dt>Gesamtstrecke</dt>
+        <dd>{{ result.found ? km(result.distance) : "nicht erreichbar" }}</dd>
+        <dt>Expandierte Knoten</dt>
+        <dd>{{ integer.format(result.traceNodes.length) }}</dd>
+        <dt>Rechenzeit</dt>
+        <dd>{{ result.milliseconds.toFixed(2) }} ms</dd>
+      </dl>
+      <button class="text-button" :disabled="!result" @click="saveResult">
+        <Download :size="14" /> Ergebnis exportieren
+      </button>
+    </section>
     <div v-if="editorShown" ref="editorHost" class="sim-editor">
       <StrategyEditor
         mode="route"

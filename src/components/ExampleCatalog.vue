@@ -4,13 +4,23 @@ import { EXAMPLES, exampleUrl, type Example } from "../sharing/examples";
 const props = defineProps<{ selectable?: boolean }>();
 const emit = defineEmits<{ select: [example: Example] }>();
 const search = ref("");
-const groups = computed(() => [
-  ...new Set(
-    EXAMPLES.filter((e) =>
-      `${e.name} ${e.group}`.toLowerCase().includes(search.value.toLowerCase()),
-    ).map((e) => e.group),
+const query = computed(() => search.value.trim().toLocaleLowerCase("de"));
+const results = computed(() =>
+  EXAMPLES.filter((item) =>
+    `${item.name} ${item.group} ${item.id}`
+      .toLocaleLowerCase("de")
+      .includes(query.value),
   ),
-]);
+);
+const groups = computed(() => {
+  const byGroup = new Map<string, (typeof EXAMPLES)[number][]>();
+  for (const item of results.value) {
+    const group = byGroup.get(item.group);
+    if (group) group.push(item);
+    else byGroup.set(item.group, [item]);
+  }
+  return [...byGroup];
+});
 </script>
 <template>
   <section class="example-catalog">
@@ -20,20 +30,14 @@ const groups = computed(() => [
         type="search"
         placeholder="Dijkstra, KMP, Berlin …"
     /></label>
+    <p v-if="query" class="example-catalog-count" role="status">
+      {{ results.length }} passende
+      {{ results.length === 1 ? "Simulation" : "Simulationen" }}
+    </p>
     <div class="example-catalog-list">
-      <section v-for="group in groups" :key="group">
+      <section v-for="[group, items] in groups" :key="group">
         <h3>{{ group }}</h3>
-        <div
-          v-for="item in EXAMPLES.filter(
-            (e) =>
-              e.group === group &&
-              `${e.name} ${e.group}`
-                .toLowerCase()
-                .includes(search.toLowerCase()),
-          )"
-          :key="item.id"
-          class="example-catalog-row"
-        >
+        <div v-for="item in items" :key="item.id" class="example-catalog-row">
           <button v-if="props.selectable" @click="emit('select', item.example)">
             {{ item.name }}</button
           ><a v-else :href="exampleUrl(item.example)">{{ item.name }}</a
@@ -41,7 +45,7 @@ const groups = computed(() => [
             :href="exampleUrl(item.example)"
             target="_blank"
             rel="noopener"
-            aria-label="Beispiel in neuem Tab öffnen"
+            :aria-label="`${item.name} in neuem Tab öffnen`"
             >↗</a
           >
         </div>

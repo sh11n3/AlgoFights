@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, ref, watch } from "vue";
+import { onBeforeUnmount, onDeactivated, onMounted, ref, watch } from "vue";
 import { Pause, Play, SkipBack, SkipForward, RotateCcw } from "lucide-vue-next";
 const props = defineProps<{ step: number; total: number; delay: number }>();
 const emit = defineEmits<{ seek: [step: number] }>();
@@ -36,6 +36,7 @@ function visible() {
 }
 onMounted(() => document.addEventListener("visibilitychange", visible));
 watch(() => props.total, pause);
+onDeactivated(pause);
 onBeforeUnmount(() => {
   pause();
   document.removeEventListener("visibilitychange", visible);
@@ -46,7 +47,8 @@ onBeforeUnmount(() => {
     <button
       class="icon-button"
       aria-label="Zum Anfang"
-      :disabled="!total"
+      title="Zum Anfang"
+      :disabled="!step"
       @click="seek(0)"
     >
       <RotateCcw :size="17" />
@@ -54,6 +56,7 @@ onBeforeUnmount(() => {
     <button
       class="icon-button"
       aria-label="Voriger Schritt"
+      title="Voriger Schritt"
       :disabled="step === 0"
       @click="seek(step - 1)"
     >
@@ -62,6 +65,7 @@ onBeforeUnmount(() => {
     <button
       class="icon-button"
       :aria-label="playing ? 'Pause' : 'Abspielen'"
+      :title="playing ? 'Pause' : 'Abspielen'"
       :disabled="!total"
       @click="play"
     >
@@ -70,6 +74,7 @@ onBeforeUnmount(() => {
     <button
       class="icon-button"
       aria-label="Nächster Schritt"
+      title="Nächster Schritt"
       :disabled="step >= total"
       @click="seek(step + 1)"
     >
@@ -82,6 +87,7 @@ onBeforeUnmount(() => {
       :value="step"
       :disabled="!total"
       aria-label="Simulationsschritt"
+      :style="{ '--progress': `${total ? (step / total) * 100 : 0}%` }"
       @input="seek(Number(($event.target as HTMLInputElement).value))"
     />
     <span class="graph-frame">{{ step }} / {{ total }}</span>

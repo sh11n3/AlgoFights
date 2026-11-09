@@ -449,7 +449,7 @@ onBeforeUnmount(() => {
         <X :size="20" />
       </button>
     </div>
-    <div class="editor-layout">
+    <div class="editor-layout editor-workspace">
       <div class="editor-main">
         <div v-if="!isRoute" class="example-picker">
           <label for="example">Beispiel laden</label
@@ -633,193 +633,204 @@ onBeforeUnmount(() => {
           </div>
         </template>
       </div>
-      <aside v-if="isRoute" class="api-docs">
-        <h3>Wegsuche-Schnittstelle</h3>
-        <p>
-          Definiere <code>findRoute(graph)</code>. Der Aufruf berechnet die
-          gesamte Suche synchron. Eigene Funktionen, Klassen und Datenstrukturen
-          sind erlaubt.
-        </p>
-        <dl>
-          <dt>graph.start · target · nodeCount</dt>
-          <dd>Knoten-IDs ab 0 und Anzahl der Knoten.</dd>
-          <dt>graph.nodes[id]</dt>
-          <dd v-if="isGraph">
-            { id, label, x, y }. id ist der Array-Index, label der sichtbare
-            Name. Die Modellkoordinaten liegen zwischen 0 und 1.
-          </dd>
-          <dd v-else>
-            { id, lat, lon }. id ist hier die originale OSM-ID; Array-Indizes
-            sind die Such-IDs.
-          </dd>
-          <dt>graph.arcs[edge]</dt>
-          <dd v-if="isGraph">
-            { from, to, length }. length sind die Kosten (ungewichtet immer 1).
-            Ungerichtete Kanten haben je einen Eintrag pro Richtung.
-          </dd>
-          <dd v-else>
-            { from, to, length }. Gerichtete Kante, Länge in Metern.
-          </dd>
-          <template v-if="isGraph">
-            <dt>graph.weighted · directed · stepLimit</dt>
-            <dd>
-              Aktive Gewichts- und Richtungsschalter sowie das Limit für
-              protokollierte Suchschritte.
+      <details class="editor-api-panel experiment-options">
+        <summary>Schnittstelle und Editor-Handbuch</summary>
+        <aside v-if="isRoute" class="api-docs">
+          <h3>Wegsuche-Schnittstelle</h3>
+          <p>
+            Definiere <code>findRoute(graph)</code>. Der Aufruf berechnet die
+            gesamte Suche synchron. Eigene Funktionen, Klassen und
+            Datenstrukturen sind erlaubt.
+          </p>
+          <dl>
+            <dt>graph.start · target · nodeCount</dt>
+            <dd>Knoten-IDs ab 0 und Anzahl der Knoten.</dd>
+            <dt>graph.nodes[id]</dt>
+            <dd v-if="isGraph">
+              { id, label, x, y }. id ist der Array-Index, label der sichtbare
+              Name. Die Modellkoordinaten liegen zwischen 0 und 1.
             </dd>
-          </template>
-          <dt>graph.outgoing[node] · incoming[node]</dt>
-          <dd>
-            Arrays mit ausgehenden bzw. eingehenden Kanten-IDs. Rückwärtssuche
-            nutzt incoming.
-          </dd>
-          <dt>graph.neighbors(node)</dt>
-          <dd>Ausgehende Kanten als { id, from, to, length }.</dd>
-          <dt>graph.createQueue()</dt>
-          <dd>
-            Neue Min-Prioritätswarteschlange: push(node, priority) fügt ein,
-            pop() entnimmt { node, priority } mit kleinster Priorität, peek()
-            liest diesen Eintrag. Leer: null. Mehrfache Einträge sind erlaubt;
-            der Algorithmus überspringt bereits abgeschlossene Knoten.
-          </dd>
-          <dt>graph.heuristic(node)</dt>
-          <dd>
+            <dd v-else>
+              { id, lat, lon }. id ist hier die originale OSM-ID; Array-Indizes
+              sind die Such-IDs.
+            </dd>
+            <dt>graph.arcs[edge]</dt>
+            <dd v-if="isGraph">
+              { from, to, length }. length sind die Kosten (ungewichtet immer
+              1). Ungerichtete Kanten haben je einen Eintrag pro Richtung.
+            </dd>
+            <dd v-else>
+              { from, to, length }. Gerichtete Kante, Länge in Metern.
+            </dd>
+            <template v-if="isGraph">
+              <dt>graph.weighted · directed · stepLimit</dt>
+              <dd>
+                Aktive Gewichts- und Richtungsschalter sowie das Limit für
+                protokollierte Suchschritte.
+              </dd>
+            </template>
+            <dt>graph.outgoing[node] · incoming[node]</dt>
+            <dd>
+              Arrays mit ausgehenden bzw. eingehenden Kanten-IDs. Rückwärtssuche
+              nutzt incoming.
+            </dd>
+            <dt>graph.neighbors(node)</dt>
+            <dd>Ausgehende Kanten als { id, from, to, length }.</dd>
+            <dt>graph.createQueue()</dt>
+            <dd>
+              Neue Min-Prioritätswarteschlange: push(node, priority) fügt ein,
+              pop() entnimmt { node, priority } mit kleinster Priorität, peek()
+              liest diesen Eintrag. Leer: null. Mehrfache Einträge sind erlaubt;
+              der Algorithmus überspringt bereits abgeschlossene Knoten.
+            </dd>
+            <dt>graph.heuristic(node)</dt>
+            <dd>
+              {{
+                isGraph
+                  ? "Skalierter geradliniger Abstand zum Ziel als untere Kostenschranke."
+                  : "Luftlinie zum Ziel in Metern."
+              }}
+            </dd>
+            <dt>graph.trace(node, edge = -1, side = 0)</dt>
+            <dd>
+              Suchschritt aufzeichnen. edge führt zum Knoten; bei side=1 führt
+              sie vom Knoten zur rückwärtigen Vorgängerposition. -1 zeichnet
+              keine Kante.
+              <template v-if="isGraph"
+                >Rufe trace bei jeder Expansion auf. Jeder Aufruf zählt als ein
+                Suchschritt; ein weiterer Aufruf über dem Limit stoppt die
+                Suche.</template
+              >
+            </dd>
+            <template v-if="isGraph">
+              <dt>graph.track(dis, previous, side = 0)</dt>
+              <dd>
+                Melde die Arrays vor dem ersten <code>trace</code>-Aufruf an und
+                ändere danach ihre Einträge. <code>dis</code> enthält Distanzen
+                oder ist <code>null</code>. <code>previous</code> enthält
+                Kanten-IDs oder <code>−1</code> je Knoten. Die Anzeige übersetzt
+                die Kanten in Vorgängerknoten. <code>side = 1</code> steht für
+                die Rückwärtssuche.
+              </dd>
+            </template>
+            <dt>Rückgabe</dt>
+            <dd>
+              <code>{ path: [Kanten-IDs] }</code> in Reihenfolge vom Start zum
+              Ziel. <code>{ path: null }</code> für keinen gefundenen Weg;
+              leeres Array nur bei Start = Ziel.
+            </dd>
+          </dl>
+          <p v-if="!isGraph">
+            Im Editor steht nur das gewählte Verfahren. Die Warteschlange und
+            Luftlinie liefert die API; eigene Datenstrukturen sind ebenfalls
+            erlaubt.
+          </p>
+          <div class="budget-note">
+            50.000 Zeichen Code · 5 Sekunden Laufzeit.
             {{
               isGraph
-                ? "Skalierter geradliniger Abstand zum Ziel als untere Kostenschranke."
-                : "Luftlinie zum Ziel in Metern."
+                ? "Das Schrittlimit zählt Aufrufe von graph.trace. Die Laufzeitgrenze gilt auch für Code ohne trace-Aufrufe."
+                : "Höchstens 250.000 Such- und Routeneinträge."
             }}
-          </dd>
-          <dt>graph.trace(node, edge = -1, side = 0)</dt>
-          <dd>
-            Suchschritt aufzeichnen. edge führt zum Knoten; bei side=1 führt sie
-            vom Knoten zur rückwärtigen Vorgängerposition. -1 zeichnet keine
-            Kante.
-            <template v-if="isGraph"
-              >Rufe trace bei jeder Expansion auf. Jeder Aufruf zählt als ein
-              Suchschritt; ein weiterer Aufruf über dem Limit stoppt die
-              Suche.</template
+            Die Graph-Kopie ist schreibgeschützt. Der getrennte Kern prüft
+            Kantenfolge, Richtung und Kosten.
+          </div>
+          <details>
+            <summary>Prüfung und Isolation</summary>
+            <p>
+              Prüfen nutzt einen kleinen gerichteten Probegraphen. Ein
+              erfolgreicher Probelauf beweist keine allgemeine Korrektheit.
+              Eigener Code läuft in einem Worker unter isolierter Herkunft ohne
+              Netzwerk- oder Speicherzugriff. Abbruch und Zeitlimit beenden
+              diesen Worker. Extreme Speichernutzung oder Browserfehler bleiben
+              Grenzen der Isolation. Nur vertrauten lokalen Code verwenden.
+            </p>
+          </details>
+          <div class="editor-resources">
+            <a
+              :href="
+                documentationUrl + (isGraph ? '#graph-sim' : '#eigene-wegsuche')
+              "
+              target="_blank"
+              rel="noopener noreferrer"
+              >Handbuch: Funktionen und Beispiele</a
             >
-          </dd>
-          <template v-if="isGraph">
-            <dt>graph.track(dis, previous, side = 0)</dt>
+          </div>
+        </aside>
+        <aside v-else class="api-docs">
+          <h3>Schnittstelle</h3>
+          <p>
+            Definiere <code>nextMove(state, memory)</code>. Gib ein Objekt mit
+            <code>direction</code> und optional <code>memory</code> zurück.
+          </p>
+          <dl>
+            <dt>state.position · x · y</dt>
+            <dd>Eigene Position, Koordinaten ab 0.</dd>
+            <dt>state.id</dt>
             <dd>
-              Melde die Arrays vor dem ersten <code>trace</code>-Aufruf an und
-              ändere danach ihre Einträge. <code>dis</code> enthält Distanzen
-              oder ist <code>null</code>. <code>previous</code> enthält
-              Kanten-IDs oder <code>−1</code> je Knoten. Die Anzeige übersetzt
-              die Kanten in Vorgängerknoten. <code>side = 1</code> steht für die
-              Rückwärtssuche.
+              Teilnehmernummer ab 0. Für positionsabhängige Prioritäten der
+              Originale.
             </dd>
-          </template>
-          <dt>Rückgabe</dt>
-          <dd>
-            <code>{ path: [Kanten-IDs] }</code> in Reihenfolge vom Start zum
-            Ziel. <code>{ path: null }</code> für keinen gefundenen Weg; leeres
-            Array nur bei Start = Ziel.
-          </dd>
-        </dl>
-        <p v-if="!isGraph">
-          Im Editor steht nur das gewählte Verfahren. Die Warteschlange und
-          Luftlinie liefert die API; eigene Datenstrukturen sind ebenfalls
-          erlaubt.
-        </p>
-        <div class="budget-note">
-          50.000 Zeichen Code · 5 Sekunden Laufzeit.
-          {{
-            isGraph
-              ? "Das Schrittlimit zählt Aufrufe von graph.trace. Die Laufzeitgrenze gilt auch für Code ohne trace-Aufrufe."
-              : "Höchstens 250.000 Such- und Routeneinträge."
-          }}
-          Die Graph-Kopie ist schreibgeschützt. Der getrennte Kern prüft
-          Kantenfolge, Richtung und Kosten.
-        </div>
-        <details>
-          <summary>Prüfung und Isolation</summary>
-          <p>
-            Prüfen nutzt einen kleinen gerichteten Probegraphen. Ein
-            erfolgreicher Probelauf beweist keine allgemeine Korrektheit.
-            Eigener Code läuft in einem Worker unter isolierter Herkunft ohne
-            Netzwerk- oder Speicherzugriff. Abbruch und Zeitlimit beenden diesen
-            Worker. Extreme Speichernutzung oder Browserfehler bleiben Grenzen
-            der Isolation. Nur vertrauten lokalen Code verwenden.
-          </p>
-        </details>
-        <div class="editor-resources">
-          <a
-            :href="
-              documentationUrl + (isGraph ? '#graph-sim' : '#eigene-wegsuche')
-            "
-            target="_blank"
-            rel="noopener noreferrer"
-            >Handbuch: Funktionen und Beispiele</a
-          >
-        </div>
-      </aside>
-      <aside v-else class="api-docs">
-        <h3>Schnittstelle</h3>
-        <p>
-          Definiere <code>nextMove(state, memory)</code>. Gib ein Objekt mit
-          <code>direction</code> und optional <code>memory</code> zurück.
-        </p>
-        <dl>
-          <dt>state.position · x · y</dt>
-          <dd>Eigene Position, Koordinaten ab 0.</dd>
-          <dt>state.id</dt>
-          <dd>
-            Teilnehmernummer ab 0. Für positionsabhängige Prioritäten der
-            Originale.
-          </dd>
-          <dt>state.direction</dt>
-          <dd>Aktuelle Richtung: up, right, down, left.</dd>
-          <dt>state.score · step</dt>
-          <dd>Deine Punkte und der Simulationsschritt.</dd>
-          <dt>state.neighbors.right</dt>
-          <dd>{ x, y, type, free } für jede Richtung.</dd>
-          <dt>state.availableMoves</dt>
-          <dd>Array aller gerade erlaubten Richtungen.</dd>
-          <dt>state.cell(x, y)</dt>
-          <dd>free, wall, self oder opponent. Bis zu 512 Abfragen pro Zug.</dd>
-          <dt>state.random()</dt>
-          <dd>Seed-basierter Zufall von 0 bis kleiner 1.</dd>
-          <dt>state.width · height</dt>
-          <dd>Logische Rastergröße der Arena.</dd>
-          <dt>memory</dt>
-          <dd>
-            Eigener JSON-Speicher, anfangs {}. Bis zu 64 KB. Getrennt für jeden
-            Teilnehmer.
-          </dd>
-          <dt>state.returnTrips · afterReturn</dt>
-          <dd>
-            Anzahl der automatischen Rückläufe; afterReturn ist beim ersten
-            Strategieaufruf danach wahr. memory bleibt erhalten.
-            restarts/restarted sind kompatible ältere Namen.
-          </dd>
-          <dt>state.returnSteps</dt>
-          <dd>Bereits ausgeführte Rücklaufschritte ohne zusätzliche Punkte.</dd>
-        </dl>
-        <div class="budget-note">
-          Eigene Hilfsfunktionen, Klassen und Datenstrukturen sind erlaubt.
-          50.000 Zeichen Code · 250 ms pro Zug · 45 s Rundenbudget. Bei Fehlern
-          übernimmt „Geradeaus“, bis die Arena vollständig belegt ist.
-        </div>
-        <details>
-          <summary>Sandbox & Grenzen</summary>
-          <p>
-            Eigener Code läuft in einem separaten Worker innerhalb eines Iframes
-            mit isolierter Herkunft und ohne Netzwerk- oder Speicherzugriff. Der
-            Spielkern läuft getrennt und validiert jeden Zug. Endlosschleifen
-            werden durch Beenden des Workers abgebrochen. Das ist keine Garantie
-            gegen Browserfehler oder absichtlich extreme Speichernutzung. Nutze
-            ausschließlich vertrauten lokalen Code und für reproduzierbare
-            Strategien nur state.random(), kein Math.random() oder Date.
-          </p>
-        </details>
-        <div class="editor-resources">
-          <a :href="documentationUrl" target="_blank" rel="noopener noreferrer"
-            >Handbuch: Funktionen und Beispiele</a
-          >
-        </div>
-      </aside>
+            <dt>state.direction</dt>
+            <dd>Aktuelle Richtung: up, right, down, left.</dd>
+            <dt>state.score · step</dt>
+            <dd>Deine Punkte und der Simulationsschritt.</dd>
+            <dt>state.neighbors.right</dt>
+            <dd>{ x, y, type, free } für jede Richtung.</dd>
+            <dt>state.availableMoves</dt>
+            <dd>Array aller gerade erlaubten Richtungen.</dd>
+            <dt>state.cell(x, y)</dt>
+            <dd>
+              free, wall, self oder opponent. Bis zu 512 Abfragen pro Zug.
+            </dd>
+            <dt>state.random()</dt>
+            <dd>Seed-basierter Zufall von 0 bis kleiner 1.</dd>
+            <dt>state.width · height</dt>
+            <dd>Logische Rastergröße der Arena.</dd>
+            <dt>memory</dt>
+            <dd>
+              Eigener JSON-Speicher, anfangs {}. Bis zu 64 KB. Getrennt für
+              jeden Teilnehmer.
+            </dd>
+            <dt>state.returnTrips · afterReturn</dt>
+            <dd>
+              Anzahl der automatischen Rückläufe; afterReturn ist beim ersten
+              Strategieaufruf danach wahr. memory bleibt erhalten.
+              restarts/restarted sind kompatible ältere Namen.
+            </dd>
+            <dt>state.returnSteps</dt>
+            <dd>
+              Bereits ausgeführte Rücklaufschritte ohne zusätzliche Punkte.
+            </dd>
+          </dl>
+          <div class="budget-note">
+            Eigene Hilfsfunktionen, Klassen und Datenstrukturen sind erlaubt.
+            50.000 Zeichen Code · 250 ms pro Zug · 45 s Rundenbudget. Bei
+            Fehlern übernimmt „Geradeaus“, bis die Arena vollständig belegt ist.
+          </div>
+          <details>
+            <summary>Sandbox & Grenzen</summary>
+            <p>
+              Eigener Code läuft in einem separaten Worker innerhalb eines
+              Iframes mit isolierter Herkunft und ohne Netzwerk- oder
+              Speicherzugriff. Der Spielkern läuft getrennt und validiert jeden
+              Zug. Endlosschleifen werden durch Beenden des Workers abgebrochen.
+              Das ist keine Garantie gegen Browserfehler oder absichtlich
+              extreme Speichernutzung. Nutze ausschließlich vertrauten lokalen
+              Code und für reproduzierbare Strategien nur state.random(), kein
+              Math.random() oder Date.
+            </p>
+          </details>
+          <div class="editor-resources">
+            <a
+              :href="documentationUrl"
+              target="_blank"
+              rel="noopener noreferrer"
+              >Handbuch: Funktionen und Beispiele</a
+            >
+          </div>
+        </aside>
+      </details>
     </div>
   </section>
 </template>

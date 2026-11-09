@@ -44,6 +44,7 @@ defineExpose({ getExample, run: () => player.value?.run() });
       <strong>{{ exampleTitle(clean) }}</strong>
       <div>
         <button
+          v-if="compact || initial.kind === 'arena'"
           class="secondary-button"
           :disabled="!player"
           @click="player?.run()"
@@ -66,7 +67,10 @@ defineExpose({ getExample, run: () => player.value?.run() });
           "
         >
           <RotateCcw :size="15" /></button
-        ><ShareExample :example="shared" />
+        ><ShareExample
+          v-if="compact || initial.kind === 'arena'"
+          :example="shared"
+        />
       </div>
     </div>
     <div class="example-player-content" :key="revision">

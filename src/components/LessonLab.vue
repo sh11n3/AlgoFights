@@ -3,7 +3,9 @@ import {
   computed,
   defineAsyncComponent,
   nextTick,
+  onActivated,
   onBeforeUnmount,
+  onDeactivated,
   ref,
   shallowRef,
   watch,
@@ -43,8 +45,7 @@ const props = defineProps<{
 const isGraph = props.kind === "graph",
   lessons = isGraph ? GRAPH_LESSONS : STRING_LESSONS;
 const categories = [...new Set(lessons.map((l) => l.category))];
-const category = ref(isGraph ? "Traversierung" : categories[0]),
-  selected = ref(isGraph ? "bfs" : "levenshtein"),
+const selected = ref(isGraph ? "bfs" : "levenshtein"),
   base = ref(selected.value);
 const own = ref(readOwn(props.kind)),
   activeOwn = computed(() => own.value.find((v) => v.id === selected.value));
@@ -84,11 +85,13 @@ const result = shallowRef<LabResult>(),
   busy = ref(false),
   editorOpen = ref(false),
   editorHost = ref<HTMLElement>(),
+  visualPanel = ref<HTMLElement>(),
   editorBlank = ref(false);
 const runName = ref(""),
   runSource = ref("");
 const builder = shallowRef<GraphLayout>();
 let controller: AbortController | undefined;
+let layoutStorageFailed = false;
 const xmlMode = ref(false),
   xmlText = ref(
     '<sammlung>\n  <buch titel="Graphen"><kapitel thema="Pfade"/><kapitel thema="Bäume"/></buch>\n  <buch titel="Texte"><kapitel thema="Mustersuche"/></buch>\n</sammlung>',
@@ -168,6 +171,21 @@ const colors = computed(
     ),
 );
 const visibleGroups = computed(() => state.value.groups ?? []);
+const hasSource = computed(
+  () =>
+    isGraph &&
+    (!!activeOwn.value ||
+      ["bfs", "dfs", "paths", "dijkstra", "bellman", "floyd", "trees"].includes(
+        lesson.value.id,
+      )),
+);
+const hasTarget = computed(
+  () =>
+    isGraph &&
+    (!!activeOwn.value ||
+      ["paths", "dijkstra", "bellman", "floyd"].includes(lesson.value.id) ||
+      (mode.value === "target" && ["bfs", "dfs"].includes(lesson.value.id))),
+);
 const matching = computed(() =>
   ["naive-match", "kmp"].includes(lesson.value.id),
 );
@@ -298,6 +316,13 @@ async function run(draft?: OwnLesson) {
     if (controller === current) {
       controller = undefined;
       busy.value = false;
+      if (
+        !props.compact &&
+        (draft || matchMedia("(max-width: 900px)").matches)
+      ) {
+        await nextTick();
+        visualPanel.value?.scrollIntoView({ block: "start" });
+      }
     }
   }
 }
@@ -326,17 +351,19 @@ function remove(id: string) {
   editorOpen.value = false;
 }
 function build(copy: boolean) {
-  clear();
-  xmlMode.value = false;
+  cancel();
+  const current = effective.value;
+  const ownLayout =
+    !xmlMode.value && layouts.value.some((v) => v.id === current.id);
   builder.value = copy
     ? cloneLayout({
-        ...preset.value,
-        weighted: weighted.value,
-        directed: directed.value,
-        id: layouts.value.some((v) => v.id === presetId.value)
-          ? presetId.value
-          : "",
-        name: `${preset.value.name} – Variante`.slice(0, 48),
+        ...current,
+        weighted: weighted.value && !xmlMode.value,
+        directed: input.value.directed,
+        start: input.value.start,
+        target: input.value.target,
+        id: ownLayout ? current.id : "",
+        name: ownLayout ? current.name : `${current.name} – Kopie`.slice(0, 48),
       })
     : {
         id: "",
@@ -353,15 +380,17 @@ function build(copy: boolean) {
 function saveLayout(layout: GraphLayout) {
   if (!layout.id) layout.id = `layout:${crypto.randomUUID()}`;
   layouts.value = [...layouts.value.filter((v) => v.id !== layout.id), layout];
-  notice.value = store(LAYOUT_STORAGE_KEY, layouts.value)
-    ? "Graph gespeichert."
-    : "Graph nur für diese Sitzung verfügbar.";
+  layoutStorageFailed = !store(LAYOUT_STORAGE_KEY, layouts.value);
+  notice.value = layoutStorageFailed
+    ? "Graph nur für diese Sitzung verfügbar."
+    : "Graph gespeichert.";
   presetId.value = layout.id;
+  xmlMode.value = false;
   builder.value = undefined;
 }
 function removeLayout(id: string) {
   layouts.value = layouts.value.filter((v) => v.id !== id);
-  store(LAYOUT_STORAGE_KEY, layouts.value);
+  layoutStorageFailed = !store(LAYOUT_STORAGE_KEY, layouts.value);
   presetId.value = presets[0].id;
   builder.value = undefined;
 }
@@ -516,10 +545,6 @@ function exportResult() {
   a.click();
   URL.revokeObjectURL(url);
 }
-watch(category, (value) => {
-  const first = lessons.find((l) => l.category === value);
-  if (first && lesson.value.category !== value) selected.value = first.id;
-});
 watch(selected, (value) => {
   if (value === "new") {
     void openEditor(true);
@@ -554,7 +579,6 @@ watch(
       version = ++initialVersion;
     if (example.kind !== "graph-lesson" && example.kind !== "string") return;
     selected.value = example.algorithm;
-    category.value = lessons.find((l) => l.id === example.algorithm)!.category;
     if (example.kind === "graph-lesson") {
       linkedGraph.value = { ...example.graph, id: "linked" };
       presetId.value = "linked";
@@ -615,6 +639,13 @@ const shared = computed(() => {
   }
 });
 defineExpose({ run: () => run(), getExample });
+onActivated(() => {
+  if (layoutStorageFailed) return;
+  const stored = readLayouts();
+  if (JSON.stringify(stored) !== JSON.stringify(layouts.value))
+    layouts.value = stored;
+});
+onDeactivated(cancel);
 onBeforeUnmount(cancel);
 </script>
 <template>
@@ -625,30 +656,42 @@ onBeforeUnmount(cancel);
   >
     <header class="graph-heading">
       <div>
-        <h1>{{ isGraph ? "Graph Sim · Lehrlabor" : "String Sim" }}</h1>
+        <h1>
+          {{
+            builder
+              ? "Graph Builder"
+              : isGraph
+                ? "Graph-Verfahren"
+                : "String Sim"
+          }}
+        </h1>
         <p>
           {{
             isGraph
-              ? "Strukturen und Verfahren Schritt für Schritt"
-              : "Zeichen vergleichen, Tabellen aufbauen, Ergebnisse rekonstruieren"
+              ? "Traversieren, kürzeste Pfade und Graphstrukturen untersuchen."
+              : "Zeichenketten vergleichen und Suchschritte verfolgen."
           }}
         </p>
       </div>
-      <div class="graph-heading-actions">
+      <div v-if="!builder" class="graph-heading-actions">
         <ShareExample
           :example="shared"
           reason="Eigener Programmcode wird nicht über Links geteilt."
         />
-        <button class="secondary-button" @click="openEditor()">
+        <button
+          class="secondary-button"
+          @click="openEditor(selected === 'new')"
+        >
           <CodeXml :size="17" /> Code-Editor</button
         ><button v-if="isGraph" class="secondary-button" @click="build(false)">
           <Network :size="17" /> Graph Builder
         </button>
       </div>
+      <button v-else class="secondary-button" @click="builder = undefined">
+        Zurück zur Simulation
+      </button>
     </header>
     <template v-if="builder"
-      ><button class="secondary-button" @click="builder = undefined">
-        Zurück zum Lehrlabor</button
       ><GraphBuilder
         :initial="builder"
         :can-save="!!builder.id || layouts.length < MAX_LAYOUTS"
@@ -656,109 +699,19 @@ onBeforeUnmount(cancel);
         @save="saveLayout"
         @remove="removeLayout"
     /></template>
-    <div v-else class="graph-layout">
-      <section class="panel lab-visual-panel">
-        <div class="graph-readout">
-          <div class="graph-readout-title">
-            <h2>{{ result ? runName : (activeOwn?.name ?? lesson.name) }}</h2>
-            <span>{{
-              isGraph
-                ? `${input.nodes.length} Knoten · ${input.edges.length} Kanten`
-                : `${Array.from(s).length} / ${Array.from(t).length} Zeichen`
-            }}</span>
-          </div>
-          <div>
-            <span>Schritt</span
-            ><strong
-              >{{ step }} <small>/ {{ maxStep }}</small></strong
+    <div v-else class="graph-layout experiment-layout">
+      <aside
+        class="panel graph-settings experiment-settings"
+        aria-label="Experiment einstellen"
+      >
+        <h2>Experiment einstellen</h2>
+        <label
+          >Algorithmus<select v-model="selected">
+            <optgroup
+              v-for="category in categories"
+              :key="category"
+              :label="category"
             >
-          </div>
-          <div>
-            <span>Berechnung</span
-            ><strong>{{
-              result ? `${result.milliseconds.toFixed(1)} ms` : "—"
-            }}</strong>
-          </div>
-        </div>
-        <GraphBoard
-          v-if="isGraph"
-          :preset="displayPreset"
-          :graph="displayGraph"
-          :directed="input.directed"
-          :weighted="weighted && !xmlMode"
-          :start="input.start"
-          :target="input.target"
-          :visited="colors"
-          :current="state.current"
-          :step="step"
-          :tempo="delay"
-          :lesson="{
-            ...state,
-            groups: visibleGroups,
-            selected: reconstructed?.selected ?? state.selected,
-          }"
-          :marked="xmlMode ? xmlSelected : []"
-          @select="start = $event"
-        />
-        <StringBoard v-else :s="s" :t="t" :state="state" :matching="matching" />
-        <div v-if="isGraph" class="graph-legend">
-          <span class="search-key">offen / aktueller Schritt</span
-          ><span class="route-key">ausgewählte Kanten</span
-          ><span>Komponenten haben gleiche Farben</span
-          ><span v-if="state.transpose">Pfeile umgedreht · Gᵀ</span>
-        </div>
-        <div class="lab-step-message" role="status">
-          <span>{{
-            result
-              ? step === 0
-                ? "Initialzustand"
-                : `Schritt ${step}`
-              : "Bereit"
-          }}</span>
-          <p :key="`${selected}-${step}-${frame?.message}`">
-            {{
-              frame?.message ??
-              "Wähle Eingabe und Verfahren. Nach der Berechnung kannst du jeden Schritt einzeln verfolgen oder abspielen."
-            }}
-          </p>
-        </div>
-        <LabPlayback
-          :key="result ? result.milliseconds : 0"
-          :step="step"
-          :total="maxStep"
-          :delay="delay"
-          @seek="step = $event"
-        />
-        <LabState v-if="frame" :state="state" :before="before" :input="input" />
-        <div class="lab-run-result">
-          <p v-if="error" role="alert">{{ error }}</p>
-          <template v-if="result"
-            ><p v-if="step === maxStep">{{ result.result }}</p>
-            <p v-else>
-              {{
-                result.limited
-                  ? "Aufzeichnung wurde begrenzt."
-                  : "Berechnung abgeschlossen."
-              }}
-              {{ maxStep }} Schritte stehen zur Wiedergabe bereit.
-            </p>
-            <p v-if="reconstructed">{{ reconstructed.text }}</p>
-            <button class="secondary-button" @click="exportResult">
-              <Download :size="14" /> Ablauf exportieren
-            </button></template
-          >
-        </div>
-      </section>
-      <aside class="panel graph-settings">
-        <h2>Experiment</h2>
-        <label
-          >Lernbereich<select v-model="category">
-            <option v-for="name in categories" :key="name">{{ name }}</option>
-          </select></label
-        >
-        <label
-          >Verfahren<select v-model="selected">
-            <optgroup label="Eingebaute Verfahren">
               <option
                 v-for="item in lessons.filter((l) => l.category === category)"
                 :key="item.id"
@@ -775,55 +728,36 @@ onBeforeUnmount(cancel);
             <option value="new">Eigenen Algorithmus bauen</option>
           </select></label
         >
-        <template v-if="isGraph"
-          ><label
+        <template v-if="isGraph">
+          <label
             >Graph<select v-model="presetId" @change="xmlMode = false">
-              <option
-                v-for="item in [
-                  ...presets,
-                  ...layouts,
-                  ...(linkedGraph ? [linkedGraph] : []),
-                ]"
-                :key="item.id"
-                :value="item.id"
+              <option v-if="xmlMode" :value="presetId">XML-Elementbaum</option>
+              <optgroup label="Vorlagen">
+                <option v-for="item in presets" :key="item.id" :value="item.id">
+                  {{ item.name }}
+                </option>
+              </optgroup>
+              <optgroup
+                v-if="layouts.length || linkedGraph"
+                label="Eigene und geteilte Graphen"
               >
-                {{ item.name }}
-              </option>
+                <option
+                  v-for="item in [
+                    ...layouts,
+                    ...(linkedGraph ? [linkedGraph] : []),
+                  ]"
+                  :key="item.id"
+                  :value="item.id"
+                >
+                  {{ item.name }}
+                </option>
+              </optgroup>
             </select></label
           >
-          <p class="graph-field-help">{{ effective.description }}</p>
-          <button
-            class="secondary-button graph-edit-button"
-            @click="build(true)"
-          >
-            Vorlage bearbeiten
-          </button>
-          <button class="secondary-button graph-edit-button" @click="example">
-            Passendes Beispiel laden
-          </button>
-          <div class="graph-toggles">
-            <button
-              :disabled="xmlMode"
-              :aria-pressed="weighted"
-              @click="weighted = !weighted"
-            >
-              Gewichtet</button
-            ><button
-              :disabled="xmlMode"
-              :aria-pressed="directed"
-              @click="directed = !directed"
-            >
-              Gerichtet
-            </button>
-          </div>
-          <p v-if="!directed" class="graph-field-help">
-            Ungerichtete Sicht: Gegenkanten werden mit dem kleineren Gewicht
-            zusammengefasst, gerichtete Schlingen ausgeblendet. Die gespeicherte
-            Vorlage bleibt erhalten.
-          </p>
-          <div class="graph-endpoints">
-            <label
-              >Quelle / Wurzel<select v-model="start">
+          <div class="graph-endpoints" v-if="hasSource || hasTarget">
+            <label v-if="hasSource"
+              >{{ lesson.id === "trees" ? "Wurzel" : "Quelle"
+              }}<select v-model="start">
                 <option
                   v-for="node in input.nodes"
                   :key="node.id"
@@ -832,8 +766,8 @@ onBeforeUnmount(cancel);
                   {{ node.label }}
                 </option>
               </select></label
-            ><span>→</span
-            ><label
+            >
+            <label v-if="hasTarget"
               >Ziel<select v-model="target">
                 <option
                   v-for="node in input.nodes"
@@ -845,79 +779,212 @@ onBeforeUnmount(cancel);
               </select></label
             >
           </div>
-          <label
-            v-if="
-              ['bfs', 'dfs', 'bellman', 'dijkstra', 'paths'].includes(lesson.id)
-            "
-            >Umfang<select v-model="mode">
-              <option value="source">Ab einer Quelle</option>
-              <option value="target">Zum Ziel · transponiert</option>
-              <option value="all">Gesamter Graph / alle Quellen</option>
-            </select></label
-          >
-          <p class="graph-field-help">
-            Klick auf einen Knoten setzt die Quelle. „Pfade“ verwendet stets
-            Quelle und Ziel; „Gesamter Graph“ bildet bei BFS/DFS einen Suchwald.
-          </p>
         </template>
-        <template v-else
-          ><label
+        <div v-else class="experiment-inputs">
+          <label
             >{{ matching ? "Muster p" : "Zeichenkette s"
-            }}<input v-model="s" maxlength="48" spellcheck="false" /></label
-          ><label
+            }}<input v-model="s" maxlength="48" spellcheck="false"
+          /></label>
+          <label
             >{{ matching ? "Text t" : "Zeichenkette t"
-            }}<input v-model="t" maxlength="48" spellcheck="false" /></label
-          ><button class="secondary-button graph-edit-button" @click="example">
-            Beispiel einsetzen
+            }}<input v-model="t" maxlength="48" spellcheck="false"
+          /></label>
+        </div>
+        <div class="experiment-actions">
+          <button v-if="busy" class="secondary-button" @click="cancel">
+            <Square :size="15" /> Abbrechen
           </button>
-          <p class="graph-field-help">
-            Leere Texte sind erlaubt. Positionen zählen Unicode-Codepoints ab 0;
-            zusammengesetzte Schriftzeichen können mehrere Positionen umfassen.
-          </p>
-          <details class="lab-small-details">
-            <summary>Schreibweise</summary>
-            <p>
-              |s| ist die Länge. s[i] bezeichnet ein Zeichen. s[i:j] enthält
-              Positionen i bis j−1. s[:i] ist ein Präfix, s[i:] ein Suffix. ε
-              steht für die leere Zeichenkette.
+          <button
+            v-else
+            class="primary-button"
+            :disabled="selected === 'new'"
+            @click="run()"
+          >
+            <Play :size="16" /> Berechnen
+          </button>
+          <button class="secondary-button" @click="example">
+            Beispiel laden
+          </button>
+        </div>
+        <details class="experiment-options">
+          <summary>Weitere Einstellungen</summary>
+          <template v-if="isGraph">
+            <p class="graph-field-help">{{ effective.description }}</p>
+            <div
+              class="graph-toggles"
+              role="group"
+              aria-label="Kanteneigenschaften"
+            >
+              <button
+                :disabled="xmlMode"
+                :aria-pressed="weighted"
+                @click="weighted = !weighted"
+              >
+                Gewichtet
+              </button>
+              <button
+                :disabled="xmlMode"
+                :aria-pressed="directed"
+                @click="directed = !directed"
+              >
+                Gerichtet
+              </button>
+            </div>
+            <label
+              v-if="['bfs', 'dfs', 'bellman', 'dijkstra'].includes(lesson.id)"
+              >Suchumfang<select v-model="mode">
+                <option value="source">Ab einer Quelle</option>
+                <option value="target">Zum Ziel (Gᵀ)</option>
+                <option value="all">Gesamter Graph</option>
+              </select></label
+            >
+            <p v-if="!directed" class="graph-field-help">
+              Gegenkanten teilen sich das kleinere Gewicht. Schlingen werden
+              ausgeblendet.
             </p>
-          </details></template
-        >
-        <label
-          >Schrittlimit<input
-            v-model.number="limit"
-            type="number"
-            min="1"
-            max="5000" /></label
-        ><label
-          >Wiedergabe<select v-model.number="delay">
-            <option :value="850">Langsam</option>
-            <option :value="450">Normal</option>
-            <option :value="120">Schnell</option>
-          </select></label
-        >
-        <button v-if="busy" class="secondary-button graph-run" @click="cancel">
-          <Square :size="15" /> Berechnung abbrechen</button
-        ><button
-          v-else
-          class="primary-button graph-run"
-          :disabled="selected === 'new'"
-          @click="run()"
-        >
-          <Play :size="16" /> Berechnen</button
-        ><button
-          class="secondary-button graph-run"
-          @click="openEditor(selected === 'new')"
-        >
-          <CodeXml :size="16" /> Code öffnen & verändern
-        </button>
+            <button
+              class="secondary-button graph-edit-button"
+              @click="build(true)"
+            >
+              <Network :size="14" /> Graph bearbeiten
+            </button>
+          </template>
+          <p v-else class="graph-field-help">
+            Leere Texte sind erlaubt. Positionen zählen Unicode-Codepoints ab 0.
+          </p>
+          <div class="experiment-inputs">
+            <label
+              >Schrittlimit<input
+                v-model.number="limit"
+                type="number"
+                min="1"
+                max="5000"
+                @blur="
+                  limit = Math.max(
+                    1,
+                    Math.min(5000, Math.trunc(Number(limit) || 1)),
+                  )
+                "
+            /></label>
+            <label
+              >Tempo<select v-model.number="delay">
+                <option v-if="![850, 450, 120].includes(delay)" :value="delay">
+                  {{ delay }} ms / Schritt
+                </option>
+                <option :value="850">Langsam</option>
+                <option :value="450">Normal</option>
+                <option :value="120">Schnell</option>
+              </select></label
+            >
+          </div>
+        </details>
       </aside>
+      <section
+        ref="visualPanel"
+        class="panel lab-visual-panel experiment-visual"
+        aria-label="Simulation und Ablauf"
+      >
+        <div class="graph-readout">
+          <div class="graph-readout-title">
+            <h2>{{ result ? runName : (activeOwn?.name ?? lesson.name) }}</h2>
+            <span>{{
+              isGraph
+                ? `${input.nodes.length} Knoten · ${input.edges.length} Kanten · ${input.directed ? "gerichtet" : "ungerichtet"}${weighted && !xmlMode ? " · gewichtet" : ""}`
+                : `${Array.from(s).length} / ${Array.from(t).length} Zeichen`
+            }}</span>
+          </div>
+          <div>
+            <span>Schritt</span
+            ><strong
+              >{{ step }} <small>/ {{ maxStep }}</small></strong
+            >
+          </div>
+          <div>
+            <span>Berechnung</span
+            ><strong>{{ `${result?.milliseconds.toFixed(1)} ms` }}</strong>
+          </div>
+        </div>
+        <GraphBoard
+          v-if="isGraph"
+          :preset="displayPreset"
+          :graph="displayGraph"
+          :directed="input.directed"
+          :weighted="weighted && !xmlMode"
+          :start="hasSource ? input.start : -1"
+          :target="hasTarget ? input.target : -1"
+          :selectable="hasSource || hasTarget"
+          :visited="colors"
+          :current="state.current"
+          :step="step"
+          :tempo="delay"
+          :lesson="{
+            ...state,
+            groups: visibleGroups,
+            selected: reconstructed?.selected ?? state.selected,
+          }"
+          :marked="xmlMode ? xmlSelected : []"
+          @select="
+            mode === 'target' && hasTarget
+              ? (target = $event)
+              : (start = $event)
+          "
+        />
+        <StringBoard v-else :s="s" :t="t" :state="state" :matching="matching" />
+        <div v-if="isGraph" class="graph-legend">
+          <span class="search-key">offen / aktueller Schritt</span
+          ><span class="route-key">ausgewählte Kanten</span
+          ><span>Komponenten haben gleiche Farben</span
+          ><span v-if="state.transpose">Pfeile umgedreht · Gᵀ</span>
+        </div>
+        <LabPlayback
+          :key="result ? result.milliseconds : 0"
+          :step="step"
+          :total="maxStep"
+          :delay="delay"
+          @seek="step = $event"
+        />
+        <div
+          class="lab-step-message"
+          :role="busy || !result ? 'status' : undefined"
+        >
+          <p v-if="error" role="alert">{{ error }}</p>
+          <p v-else-if="busy">Ablauf wird berechnet …</p>
+          <p v-else-if="!result">Mit „Berechnen“ den Ablauf vorbereiten.</p>
+          <template v-else>
+            <span>{{ step === 0 ? "Initialzustand" : `Schritt ${step}` }}</span>
+            <p :key="`${selected}-${step}-${frame?.message}`">
+              {{ frame?.message }}
+            </p>
+            <p v-if="step === 0 && maxStep" class="lab-next-hint">
+              Abspielen oder mit den Pfeilen Schritt für Schritt weitergehen.
+            </p>
+          </template>
+        </div>
+        <h3 v-if="frame" class="live-state-heading">Live-Zustand</h3>
+        <LabState v-if="frame" :state="state" :before="before" :input="input" />
+        <div v-if="result" class="lab-run-result">
+          <p v-if="result.limited">
+            Schrittlimit erreicht. Für einen längeren Ablauf das Limit erhöhen
+            und neu berechnen.
+          </p>
+          <p v-if="step === maxStep">{{ result.result }}</p>
+          <p v-if="reconstructed">{{ reconstructed.text }}</p>
+          <button class="secondary-button" @click="exportResult">
+            <Download :size="14" /> Ablauf exportieren
+          </button>
+        </div>
+      </section>
     </div>
     <p v-if="notice" role="status" class="lab-notice">{{ notice }}</p>
     <template v-if="!builder">
-      <section class="panel lab-explanation">
-        <h2>{{ lesson.name }} · Idee und Notation</h2>
+      <details class="panel lab-explanation experiment-reference">
+        <summary>Algorithmus erklärt: {{ lesson.name }}</summary>
         <p>{{ lesson.introduction }}</p>
+        <p v-if="!isGraph">
+          |s| ist die Länge. s[i] bezeichnet ein Zeichen, s[i:j] den Abschnitt
+          von i bis j−1. s[:i] ist ein Präfix, s[i:] ein Suffix und ε die leere
+          Zeichenkette.
+        </p>
         <div class="lab-formulas">
           <p
             v-for="formula in lesson.formulas"
@@ -941,12 +1008,12 @@ onBeforeUnmount(cancel);
         <p v-if="activeOwn?.notation" class="lab-own-notation">
           Eigene Variante: {{ activeOwn.notation }}
         </p>
-      </section>
-      <section
+      </details>
+      <details
         v-if="isGraph && lesson.id === 'trees'"
-        class="panel lab-explanation"
+        class="panel lab-explanation experiment-reference"
       >
-        <h2>Beziehungen und XML</h2>
+        <summary>Baumbeziehungen und XML</summary>
         <div class="lab-relation-fields">
           <label
             >Knoten u<select v-model="u">
@@ -1003,9 +1070,9 @@ onBeforeUnmount(cancel);
             <code>{{ input.nodes[i]?.label }} = {{ tag }}</code>
           </p>
         </div>
-      </section>
+      </details>
       <details v-if="isGraph" class="panel lab-facts">
-        <summary>Graphdarstellung, Eigenschaften und Pfade prüfen</summary>
+        <summary>Graph-Notation, Eigenschaften und Pfade</summary>
         <GraphFacts :input="input" />
       </details>
       <div v-if="editorOpen" ref="editorHost" class="graph-editor-host">

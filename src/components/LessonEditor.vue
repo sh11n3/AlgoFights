@@ -226,38 +226,40 @@ onBeforeUnmount(stop);
         <Check :size="15" />
         {{ checking ? "Prüfung abbrechen" : "Code prüfen" }}
       </button>
-      <button class="secondary-button" @click="load">
-        <RotateCcw :size="15" /> Zurücksetzen
-      </button>
-      <button class="secondary-button" @click="download">
-        <Download :size="15" /> Export
-      </button>
-      <button class="secondary-button" @click="file?.click()">
-        <Upload :size="15" /> Import
-      </button>
-      <button
-        v-if="own"
-        class="secondary-button"
-        @click="emit('remove', own.id)"
-      >
-        Variante löschen
-      </button>
-      <input
-        ref="file"
-        type="file"
-        hidden
-        accept="application/json,.json"
-        @change="upload"
-      />
     </div>
+    <details class="experiment-options editor-files">
+      <summary>Dateien und Varianten</summary>
+      <div class="lab-editor-actions">
+        <button class="secondary-button" @click="load">
+          <RotateCcw :size="15" /> Zurücksetzen
+        </button>
+        <button class="secondary-button" @click="download">
+          <Download :size="15" /> Export
+        </button>
+        <button class="secondary-button" @click="file?.click()">
+          <Upload :size="15" /> Import
+        </button>
+        <button
+          v-if="own"
+          class="secondary-button"
+          @click="emit('remove', own.id)"
+        >
+          Variante löschen
+        </button>
+        <input
+          ref="file"
+          type="file"
+          hidden
+          accept="application/json,.json"
+          @change="upload"
+        />
+      </div>
+    </details>
     <p v-if="notice" role="status" class="lab-notice">{{ notice }}</p>
-    <details class="lab-api" open>
+    <details class="lab-api">
       <summary>Schnittstelle und Beispiel</summary>
       <p>
-        <a
-          :href="documentationUrl"
-          target="_blank"
-          rel="noopener"
+        <a :href="documentationUrl" target="_blank" rel="noopener"
           >Editor-Handbuch öffnen</a
         >
       </p>

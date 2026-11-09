@@ -21,6 +21,7 @@ const props = withDefaults(
     path?: Uint32Array;
     lesson?: LabState;
     marked?: number[];
+    selectable?: boolean;
     builder?: {
       selectedNode: number | null;
       selectedEdge: number | null;
@@ -32,6 +33,7 @@ const props = withDefaults(
     searchEdges: () => new Map(),
     tempo: 360,
     step: 0,
+    selectable: true,
   },
 );
 const emit = defineEmits<{
@@ -242,9 +244,12 @@ const route = computed(() => {
   <svg
     ref="svg"
     class="graph-board"
-    :class="{ 'graph-board-builder': builder }"
+    :class="{
+      'graph-board-builder': builder,
+      'graph-board-static': !selectable,
+    }"
     role="group"
-    aria-label="Interaktiver Graph"
+    :aria-label="selectable ? 'Interaktiver Graph' : 'Graph'"
     :viewBox="`0 0 ${width} ${height}`"
     @click="placePoint"
   >
@@ -337,8 +342,8 @@ const route = computed(() => {
       v-for="point in points"
       :key="point.id"
       class="graph-node"
-      role="button"
-      tabindex="0"
+      :role="selectable ? 'button' : undefined"
+      :tabindex="selectable ? 0 : undefined"
       :class="{
         start: point.id === start,
         target: point.id === target,
@@ -353,9 +358,9 @@ const route = computed(() => {
       :aria-label="`Knoten ${point.label}${point.id === start ? ', Start' : ''}${point.id === target ? ', Ziel' : ''}`"
       :transform="`translate(${point.x} ${point.y})`"
       :style="componentStyle(point.id)"
-      @click.stop="emit('select', point.id)"
-      @keydown.enter.prevent="emit('select', point.id)"
-      @keydown.space.prevent="emit('select', point.id)"
+      @click.stop="selectable && emit('select', point.id)"
+      @keydown.enter.prevent="selectable && emit('select', point.id)"
+      @keydown.space.prevent="selectable && emit('select', point.id)"
     >
       <circle :r="radius + 7" class="graph-node-hit" />
       <circle
