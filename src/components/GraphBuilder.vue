@@ -21,25 +21,18 @@ import {
 } from "../graph/layouts";
 import type { Point } from "../graph/presets";
 import { createGraph } from "../graph/simulation";
+import { routeChoices, selectedRoute } from "../graph/route-lab";
 import { GRAPH_LESSONS } from "../lab/catalog";
-import { ROUTE_ALGORITHMS } from "../routing/types";
 import { snapshotGraph, type Example } from "../sharing/examples";
 import ShareExample from "./ShareExample.vue";
 
 const props = defineProps<{
   initial: GraphLayout;
   canSave: boolean;
-  shareMode?: "route";
   shareAlgorithm?: string;
   initialTool?: "maze";
 }>();
-const shareChoices =
-  props.shareMode === "route"
-    ? Object.entries(ROUTE_ALGORITHMS).map(([id, item]) => ({
-        id,
-        name: item.name,
-      }))
-    : GRAPH_LESSONS;
+const shareChoices = [...GRAPH_LESSONS, ...routeChoices];
 const shareAlgorithm = ref(
   shareChoices.some((c) => c.id === props.shareAlgorithm)
     ? props.shareAlgorithm!
@@ -48,12 +41,13 @@ const shareAlgorithm = ref(
 const shared = computed<Example | null>(() => {
   if (!draft.value.points.length || !draft.value.name.trim()) return null;
   const graph = snapshotGraph(draft.value);
-  return props.shareMode === "route"
+  const route = selectedRoute(shareAlgorithm.value);
+  return route
     ? {
         v: 1,
         kind: "graph-route",
         graph,
-        algorithm: shareAlgorithm.value,
+        algorithm: route,
         limit: 100,
         delay: 360,
       }
@@ -432,13 +426,24 @@ function applyLayout(layout: GraphLayout) {
         <div class="builder-share">
           <label
             >Verfahren für Beispiel-Link<select v-model="shareAlgorithm">
-              <option
-                v-for="item in shareChoices"
-                :key="item.id"
-                :value="item.id"
-              >
-                {{ item.name }}
-              </option>
+              <optgroup label="Lehrverfahren">
+                <option
+                  v-for="item in GRAPH_LESSONS"
+                  :key="item.id"
+                  :value="item.id"
+                >
+                  {{ item.name }}
+                </option>
+              </optgroup>
+              <optgroup label="Start–Ziel-Wegsuche">
+                <option
+                  v-for="item in routeChoices"
+                  :key="item.id"
+                  :value="item.id"
+                >
+                  {{ item.name }}
+                </option>
+              </optgroup>
             </select></label
           >
           <ShareExample

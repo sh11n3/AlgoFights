@@ -1,12 +1,12 @@
 # Graph- und Zeichenkettenlabor
 
-Das Lehrlabor ergänzt die Start-Ziel-Wegsuche. Seine Algorithmen berechnen zuerst ein begrenztes Replay im Worker. Die Wiedergabe lässt sich pausieren, schrittweise vorwärts und rückwärts bewegen oder über einen Schieberegler durchsuchen. Eingabeänderungen verwerfen das vorherige Replay. Ein Schritt bezeichnet ein fachliches Ereignis, etwa eine Kantenprüfung, eine Entdeckung oder eine geänderte Tabellenzelle; Schrittzahlen verschiedener Verfahren sind deshalb kein einheitliches Maß für deren Rechenaufwand.
+Graph Sim zeigt Lehrverfahren und Start–Ziel-Suche in einer gemeinsamen Ansicht. Die Lehrverfahren berechnen zuerst ein begrenztes Replay im Worker. Die Wiedergabe lässt sich pausieren, schrittweise vorwärts und rückwärts bewegen oder über einen Schieberegler durchsuchen. Eingabeänderungen verwerfen das vorherige Replay. Ein Schritt bezeichnet ein fachliches Ereignis, etwa eine Kantenprüfung, eine Entdeckung oder eine geänderte Tabellenzelle; Schrittzahlen verschiedener Verfahren sind deshalb kein einheitliches Maß für deren Rechenaufwand.
 
 Die Texte, Implementierungen, Grafiken und Beispiele wurden für AlgoFights verfasst. Es werden keine Vorlesungsfolien, Foliengrafiken oder übernommenen Quellcodes ausgeliefert. Mathematische Begriffe und Formeln dienen als gemeinsame Fachsprache.
 
 ## Graph Sim
 
-Unter **Graph Sim → Graph-Verfahren** stehen alle Verfahren in einem nach Themen gruppierten Menü. **Berechnen** bereitet den Ablauf vor; die Live-Werte stehen direkt unter der Wiedergabe. Suchumfang, Schrittlimit und Kanteneigenschaften sind unter **Weitere Einstellungen** zu finden.
+Unter **Graph Sim** stehen alle Verfahren in einem nach Themen gruppierten Menü. **Berechnen** bereitet den Ablauf vor; die Live-Werte stehen direkt unter der Wiedergabe. Suchumfang, Schrittlimit und Kanteneigenschaften sind unter **Weitere Einstellungen** zu finden.
 
 Die Ansicht umfasst diese Lernbereiche:
 
@@ -25,7 +25,7 @@ Die zusätzlichen Experimente umfassen Quellenentfernung, BFS-Zyklenerkennung, d
 
 Kruskal zeigt die sortierten `gu/gv/gw`, die Repräsentanten `r` und die Baumkanten `tu/tv`. Prim zeichnet `dis/pre/tu/tv` und einen indizierten Min-Heap auf. **Spannbäume aufzählen** veranschaulicht die Schranke durch Kantenteilmengen an kleinen Graphen. Die Vorlage **Wegbaum und Spannbaum** eignet sich zum Vergleich von Dijkstra und Prim bei gleicher Quelle.
 
-Die bestehende Start-Ziel-Wegsuche bleibt als eigener Modus erhalten. Sie enthält weiterhin A*, Greedy Best-First und bidirektionalen Dijkstra sowie die bisherigen eigenen Wegsuchalgorithmen. Ihre `findRoute(graph)`-Schnittstelle bleibt unverändert. Graphvorlagen und Builder werden von beiden Modi genutzt, ihre eigenen Algorithmen getrennt gespeichert.
+Die Gruppe **Start–Ziel-Wegsuche** enthält A*, Greedy Best-First, bidirektionalen Dijkstra und die Varianten von BFS, DFS und Dijkstra, die nach einem ausgewählten Ziel suchen. Gespeicherte Varianten erscheinen unter **Eigene Wegsuche**. Im selben Code-Editor bleibt die Schnittstelle `findRoute(graph)` für diese Verfahren erhalten; die Lehrverfahren verwenden `run(input, api)`.
 
 ### Eingaben und Notation
 

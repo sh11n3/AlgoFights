@@ -1,21 +1,14 @@
-.lab-mode-nav,
 .lab-tabs {
   display: flex;
   gap: 4px;
   flex-wrap: wrap;
 }
-.lab-mode-nav {
-  margin-bottom: 22px;
-  border-bottom: 1px solid var(--border);
-}
-.lab-mode-nav button,
 .lab-tabs button {
   padding: 10px 14px;
   color: #aab6c7;
   border-bottom: 2px solid transparent;
   font-size: 13px;
 }
-.lab-mode-nav button[aria-pressed="true"],
 .lab-tabs button[aria-pressed="true"] {
   border-color: #d9e1eb;
   color: #f3f6fa;
@@ -23,6 +16,12 @@
 }
 .lesson-lab {
   --graph-route: #a0e9b7;
+}
+.route-introduction {
+  margin: 0;
+  padding: 0 18px 14px;
+  color: var(--muted);
+  font-size: 13px;
 }
 .lab-visual-panel {
   min-width: 0;

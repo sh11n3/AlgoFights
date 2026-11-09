@@ -94,7 +94,9 @@ Am Ende von Algo Sim vergleicht eine dauerhaft sichtbare Tabelle alle sechs eing
 - Es sind reale Stadt-Ausschnitte, nicht die kompletten Städte. Wasser-/Parkkonturen sind vereinfachte Orientierung. Ausschnittsgrenzen können Verbindungen abschneiden.
 - Datenschnappschüsse stehen unter `public/maps/` mit Bounding Box und Zeitstempeln. Copyright und ODbL: [public/maps/LICENSE.md](public/maps/LICENSE.md). Die Rohdaten sind direkt herunterladbar. `src/routing/cities.json` definiert Namen, Ausschnitte und gültige Standard-Endpunkte gemeinsam für Oberfläche und Downloadskript. `node scripts/fetch-city-maps.mjs` aktualisiert alle Städte bewusst manuell; angehängte Stadt-IDs wählen einzelne Downloads aus. Normale Builds laden keine externen Kartendaten.
 
-## Graph Sim: Wegsuche auf Lehrgraphen
+## Graph Sim: Graphverfahren und Wegsuche
+
+Ein gemeinsames Algorithmusmenü verbindet die Lehrverfahren mit der Start–Ziel-Suche. Die gewählte Graphvorlage bleibt beim Wechsel erhalten. Builder, Wiedergabe, Code-Editor und Graphnotation befinden sich immer an derselben Stelle.
 
 Elf Vorlagen reichen von der **Abkürzung** mit fünf Knoten über Baum, Leiternetz, Zyklus, Stern, bipartite und vollständige Graphen bis zum **Clusternetz** mit 32 Knoten. Ein gerichteter Schichtgraph und getrennte Komponenten zeigen, wie Kantenrichtungen und Erreichbarkeit zusammenhängen. Gewichte und Richtungen sind unabhängig schaltbar. Ungerichtete Kanten gelten in beide Richtungen. Ohne Gewichte kostet jede Kante 1. Start und Ziel sind frei wählbar.
 
@@ -108,7 +110,7 @@ Die sechs Suchverfahren verwenden dieselben Implementierungen wie Algo Sim. Die 
 
 Der Graph-Editor nutzt `findRoute(graph)` und speichert eigene Varianten getrennt von Algo Sim. Für eigene Algorithmen gelten das Schrittlimit für `graph.trace()` und zusätzlich fünf Sekunden Laufzeit im isolierten Worker. Details und Beispielcode stehen im [Editor-Handbuch](public/docs/editor-handbuch.html#graph-sim).
 
-## Graph-Lehrlabor und String Sim
+## Lehrverfahren in Graph Sim und String Sim
 
 Das Graph-Lehrlabor enthält vollständige BFS/DFS mit Farben und Zeitstempeln, Kantenklassen und Zyklenerkennung, topologisches Sortieren, Pfadaufzählung, Dijkstra mit indiziertem Heap, Bellman–Ford, Floyd–Warshall, Union-Find, Komponenten-DFS, Kosaraju, Kruskal, Prim und Baum-/XML-Analysen mit XPath. Die zentralen Zustände lassen sich Schritt für Schritt verfolgen; negative Zyklen und getrennte Komponenten werden ausdrücklich behandelt.
 

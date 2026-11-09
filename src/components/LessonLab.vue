@@ -10,13 +10,21 @@ import {
   shallowRef,
   watch,
 } from "vue";
-import { CodeXml, Network, Play, Square, Download } from "lucide-vue-next";
+import {
+  ArrowLeftRight,
+  CodeXml,
+  Network,
+  Play,
+  Square,
+  Download,
+} from "lucide-vue-next";
 import GraphBoard from "./GraphBoard.vue";
 import GraphBuilder from "./GraphBuilder.vue";
 import GraphFacts from "./GraphFacts.vue";
 import StringBoard from "./StringBoard.vue";
 import LabState from "./LabState.vue";
 import LabPlayback from "./LabPlayback.vue";
+import SearchArrays from "./SearchArrays.vue";
 import { GRAPH_LESSONS, STRING_LESSONS } from "../lab/catalog";
 import {
   GRAPH_PRESETS,
@@ -33,15 +41,36 @@ import {
   LAYOUT_STORAGE_KEY,
   type GraphLayout,
 } from "../graph/layouts";
-import { createGraph } from "../graph/simulation";
+import {
+  createGraph,
+  GRAPH_ALGORITHMS,
+  graphHeuristic,
+  graphResult,
+  searchTeachingGraph,
+} from "../graph/simulation";
+import {
+  NEW_ROUTE,
+  routeChoices,
+  routeReplay,
+  routeSelection,
+  selectedRoute,
+  type GraphRouteResult,
+} from "../graph/route-lab";
+import { readGraphNotation } from "../graph/notation";
 import { readOwn, type OwnLesson } from "../lab/storage";
-import { store } from "../services/storage";
+import { readStrategies, store } from "../services/storage";
 import { runLesson } from "../services/lesson-runner";
+import { runRouteCode } from "../services/route-sandbox";
+import type { CustomStrategy } from "../core/types";
 import type { LabInput, LabResult, LessonOptions } from "../lab/types";
 import "../lab/style.css";
 import ShareExample from "./ShareExample.vue";
 import { readExample, snapshotGraph, type Example } from "../sharing/examples";
 const LessonEditor = defineAsyncComponent(() => import("./LessonEditor.vue"));
+const StrategyEditor = defineAsyncComponent(
+  () => import("./StrategyEditor.vue"),
+);
+const GraphNotation = defineAsyncComponent(() => import("./GraphNotation.vue"));
 const props = defineProps<{
   kind: "graph" | "string";
   initial?: Example;
@@ -54,6 +83,27 @@ const selected = ref(isGraph ? "bfs" : "levenshtein"),
   base = ref(selected.value);
 const own = ref(readOwn(props.kind)),
   activeOwn = computed(() => own.value.find((v) => v.id === selected.value));
+const ownRoutes = ref(isGraph ? readStrategies("graphs", "graph:") : []);
+const activeRoute = computed(() =>
+  ownRoutes.value.find((v) => v.id === selected.value),
+);
+const routeId = computed(() =>
+  isGraph ? selectedRoute(selected.value) : undefined,
+);
+const isRoute = computed(
+  () =>
+    isGraph &&
+    (!!routeId.value || !!activeRoute.value || selected.value === NEW_ROUTE),
+);
+const routeName = computed(
+  () =>
+    activeRoute.value?.name ??
+    routeChoices.find((item) => item.id === selected.value)?.name ??
+    "Eigene Wegsuche",
+);
+const routeEditorSource = computed(() =>
+  routeId.value ? `builtin:${routeId.value}` : (activeRoute.value?.id ?? "new"),
+);
 const lesson = computed(
   () =>
     lessons.find(
@@ -82,6 +132,21 @@ const weighted = ref(true),
   limit = ref(2000),
   delay = ref(450),
   step = ref(0);
+const routeLimit = ref(100);
+const clickEndpoint = ref<"start" | "target">("target");
+const stepLimit = computed({
+  get: () => (isRoute.value ? routeLimit.value : limit.value),
+  set: (value) => {
+    if (isRoute.value) routeLimit.value = value;
+    else limit.value = value;
+  },
+});
+const maxLimit = computed(() => (isRoute.value ? 500 : 5000));
+const boundedLimit = () =>
+  Math.max(
+    1,
+    Math.min(maxLimit.value, Math.trunc(Number(stepLimit.value) || 1)),
+  );
 const s = ref("garten"),
   t = ref("karten");
 const options = ref<LessonOptions>({});
@@ -104,6 +169,8 @@ const result = shallowRef<LabResult>(),
   editorHost = ref<HTMLElement>(),
   visualPanel = ref<HTMLElement>(),
   editorBlank = ref(false);
+const routeResult = shallowRef<GraphRouteResult>();
+const notationOpen = ref(false);
 const runName = ref(""),
   runSource = ref("");
 const builder = shallowRef<GraphLayout>();
@@ -146,16 +213,18 @@ const input = computed<LabInput>(() => ({
   directed: xmlMode.value || directed.value,
   start: Math.min(start.value, network.value.nodes.length - 1),
   target: Math.min(target.value, network.value.nodes.length - 1),
-  mode: fullGraphLessons.has(lesson.value.id)
-    ? "all"
-    : ["bfs", "dfs", "dijkstra", "bellman", "paths", "floyd"].includes(
-          lesson.value.id,
-        ) || activeOwn.value
-      ? mode.value
-      : "source",
+  mode: isRoute.value
+    ? "source"
+    : fullGraphLessons.has(lesson.value.id)
+      ? "all"
+      : ["bfs", "dfs", "dijkstra", "bellman", "paths", "floyd"].includes(
+            lesson.value.id,
+          ) || activeOwn.value
+        ? mode.value
+        : "source",
   s: s.value,
   t: t.value,
-  ...(runOptions.value ? { options: runOptions.value } : {}),
+  ...(!isRoute.value && runOptions.value ? { options: runOptions.value } : {}),
 }));
 const treeParents = computed(() => {
   if (
@@ -261,6 +330,25 @@ const maxStep = computed(() =>
   Math.max(0, (result.value?.frames.length ?? 1) - 1),
 );
 const state = computed(() => frame.value?.state ?? {});
+const routeAtEnd = computed(
+  () => !!routeResult.value && step.value === maxStep.value,
+);
+const routeTrace = computed(() => {
+  const visited = new Map<number, number>();
+  const edges = new Map<number, number>();
+  const route = routeResult.value;
+  if (!route) return { visited, edges };
+  const { arcs } = displayGraph.value;
+  for (let i = 0; i < step.value; i++) {
+    const side = route.traceSides[i];
+    visited.set(route.traceNodes[i], side);
+    const arc = arcs[route.traceEdges[i]];
+    if (arc) edges.set(arc.segment, side);
+  }
+  const arc = arcs[route.traceEdges[step.value - 1]];
+  const source = route.traceSides[step.value - 1] === 1 ? arc?.to : arc?.from;
+  return { visited, edges, source };
+});
 const colors = computed(
   () =>
     new Map(
@@ -273,7 +361,8 @@ const visibleGroups = computed(() => state.value.groups ?? []);
 const hasSource = computed(
   () =>
     isGraph &&
-    (!!activeOwn.value ||
+    (isRoute.value ||
+      !!activeOwn.value ||
       [
         "bfs",
         "dfs",
@@ -293,7 +382,8 @@ const hasSource = computed(
 const hasTarget = computed(
   () =>
     isGraph &&
-    (!!activeOwn.value ||
+    (isRoute.value ||
+      !!activeOwn.value ||
       [
         "paths",
         "dijkstra",
@@ -308,7 +398,12 @@ const matching = computed(() =>
   ["naive-match", "anchor-match", "kmp"].includes(lesson.value.id),
 );
 const reconstructed = computed(() => {
-  if (!result.value || step.value !== maxStep.value || result.value.limited)
+  if (
+    isRoute.value ||
+    !result.value ||
+    step.value !== maxStep.value ||
+    result.value.limited
+  )
     return undefined;
   const matrices = state.value.matrices ?? [],
     arrays = state.value.arrays ?? [];
@@ -402,35 +497,75 @@ function cancel() {
 function clear() {
   cancel();
   result.value = undefined;
+  routeResult.value = undefined;
   treeOnly.value = false;
   step.value = 0;
   error.value = "";
 }
 async function run(draft?: OwnLesson) {
+  if (selected.value === NEW_ROUTE || (selected.value === "new" && !draft))
+    return;
   clear();
   const current = new AbortController();
   controller = current;
   busy.value = true;
-  const code = draft?.code ?? activeOwn.value?.code ?? lesson.value.source;
+  const route = isRoute.value;
+  const code = route
+    ? (activeRoute.value?.code ?? "")
+    : (draft?.code ?? activeOwn.value?.code ?? lesson.value.source);
+  const name = route
+    ? routeName.value
+    : (draft?.name ?? activeOwn.value?.name ?? lesson.value.name);
   try {
-    const output = await runLesson(
-      structuredClone(input.value),
-      code,
-      Math.max(1, Math.min(5000, Math.trunc(Number(limit.value) || 1))),
-      current.signal,
-      !!draft || !!activeOwn.value,
-    );
+    let output: LabResult;
+    if (route) {
+      const graph = displayGraph.value;
+      const { start, target, directed } = input.value;
+      if (graph.arcs.some((arc) => arc.length < 0))
+        throw new Error(
+          "Diese Suche braucht nichtnegative Kosten. Wähle für negative Kanten Bellman–Ford oder Floyd–Warshall im Algorithmusmenü.",
+        );
+      const heuristic = graphHeuristic(graph, target);
+      const stepLimit = boundedLimit();
+      const search = activeRoute.value
+        ? await runRouteCode(graph, start, target, code, current.signal, {
+            heuristic,
+            stepLimit,
+            weighted: weighted.value,
+            directed,
+          })
+        : searchTeachingGraph(
+            graph,
+            start,
+            target,
+            routeId.value!,
+            stepLimit,
+            heuristic,
+            true,
+          );
+      if (controller !== current) return;
+      routeResult.value = graphResult(graph, start, target, search);
+      output = routeReplay(graph, start, routeResult.value);
+    } else {
+      output = await runLesson(
+        structuredClone(input.value),
+        code,
+        boundedLimit(),
+        current.signal,
+        !!draft || !!activeOwn.value,
+      );
+    }
     if (controller === current) {
       result.value = output;
       step.value = 0;
-      runName.value = draft?.name ?? activeOwn.value?.name ?? lesson.value.name;
+      runName.value = name;
       runSource.value = code;
       if (draft)
         notice.value = `Vorschau: ${draft.name}. Zum Wiederverwenden im Editor speichern.`;
     }
   } catch (cause) {
     if (controller === current)
-      error.value = `${draft?.name ?? activeOwn.value?.name ?? lesson.value.name}: ${cause instanceof Error ? cause.message : String(cause)}`;
+      error.value = `${name}: ${cause instanceof Error ? cause.message : String(cause)}`;
   } finally {
     if (controller === current) {
       controller = undefined;
@@ -468,6 +603,43 @@ function remove(id: string) {
   store(`lessons-${props.kind}`, own.value);
   selected.value = base.value;
   editorOpen.value = false;
+}
+function saveRoute(strategy: CustomStrategy) {
+  if (
+    !ownRoutes.value.some((v) => v.id === strategy.id) &&
+    ownRoutes.value.length >= 30
+  ) {
+    notice.value =
+      "Höchstens 30 eigene Wegsuchvarianten; bitte zuerst eine löschen.";
+    return;
+  }
+  ownRoutes.value = [
+    ...ownRoutes.value.filter((v) => v.id !== strategy.id),
+    strategy,
+  ];
+  notice.value = store("graphs", ownRoutes.value)
+    ? "Variante gespeichert."
+    : "Lokaler Speicher nicht verfügbar. Bitte exportieren.";
+  selected.value = strategy.id;
+  clear();
+}
+function removeRoute(id: string) {
+  if (selected.value === id) selected.value = routeSelection("dijkstra");
+  ownRoutes.value = ownRoutes.value.filter((v) => v.id !== id);
+  if (!store("graphs", ownRoutes.value))
+    notice.value = "Die Änderung konnte nicht lokal gespeichert werden.";
+}
+function selectGraphNode(id: number) {
+  if (
+    isRoute.value
+      ? clickEndpoint.value === "target"
+      : mode.value === "target" && hasTarget.value
+  )
+    target.value = id;
+  else start.value = id;
+}
+function swapEndpoints() {
+  [start.value, target.value] = [target.value, start.value];
 }
 function build(copy: boolean, tool?: "maze") {
   cancel();
@@ -601,7 +773,9 @@ function queryXml() {
 function example() {
   if (isGraph) {
     xmlMode.value = false;
-    const value = lessonGraphExample(lesson.value.id);
+    const value = isRoute.value
+      ? PRESETS[0]
+      : lessonGraphExample(lesson.value.id);
     presetId.value = value.id;
     start.value = value.start;
     target.value = value.target;
@@ -640,6 +814,18 @@ function exportResult() {
             source: runSource.value,
             input: input.value,
             result: result.value,
+            ...(routeResult.value
+              ? {
+                  route: {
+                    algorithm: routeId.value,
+                    path: Array.from(routeResult.value.path),
+                    traceNodes: Array.from(routeResult.value.traceNodes),
+                    traceEdges: Array.from(routeResult.value.traceEdges),
+                    traceSides: Array.from(routeResult.value.traceSides),
+                    arrayFrames: routeResult.value.arrayFrames,
+                  },
+                }
+              : {}),
           },
           (_key, value) =>
             value === Infinity ? "∞" : value === -Infinity ? "−∞" : value,
@@ -656,16 +842,18 @@ function exportResult() {
   URL.revokeObjectURL(url);
 }
 watch(selected, (value) => {
-  if (value === "new") {
+  if (value === "new" || value === NEW_ROUTE) {
     void openEditor(true);
     return;
   }
-  if (!value.startsWith("lesson:")) base.value = value;
+  if (!isRoute.value && !value.startsWith("lesson:")) base.value = value;
+  if (isRoute.value) xmlMode.value = false;
   editorBlank.value = false;
 });
 watch(
   () => lesson.value.id,
   (id) => {
+    if (isRoute.value) return;
     if (["topology", "kosaraju", "kahn", "longest-dag"].includes(id))
       directed.value = true;
     if (
@@ -690,7 +878,7 @@ watch(preset, (value) => {
   u.value = 0;
   v.value = Math.min(1, value.points.length - 1);
 });
-watch([input, selected], clear);
+watch([input, selected, stepLimit], clear);
 let initialVersion = 0;
 watch(
   () => props.initial,
@@ -698,10 +886,19 @@ watch(
     if (!value) return;
     const example = readExample(value),
       version = ++initialVersion;
-    if (example.kind !== "graph-lesson" && example.kind !== "string") return;
-    selected.value = example.algorithm;
-    options.value = { ...example.options };
-    if (example.kind === "graph-lesson") {
+    if (
+      example.kind !== "graph-lesson" &&
+      example.kind !== "graph-route" &&
+      example.kind !== "string"
+    )
+      return;
+    selected.value =
+      example.kind === "graph-route"
+        ? routeSelection(example.algorithm)
+        : example.algorithm;
+    options.value =
+      example.kind === "graph-route" ? {} : { ...example.options };
+    if (example.kind !== "string") {
       linkedGraph.value = { ...example.graph, id: "linked" };
       presetId.value = "linked";
       xmlMode.value = false;
@@ -711,20 +908,37 @@ watch(
     }
     await nextTick();
     if (version !== initialVersion) return;
-    limit.value = example.limit;
+    stepLimit.value = example.limit;
     delay.value = example.delay;
-    if (example.kind === "graph-lesson") {
+    if (example.kind !== "string") {
       weighted.value = example.graph.weighted;
       directed.value = example.graph.directed;
       start.value = example.graph.start;
       target.value = example.graph.target;
-      mode.value = example.mode;
+      mode.value = example.kind === "graph-lesson" ? example.mode : "source";
     }
   },
   { immediate: true },
 );
 function getExample(): Example | null {
   if (activeOwn.value || selected.value === "new") return null;
+  if (isRoute.value) {
+    if (!routeId.value) return null;
+    return readExample({
+      v: 1,
+      kind: "graph-route",
+      algorithm: routeId.value,
+      graph: snapshotGraph(
+        effective.value,
+        weighted.value,
+        directed.value,
+        start.value,
+        target.value,
+      ),
+      limit: boundedLimit(),
+      delay: delay.value,
+    });
+  }
   return readExample(
     isGraph
       ? {
@@ -776,23 +990,17 @@ onBeforeUnmount(cancel);
   <section
     class="graph-sim lesson-lab"
     :class="{ 'simulation-compact': compact }"
-    :aria-label="isGraph ? 'Graph-Lehrlabor' : 'String Sim'"
+    :aria-label="isGraph ? 'Graph Sim' : 'String Sim'"
   >
     <header class="graph-heading">
       <div>
         <h1>
-          {{
-            builder
-              ? "Graph Builder"
-              : isGraph
-                ? "Graph-Verfahren"
-                : "String Sim"
-          }}
+          {{ builder ? "Graph Builder" : isGraph ? "Graph Sim" : "String Sim" }}
         </h1>
         <p>
           {{
             isGraph
-              ? "Traversieren, kürzeste Pfade und Graphstrukturen untersuchen."
+              ? "Graphen traversieren, Wege finden und Strukturen untersuchen."
               : "Zeichenketten vergleichen und Suchschritte verfolgen."
           }}
         </p>
@@ -804,7 +1012,7 @@ onBeforeUnmount(cancel);
         />
         <button
           class="secondary-button"
-          @click="openEditor(selected === 'new')"
+          @click="openEditor(selected === 'new' || selected === NEW_ROUTE)"
         >
           <CodeXml :size="17" /> Code-Editor</button
         ><button v-if="isGraph" class="secondary-button" @click="build(false)">
@@ -819,7 +1027,9 @@ onBeforeUnmount(cancel);
       ><GraphBuilder
         :initial="builder"
         :can-save="!!builder.id || layouts.length < MAX_LAYOUTS"
-        :share-algorithm="lesson.id"
+        :share-algorithm="
+          isRoute ? routeSelection(routeId ?? 'dijkstra') : lesson.id
+        "
         :initial-tool="builderTool"
         @save="saveLayout"
         @remove="removeLayout"
@@ -845,12 +1055,29 @@ onBeforeUnmount(cancel);
                 {{ item.name }}
               </option>
             </optgroup>
+            <optgroup v-if="isGraph" label="Start–Ziel-Wegsuche">
+              <option
+                v-for="item in routeChoices"
+                :key="item.id"
+                :value="item.id"
+              >
+                {{ item.name }}
+              </option>
+            </optgroup>
             <optgroup v-if="own.length" label="Eigene Varianten">
               <option v-for="item in own" :key="item.id" :value="item.id">
                 {{ item.name }}
               </option>
             </optgroup>
+            <optgroup v-if="ownRoutes.length" label="Eigene Wegsuche">
+              <option v-for="item in ownRoutes" :key="item.id" :value="item.id">
+                {{ item.name }}
+              </option>
+            </optgroup>
             <option value="new">Eigenen Algorithmus bauen</option>
+            <option v-if="isGraph" :value="NEW_ROUTE">
+              Eigene Wegsuche bauen
+            </option>
           </select></label
         >
         <template v-if="isGraph">
@@ -881,7 +1108,8 @@ onBeforeUnmount(cancel);
           >
           <div class="graph-endpoints" v-if="hasSource || hasTarget">
             <label v-if="hasSource"
-              >{{ lesson.id === "trees" ? "Wurzel" : "Quelle"
+              >{{
+                isRoute ? "Start" : lesson.id === "trees" ? "Wurzel" : "Quelle"
               }}<select v-model="start">
                 <option
                   v-for="node in input.nodes"
@@ -903,6 +1131,33 @@ onBeforeUnmount(cancel);
                 </option>
               </select></label
             >
+          </div>
+          <div
+            v-if="isRoute"
+            class="graph-toggles endpoint-actions"
+            role="group"
+            aria-label="Knotenauswahl im Graphen"
+          >
+            <button
+              :aria-pressed="clickEndpoint === 'start'"
+              @click="clickEndpoint = 'start'"
+            >
+              Start setzen
+            </button>
+            <button
+              :aria-pressed="clickEndpoint === 'target'"
+              @click="clickEndpoint = 'target'"
+            >
+              Ziel setzen
+            </button>
+            <button
+              class="icon-button"
+              aria-label="Start und Ziel tauschen"
+              title="Start und Ziel tauschen"
+              @click="swapEndpoints"
+            >
+              <ArrowLeftRight :size="16" />
+            </button>
           </div>
         </template>
         <div v-else class="experiment-inputs">
@@ -969,7 +1224,7 @@ onBeforeUnmount(cancel);
           <button
             v-else
             class="primary-button"
-            :disabled="selected === 'new'"
+            :disabled="selected === 'new' || selected === NEW_ROUTE"
             @click="run()"
           >
             <Play :size="16" /> Berechnen
@@ -1010,7 +1265,10 @@ onBeforeUnmount(cancel);
               </button>
             </div>
             <label
-              v-if="['bfs', 'dfs', 'bellman', 'dijkstra'].includes(lesson.id)"
+              v-if="
+                !isRoute &&
+                ['bfs', 'dfs', 'bellman', 'dijkstra'].includes(lesson.id)
+              "
               >Suchumfang<select v-model="mode">
                 <option value="source">Ab einer Quelle</option>
                 <option value="target">Zum Ziel (Gᵀ)</option>
@@ -1034,16 +1292,11 @@ onBeforeUnmount(cancel);
           <div class="experiment-inputs">
             <label
               >Schrittlimit<input
-                v-model.number="limit"
+                v-model.number="stepLimit"
                 type="number"
                 min="1"
-                max="5000"
-                @blur="
-                  limit = Math.max(
-                    1,
-                    Math.min(5000, Math.trunc(Number(limit) || 1)),
-                  )
-                "
+                :max="maxLimit"
+                @blur="stepLimit = boundedLimit()"
             /></label>
             <label
               >Tempo<select v-model.number="delay">
@@ -1065,7 +1318,15 @@ onBeforeUnmount(cancel);
       >
         <div class="graph-readout">
           <div class="graph-readout-title">
-            <h2>{{ result ? runName : (activeOwn?.name ?? lesson.name) }}</h2>
+            <h2>
+              {{
+                result
+                  ? runName
+                  : isRoute
+                    ? routeName
+                    : (activeOwn?.name ?? lesson.name)
+              }}
+            </h2>
             <span>{{
               isGraph
                 ? `${input.nodes.length} Knoten · ${input.edges.length} Kanten · ${input.directed ? "gerichtet" : "ungerichtet"}${weighted && !xmlMode ? " · gewichtet" : ""}`
@@ -1086,32 +1347,50 @@ onBeforeUnmount(cancel);
           :start="hasSource ? input.start : -1"
           :target="hasTarget ? input.target : -1"
           :selectable="hasSource || hasTarget"
-          :visited="colors"
+          :visited="isRoute ? routeTrace.visited : colors"
+          :search-edges="isRoute ? routeTrace.edges : undefined"
+          :source="routeTrace.source"
+          :path="
+            routeAtEnd && routeResult?.found ? routeResult.path : undefined
+          "
           :current="state.current"
           :step="step"
           :tempo="delay"
-          :lesson="{
-            ...state,
-            groups: visibleGroups,
-            edge: showTree ? undefined : state.edge,
-            rejected: showTree ? undefined : state.rejected,
-            selected: showTree
-              ? displayPreset.edges.map((_, id) => id)
-              : (reconstructed?.selected ?? state.selected),
-          }"
-          :marked="xmlMode ? xmlSelected : []"
-          @select="
-            mode === 'target' && hasTarget
-              ? (target = $event)
-              : (start = $event)
+          :lesson="
+            isRoute
+              ? undefined
+              : {
+                  ...state,
+                  groups: visibleGroups,
+                  edge: showTree ? undefined : state.edge,
+                  rejected: showTree ? undefined : state.rejected,
+                  selected: showTree
+                    ? displayPreset.edges.map((_, id) => id)
+                    : (reconstructed?.selected ?? state.selected),
+                }
           "
+          :marked="xmlMode ? xmlSelected : []"
+          @select="selectGraphNode"
         />
         <StringBoard v-else :s="s" :t="t" :state="state" :matching="matching" />
         <div v-if="isGraph" class="graph-legend">
-          <span class="search-key">offen / aktueller Schritt</span
-          ><span class="route-key">ausgewählte Kanten</span
-          ><span>Komponenten haben gleiche Farben</span
-          ><span v-if="state.transpose">Pfeile umgedreht · Gᵀ</span>
+          <template v-if="isRoute">
+            <span class="graph-start-key">Start</span>
+            <span class="graph-target-key">Ziel</span>
+            <span class="search-key">Suche</span>
+            <span
+              v-if="routeId === 'bidirectional' || activeRoute"
+              class="backward-key"
+              >Rückwärtssuche</span
+            >
+            <span class="route-key">Gefundener Weg</span>
+          </template>
+          <template v-else>
+            <span class="search-key">offen / aktueller Schritt</span>
+            <span class="route-key">ausgewählte Kanten</span>
+            <span>Komponenten haben gleiche Farben</span>
+            <span v-if="state.transpose">Pfeile umgedreht · Gᵀ</span>
+          </template>
         </div>
         <div v-if="isGraph && treeParents" class="lab-tree-tools">
           <button
@@ -1152,8 +1431,19 @@ onBeforeUnmount(cancel);
             </p>
           </template>
         </div>
-        <h3 v-if="frame" class="live-state-heading">Live-Zustand</h3>
-        <LabState v-if="frame" :state="state" :before="before" :input="input" />
+        <SearchArrays
+          v-if="routeResult"
+          :nodes="input.nodes"
+          :frames="routeResult.arrayFrames"
+          :order="routeResult.traceNodes"
+          :step="step"
+          :side="routeResult.traceSides[step - 1]"
+          :breadth-first="routeId === 'bfs'"
+        />
+        <template v-else-if="frame">
+          <h3 class="live-state-heading">Live-Zustand</h3>
+          <LabState :state="state" :before="before" :input="input" />
+        </template>
         <div v-if="result" class="lab-run-result">
           <p v-if="result.limited">
             Schrittlimit erreicht. Für einen längeren Ablauf das Limit erhöhen
@@ -1169,7 +1459,30 @@ onBeforeUnmount(cancel);
     </div>
     <p v-if="notice" role="status" class="lab-notice">{{ notice }}</p>
     <template v-if="!builder">
-      <details class="panel lab-explanation experiment-reference">
+      <details
+        v-if="isRoute"
+        class="panel lab-facts"
+        @toggle="notationOpen = ($event.target as HTMLDetailsElement).open"
+      >
+        <summary>Algorithmus erklärt: {{ routeName }}</summary>
+        <p v-if="routeId" class="route-introduction">
+          {{ GRAPH_ALGORITHMS[routeId].description }}
+        </p>
+        <GraphNotation
+          v-if="notationOpen"
+          :graph="displayGraph"
+          :weighted="weighted"
+          :start="input.start"
+          :target="input.target"
+          :algorithm="routeId"
+          :algorithm-name="routeName"
+          :custom-notation="readGraphNotation(activeRoute?.notation)"
+          :result="routeAtEnd ? routeResult : undefined"
+          :step="step"
+          :current="state.current"
+        />
+      </details>
+      <details v-else class="panel lab-explanation experiment-reference">
         <summary>Algorithmus erklärt: {{ lesson.name }}</summary>
         <p>{{ lesson.introduction }}</p>
         <p v-if="!isGraph">
@@ -1268,7 +1581,17 @@ onBeforeUnmount(cancel);
         <GraphFacts :input="input" />
       </details>
       <div v-if="editorOpen" ref="editorHost" class="graph-editor-host">
+        <StrategyEditor
+          v-if="isRoute"
+          mode="graph"
+          :source-id="routeEditorSource"
+          :strategies="ownRoutes"
+          @save="saveRoute"
+          @remove="removeRoute"
+          @close="editorOpen = false"
+        />
         <LessonEditor
+          v-else
           :lesson="lesson"
           :own="activeOwn"
           :empty="editorBlank"

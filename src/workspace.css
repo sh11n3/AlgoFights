@@ -412,13 +412,6 @@
     gap: 10px;
     margin-bottom: 12px;
   }
-  .lab-mode-nav {
-    margin-bottom: 14px;
-  }
-  .lab-mode-nav button {
-    padding: 8px 10px;
-    font-size: 12px;
-  }
   .experiment-settings {
     padding: 13px;
   }

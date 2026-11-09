@@ -4,7 +4,6 @@ import { Play, Settings2, RotateCcw } from "lucide-vue-next";
 import { readExample, exampleTitle, type Example } from "../sharing/examples";
 import ShareExample from "./ShareExample.vue";
 const LessonLab = defineAsyncComponent(() => import("./LessonLab.vue"));
-const RouteGraphSim = defineAsyncComponent(() => import("./RouteGraphSim.vue"));
 const AlgoSim = defineAsyncComponent(() => import("./AlgoSim.vue"));
 const ArenaExample = defineAsyncComponent(() => import("./ArenaExample.vue"));
 const props = defineProps<{ example: Example; compact?: boolean }>();
@@ -75,15 +74,14 @@ defineExpose({ getExample, run: () => player.value?.run() });
     </div>
     <div class="example-player-content" :key="revision">
       <LessonLab
-        v-if="initial.kind === 'graph-lesson' || initial.kind === 'string'"
+        v-if="
+          initial.kind === 'graph-lesson' ||
+          initial.kind === 'graph-route' ||
+          initial.kind === 'string'
+        "
         :key="initial.kind"
         ref="player"
         :kind="initial.kind === 'string' ? 'string' : 'graph'"
-        :initial="initial"
-        :compact="compact"
-      /><RouteGraphSim
-        v-else-if="initial.kind === 'graph-route'"
-        ref="player"
         :initial="initial"
         :compact="compact"
       /><AlgoSim
