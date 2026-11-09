@@ -1,5 +1,68 @@
 import type { GraphLayout } from "../graph/layouts";
+import {
+  completeGraph,
+  cubeGraph,
+  mazeGraph,
+  petersenGraph,
+} from "../graph/exercise-inputs";
+import { PRESETS, type GraphPreset } from "../graph/presets";
 export const LAB_PRESETS: GraphLayout[] = [
+  { ...completeGraph(5), id: "lesson-k5" },
+  { ...cubeGraph(2), id: "lesson-cube-2" },
+  { ...cubeGraph(3), id: "lesson-cube-3" },
+  { ...petersenGraph(), id: "lesson-petersen" },
+  {
+    ...mazeGraph(
+      3,
+      5,
+      new Set(["1:2", "2:7", "3:8", "5:10", "6:7", "8:13", "9:14"]),
+    ),
+    id: "lesson-maze",
+  },
+  {
+    id: "lesson-diamond",
+    name: "Zwei gleich kurze Wege",
+    description:
+      "Zwei gleich teure Zweige treffen vor dem Ziel wieder zusammen.",
+    points: [
+      [0, 0.5],
+      [0.3, 0.08],
+      [0.3, 0.92],
+      [0.65, 0.5],
+      [1, 0.5],
+    ],
+    edges: [
+      [0, 1, 2],
+      [0, 2, 2],
+      [1, 3, 3],
+      [2, 3, 3],
+      [3, 4, 1],
+    ],
+    start: 0,
+    target: 4,
+    directed: true,
+    weighted: true,
+  },
+  {
+    id: "lesson-tree-compare",
+    name: "Wegbaum und Spannbaum",
+    description:
+      "Der direkte Weg von A nach C ist kürzer, der günstigste Spannbaum verbindet C über B.",
+    points: [
+      [0, 0.12],
+      [0.5, 0.86],
+      [1, 0.12],
+    ],
+    edges: [
+      [0, 1, 3],
+      [0, 2, 4],
+      [1, 2, 2],
+    ],
+    start: 0,
+    target: 2,
+    directed: false,
+    weighted: true,
+  },
   {
     id: "lesson-negative",
     name: "Negative Abkürzung",
@@ -112,3 +175,47 @@ export const LAB_PRESETS: GraphLayout[] = [
     weighted: false,
   },
 ];
+
+export const GRAPH_PRESETS = [...PRESETS, ...LAB_PRESETS];
+
+export function lessonGraphExample(id: string): GraphPreset {
+  const names: Record<string, string> = {
+    trees: "lesson-rooted",
+    kosaraju: "lesson-scc",
+    bellman: "lesson-negative",
+    floyd: "lesson-negative",
+    union: "disconnected",
+    components: "disconnected",
+    topology: "dag",
+    kahn: "dag",
+    "longest-dag": "dag",
+    "bfs-cycle": "cycle",
+    "bfs-count": "lesson-diamond",
+    "bfs-reach": "lesson-diamond",
+    "matrix-powers": "lesson-diamond",
+    "all-shortest": "lesson-diamond",
+    maze: "lesson-maze",
+    coloring: "lesson-petersen",
+    hamilton: "lesson-petersen",
+    "spanning-trees": "lesson-k5",
+  };
+  return GRAPH_PRESETS.find((preset) => preset.id === names[id]) ?? PRESETS[0];
+}
+
+export const fullGraphLessons = new Set([
+  "cycle",
+  "topology",
+  "kahn",
+  "components",
+  "union",
+  "kosaraju",
+  "kruskal",
+  "prim",
+  "trees",
+  "bfs-cycle",
+  "bfs-reach",
+  "matrix-powers",
+  "coloring",
+  "hamilton",
+  "spanning-trees",
+]);

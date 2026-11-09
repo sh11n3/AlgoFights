@@ -38,6 +38,12 @@ export const GRAPH_ALGORITHMS = {
   },
 } satisfies Record<RouteAlgorithm, { name: string; description: string }>;
 
+export function nodeLabel(id: number) {
+  return id < 26
+    ? String.fromCharCode(65 + id)
+    : `A${String.fromCharCode(65 + id - 26)}`;
+}
+
 export function createGraph(
   preset: GraphPreset,
   weighted: boolean,
@@ -47,10 +53,7 @@ export function createGraph(
     id,
     x,
     y,
-    label:
-      id < 26
-        ? String.fromCharCode(65 + id)
-        : `A${String.fromCharCode(65 + id - 26)}`,
+    label: nodeLabel(id),
   }));
   const outgoing: number[][] = nodes.map(() => []);
   const incoming: number[][] = nodes.map(() => []);

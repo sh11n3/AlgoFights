@@ -9,6 +9,7 @@ import {
   Trash2,
 } from "lucide-vue-next";
 import GraphBoard from "./GraphBoard.vue";
+import GraphInputTools from "./GraphInputTools.vue";
 import {
   cloneLayout,
   MAX_EDGES,
@@ -30,6 +31,7 @@ const props = defineProps<{
   canSave: boolean;
   shareMode?: "route";
   shareAlgorithm?: string;
+  initialTool?: "maze";
 }>();
 const shareChoices =
   props.shareMode === "route"
@@ -242,10 +244,20 @@ function save() {
     return;
   emit("save", cloneLayout({ ...draft.value, name: draft.value.name.trim() }));
 }
+function applyLayout(layout: GraphLayout) {
+  draft.value = cloneLayout({ ...layout, id: draft.value.id });
+  selectedNode.value = null;
+  selectedEdge.value = null;
+  edgeCost.value = 1;
+  confirming.value = false;
+  setMode("node");
+  message.value = "Graph in den Entwurf übernommen.";
+}
 </script>
 
 <template>
   <section aria-label="Graph Builder">
+    <GraphInputTools :initial-tool="initialTool" @apply="applyLayout" />
     <div class="graph-layout">
       <section class="panel graph-panel" aria-label="Zeichenfläche">
         <div class="builder-toolbar">

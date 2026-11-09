@@ -18,8 +18,13 @@ import StringBoard from "./StringBoard.vue";
 import LabState from "./LabState.vue";
 import LabPlayback from "./LabPlayback.vue";
 import { GRAPH_LESSONS, STRING_LESSONS } from "../lab/catalog";
-import { LAB_PRESETS } from "../lab/presets";
-import { PRESETS } from "../graph/presets";
+import {
+  GRAPH_PRESETS,
+  fullGraphLessons,
+  lessonGraphExample,
+} from "../lab/presets";
+import { readLessonOptions } from "../lab/lesson-options";
+import { PRESETS, type Point } from "../graph/presets";
 import {
   cloneLayout,
   readLayouts,
@@ -32,7 +37,7 @@ import { createGraph } from "../graph/simulation";
 import { readOwn, type OwnLesson } from "../lab/storage";
 import { store } from "../services/storage";
 import { runLesson } from "../services/lesson-runner";
-import type { LabInput, LabResult } from "../lab/types";
+import type { LabInput, LabResult, LessonOptions } from "../lab/types";
 import "../lab/style.css";
 import ShareExample from "./ShareExample.vue";
 import { readExample, snapshotGraph, type Example } from "../sharing/examples";
@@ -59,7 +64,7 @@ const lesson = computed(
     ) ?? lessons[0],
 );
 const layouts = ref(readLayouts()),
-  presets = [...PRESETS, ...LAB_PRESETS],
+  presets = GRAPH_PRESETS,
   presetId = ref(PRESETS[0].id);
 const linkedGraph = shallowRef<GraphLayout>();
 const preset = computed(
@@ -79,6 +84,18 @@ const weighted = ref(true),
   step = ref(0);
 const s = ref("garten"),
   t = ref("karten");
+const options = ref<LessonOptions>({});
+const runOptions = computed(() =>
+  readLessonOptions(lesson.value.id, options.value),
+);
+const pattern = computed(() => Array.from(s.value));
+watch(pattern, (chars) => {
+  if (
+    options.value.anchor !== undefined &&
+    options.value.anchor >= chars.length
+  )
+    options.value.anchor = undefined;
+});
 const result = shallowRef<LabResult>(),
   error = ref(""),
   notice = ref(""),
@@ -90,6 +107,8 @@ const result = shallowRef<LabResult>(),
 const runName = ref(""),
   runSource = ref("");
 const builder = shallowRef<GraphLayout>();
+const builderTool = ref<"maze">();
+const treeOnly = ref(false);
 let controller: AbortController | undefined;
 let layoutStorageFailed = false;
 const xmlMode = ref(false),
@@ -127,31 +146,111 @@ const input = computed<LabInput>(() => ({
   directed: xmlMode.value || directed.value,
   start: Math.min(start.value, network.value.nodes.length - 1),
   target: Math.min(target.value, network.value.nodes.length - 1),
-  mode: [
-    "cycle",
-    "topology",
-    "components",
-    "union",
-    "kosaraju",
-    "kruskal",
-    "prim",
-    "trees",
-  ].includes(lesson.value.id)
+  mode: fullGraphLessons.has(lesson.value.id)
     ? "all"
-    : mode.value,
+    : ["bfs", "dfs", "dijkstra", "bellman", "paths", "floyd"].includes(
+          lesson.value.id,
+        ) || activeOwn.value
+      ? mode.value
+      : "source",
   s: s.value,
   t: t.value,
+  ...(runOptions.value ? { options: runOptions.value } : {}),
 }));
+const treeParents = computed(() => {
+  if (
+    ![
+      "bfs",
+      "dfs",
+      "cycle",
+      "topology",
+      "bfs-cycle",
+      "bfs-count",
+      "maze",
+      "dijkstra",
+      "bellman",
+      "longest-dag",
+    ].includes(lesson.value.id)
+  )
+    return;
+  const parents = state.value.arrays?.find(
+    (array) => array.name === "pre" && array.kind === "nodes",
+  )?.values;
+  if (
+    !parents ||
+    parents.length !== input.value.nodes.length ||
+    !parents.every(
+      (parent) =>
+        typeof parent === "number" &&
+        Number.isInteger(parent) &&
+        parent >= -1 &&
+        parent < parents.length,
+    ) ||
+    state.value.arrays?.some(
+      (array) => array.name === "dis" && array.values.includes(-Infinity),
+    )
+  )
+    return;
+  for (let i = 0; i < parents.length; i++) {
+    const seen = new Set<number>();
+    let node = i;
+    while (node >= 0 && typeof parents[node] === "number") {
+      if (seen.has(node)) return;
+      seen.add(node);
+      node = Number(parents[node]);
+    }
+  }
+  return parents as number[];
+});
+const showTree = computed(() => treeOnly.value && !!treeParents.value);
+const treePoints = computed<Point[]>(() => {
+  const parents = treeParents.value;
+  if (!parents) return effective.value.points;
+  const children = parents.map(() => [] as number[]),
+    roots: number[] = [];
+  parents.forEach((parent, node) => {
+    if (parent < 0) roots.push(node);
+    else children[parent].push(node);
+  });
+  const points = parents.map((): Point => [0, 0]);
+  let leaf = 0,
+    maxDepth = 0;
+  function place(node: number, depth: number) {
+    maxDepth = Math.max(depth, maxDepth);
+    const descendants = children[node];
+    if (!descendants.length) points[node] = [leaf++, depth];
+    else {
+      for (const child of descendants) place(child, depth + 1);
+      points[node] = [
+        (points[descendants[0]][0] + points[descendants.at(-1)!][0]) / 2,
+        depth,
+      ];
+    }
+  }
+  for (const root of roots) place(root, 0);
+  return points.map(([x, y]) => [
+    leaf > 1 ? x / (leaf - 1) : 0.5,
+    maxDepth ? y / maxDepth : 0.5,
+  ]);
+});
 // Keep segment IDs identical to input.edges (undirected display omits directed loops).
 const displayPreset = computed(() => ({
   ...effective.value,
-  edges: input.value.edges.map(
-    (e) =>
-      [
-        ...(frame.value?.state.transpose ? [e.to, e.from] : [e.from, e.to]),
-        e.weight,
-      ] as [number, number, number],
-  ),
+  points: showTree.value ? treePoints.value : effective.value.points,
+  edges: input.value.edges
+    .map(
+      (e) =>
+        [
+          ...(frame.value?.state.transpose ? [e.to, e.from] : [e.from, e.to]),
+          e.weight,
+        ] as [number, number, number],
+    )
+    .filter(
+      ([u, v]) =>
+        !showTree.value ||
+        treeParents.value?.[v] === u ||
+        (!input.value.directed && treeParents.value?.[u] === v),
+    ),
 }));
 const displayGraph = computed(() =>
   createGraph(displayPreset.value, true, input.value.directed),
@@ -175,19 +274,38 @@ const hasSource = computed(
   () =>
     isGraph &&
     (!!activeOwn.value ||
-      ["bfs", "dfs", "paths", "dijkstra", "bellman", "floyd", "trees"].includes(
-        lesson.value.id,
-      )),
+      [
+        "bfs",
+        "dfs",
+        "paths",
+        "dijkstra",
+        "bellman",
+        "floyd",
+        "trees",
+        "prim",
+        "bfs-count",
+        "bfs-cycle",
+        "maze",
+        "longest-dag",
+        "all-shortest",
+      ].includes(lesson.value.id)),
 );
 const hasTarget = computed(
   () =>
     isGraph &&
     (!!activeOwn.value ||
-      ["paths", "dijkstra", "bellman", "floyd"].includes(lesson.value.id) ||
+      [
+        "paths",
+        "dijkstra",
+        "bellman",
+        "floyd",
+        "maze",
+        "all-shortest",
+      ].includes(lesson.value.id) ||
       (mode.value === "target" && ["bfs", "dfs"].includes(lesson.value.id))),
 );
 const matching = computed(() =>
-  ["naive-match", "kmp"].includes(lesson.value.id),
+  ["naive-match", "anchor-match", "kmp"].includes(lesson.value.id),
 );
 const reconstructed = computed(() => {
   if (!result.value || step.value !== maxStep.value || result.value.limited)
@@ -284,6 +402,7 @@ function cancel() {
 function clear() {
   cancel();
   result.value = undefined;
+  treeOnly.value = false;
   step.value = 0;
   error.value = "";
 }
@@ -350,8 +469,9 @@ function remove(id: string) {
   selected.value = base.value;
   editorOpen.value = false;
 }
-function build(copy: boolean) {
+function build(copy: boolean, tool?: "maze") {
   cancel();
+  builderTool.value = tool;
   const current = effective.value;
   const ownLayout =
     !xmlMode.value && layouts.value.some((v) => v.id === current.id);
@@ -481,33 +601,23 @@ function queryXml() {
 function example() {
   if (isGraph) {
     xmlMode.value = false;
-    const id = lesson.value.id;
-    presetId.value =
-      id === "kosaraju"
-        ? "lesson-scc"
-        : ["bellman", "floyd"].includes(id)
-          ? "lesson-negative"
-          : id === "trees"
-            ? "lesson-rooted"
-            : id === "topology"
-              ? "dag"
-              : ["union", "components"].includes(id)
-                ? "disconnected"
-                : PRESETS[0].id;
-    const value = presets.find((p) => p.id === presetId.value)!;
+    const value = lessonGraphExample(lesson.value.id);
+    presetId.value = value.id;
     start.value = value.start;
     target.value = value.target;
     weighted.value = value.weighted ?? true;
-    directed.value = [
-      "topology",
-      "kosaraju",
-      "bellman",
-      "floyd",
-      "trees",
-    ].includes(id);
+    directed.value = value.directed ?? false;
     return;
   }
-  if (matching.value) {
+  if (lesson.value.id === "anchor-match") {
+    s.value = "blau";
+    t.value = "bald ist der Himmel blau";
+    options.value.anchor = undefined;
+  } else if (lesson.value.id === "edit-metric") {
+    s.value = "saal";
+    t.value = "salz";
+    options.value.third = "saat";
+  } else if (matching.value) {
     s.value = "abaca";
     t.value = "ababacababaca";
   } else if (lesson.value.id === "levenshtein-recursive") {
@@ -556,8 +666,19 @@ watch(selected, (value) => {
 watch(
   () => lesson.value.id,
   (id) => {
-    if (["topology", "kosaraju"].includes(id)) directed.value = true;
-    if (["kruskal", "prim"].includes(id)) directed.value = false;
+    if (["topology", "kosaraju", "kahn", "longest-dag"].includes(id))
+      directed.value = true;
+    if (
+      [
+        "kruskal",
+        "prim",
+        "bfs-cycle",
+        "coloring",
+        "spanning-trees",
+        "maze",
+      ].includes(id)
+    )
+      directed.value = false;
     if (id !== "trees") xmlMode.value = false;
   },
 );
@@ -579,6 +700,7 @@ watch(
       version = ++initialVersion;
     if (example.kind !== "graph-lesson" && example.kind !== "string") return;
     selected.value = example.algorithm;
+    options.value = { ...example.options };
     if (example.kind === "graph-lesson") {
       linkedGraph.value = { ...example.graph, id: "linked" };
       presetId.value = "linked";
@@ -617,6 +739,7 @@ function getExample(): Example | null {
             target.value,
           ),
           mode: input.value.mode,
+          options: runOptions.value,
           limit: Number(limit.value),
           delay: delay.value,
         }
@@ -626,6 +749,7 @@ function getExample(): Example | null {
           algorithm: selected.value,
           s: s.value,
           t: t.value,
+          options: runOptions.value,
           limit: Number(limit.value),
           delay: delay.value,
         },
@@ -696,6 +820,7 @@ onBeforeUnmount(cancel);
         :initial="builder"
         :can-save="!!builder.id || layouts.length < MAX_LAYOUTS"
         :share-algorithm="lesson.id"
+        :initial-tool="builderTool"
         @save="saveLayout"
         @remove="removeLayout"
     /></template>
@@ -790,6 +915,53 @@ onBeforeUnmount(cancel);
             }}<input v-model="t" maxlength="48" spellcheck="false"
           /></label>
         </div>
+        <label v-if="lesson.id === 'matrix-powers'"
+          >Potenzen bis k<select v-model="options.power">
+            <option :value="undefined">
+              Standard: {{ Math.max(1, input.nodes.length - 1) }}
+            </option>
+            <option v-for="k in 32" :key="k" :value="k">{{ k }}</option>
+          </select></label
+        >
+        <label v-if="lesson.id === 'coloring'"
+          >Verfügbare Farben<select
+            :value="options.colorCount ?? 3"
+            @change="
+              options.colorCount = Number(
+                ($event.target as HTMLSelectElement).value,
+              )
+            "
+          >
+            <option v-for="k in 8" :key="k" :value="k">{{ k }}</option>
+          </select></label
+        >
+        <label v-if="lesson.id === 'hamilton'"
+          >Gesucht<select
+            :value="options.hamiltonCycle ? 'cycle' : 'path'"
+            @change="
+              options.hamiltonCycle =
+                ($event.target as HTMLSelectElement).value === 'cycle'
+            "
+          >
+            <option value="path">Hamiltonpfad</option>
+            <option value="cycle">Hamiltonkreis</option>
+          </select></label
+        >
+        <label v-if="lesson.id === 'anchor-match'"
+          >Anker im Muster<select v-model="options.anchor">
+            <option :value="undefined">Automatisch: seltenstes Zeichen</option>
+            <option v-for="(char, i) in pattern" :key="i" :value="i">
+              {{ i }} · {{ char === " " ? "␣" : char }}
+            </option>
+          </select></label
+        >
+        <label v-if="lesson.id === 'edit-metric'"
+          >Dritte Zeichenkette r<input
+            :value="options.third ?? 'saat'"
+            @input="options.third = ($event.target as HTMLInputElement).value"
+            maxlength="48"
+            spellcheck="false"
+        /></label>
         <div class="experiment-actions">
           <button v-if="busy" class="secondary-button" @click="cancel">
             <Square :size="15" /> Abbrechen
@@ -804,6 +976,13 @@ onBeforeUnmount(cancel);
           </button>
           <button class="secondary-button" @click="example">
             Beispiel laden
+          </button>
+          <button
+            v-if="lesson.id === 'maze'"
+            class="secondary-button"
+            @click="build(false, 'maze')"
+          >
+            Labyrinth bauen
           </button>
         </div>
         <details class="experiment-options">
@@ -914,7 +1093,11 @@ onBeforeUnmount(cancel);
           :lesson="{
             ...state,
             groups: visibleGroups,
-            selected: reconstructed?.selected ?? state.selected,
+            edge: showTree ? undefined : state.edge,
+            rejected: showTree ? undefined : state.rejected,
+            selected: showTree
+              ? displayPreset.edges.map((_, id) => id)
+              : (reconstructed?.selected ?? state.selected),
           }"
           :marked="xmlMode ? xmlSelected : []"
           @select="
@@ -929,6 +1112,21 @@ onBeforeUnmount(cancel);
           ><span class="route-key">ausgewählte Kanten</span
           ><span>Komponenten haben gleiche Farben</span
           ><span v-if="state.transpose">Pfeile umgedreht · Gᵀ</span>
+        </div>
+        <div v-if="isGraph && treeParents" class="lab-tree-tools">
+          <button
+            class="secondary-button"
+            :aria-pressed="showTree"
+            @click="treeOnly = !treeOnly"
+          >
+            {{ showTree ? "Ganzer Graph" : "Nur Suchbaum / Suchwald" }}
+          </button>
+          <span v-if="showTree"
+            >Kanten aus pre · Gesamtgewicht
+            {{
+              displayPreset.edges.reduce((sum, edge) => sum + edge[2], 0)
+            }}</span
+          >
         </div>
         <LabPlayback
           :key="result ? result.milliseconds : 0"

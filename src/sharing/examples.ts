@@ -6,7 +6,13 @@ import {
   type GraphLayout,
 } from "../graph/layouts";
 import { PRESETS, type GraphPreset } from "../graph/presets";
-import { LAB_PRESETS } from "../lab/presets";
+import {
+  GRAPH_PRESETS,
+  fullGraphLessons,
+  lessonGraphExample,
+} from "../lab/presets";
+import { readLessonOptions } from "../lab/lesson-options";
+import type { LessonOptions } from "../lab/types";
 import { GRAPH_LESSONS, STRING_LESSONS } from "../lab/catalog";
 import { ROUTE_ALGORITHMS } from "../routing/types";
 import CITIES from "../routing/cities.json";
@@ -48,6 +54,7 @@ export type Example =
       graph: SharedGraph;
       algorithm: string;
       mode: "source" | "target" | "all";
+      options?: LessonOptions;
       limit: number;
       delay: number;
     }
@@ -57,6 +64,7 @@ export type Example =
       algorithm: string;
       s: string;
       t: string;
+      options?: LessonOptions;
       limit: number;
       delay: number;
     };
@@ -174,12 +182,19 @@ export function readExample(value: unknown): Example {
       !text(value.t, 48)
     )
       throw Error("Ungültiges Zeichenkettenbeispiel.");
+    const options = readLessonOptions(value.algorithm as string, value.options);
+    if (
+      options?.anchor !== undefined &&
+      options.anchor >= Array.from(value.s as string).length
+    )
+      throw Error("Die Ankerposition liegt außerhalb des Musters.");
     return {
       v: 1,
       kind: "string",
       algorithm: value.algorithm as string,
       s: value.s as string,
       t: value.t as string,
+      ...(options ? { options } : {}),
       ...limit(),
     };
   }
@@ -220,12 +235,14 @@ export function readExample(value: unknown): Example {
       !["source", "target", "all"].includes(String(value.mode))
     )
       throw Error("Unbekanntes Lehrverfahren oder Suchumfang.");
+    const options = readLessonOptions(value.algorithm as string, value.options);
     return {
       v: 1,
       kind: "graph-lesson",
       graph,
       algorithm: value.algorithm as string,
       mode: value.mode as "source" | "target" | "all",
+      ...(options ? { options } : {}),
       ...limit(),
     };
   }
@@ -238,29 +255,12 @@ export interface NamedExample {
   group: string;
   example: Example;
 }
-const graphPresets = [...PRESETS, ...LAB_PRESETS];
+const treeCompare = GRAPH_PRESETS.find(
+  (preset) => preset.id === "lesson-tree-compare",
+)!;
 export const EXAMPLES: NamedExample[] = [
   ...GRAPH_LESSONS.map((lesson) => {
-    const special =
-      lesson.id === "trees"
-        ? "lesson-rooted"
-        : lesson.id === "kosaraju"
-          ? "lesson-scc"
-          : ["bellman", "floyd"].includes(lesson.id)
-            ? "lesson-negative"
-            : ["union", "components"].includes(lesson.id)
-              ? "disconnected"
-              : lesson.id === "topology"
-                ? "dag"
-                : PRESETS[0].id;
-    const preset = graphPresets.find((p) => p.id === special)!;
-    const directed = [
-      "topology",
-      "kosaraju",
-      "bellman",
-      "floyd",
-      "trees",
-    ].includes(lesson.id);
+    const preset = lessonGraphExample(lesson.id);
     return {
       id: `graph-${lesson.id}`,
       name: lesson.name,
@@ -268,16 +268,49 @@ export const EXAMPLES: NamedExample[] = [
       example: {
         v: 1,
         kind: "graph-lesson",
-        graph: snapshotGraph(preset, preset.weighted ?? true, directed),
+        graph: snapshotGraph(preset),
         algorithm: lesson.id,
-        mode: ["bfs", "dfs", "cycle", "topology", "trees"].includes(lesson.id)
-          ? "all"
-          : "source",
+        mode:
+          fullGraphLessons.has(lesson.id) || ["bfs", "dfs"].includes(lesson.id)
+            ? "all"
+            : "source",
         limit: 2000,
         delay: 450,
       } as Example,
     };
   }),
+  {
+    id: "graph-hamilton-cycle",
+    name: "Petersen-Graph · Hamiltonkreis prüfen",
+    group: "Graph Sim · Färbung & Hamilton",
+    example: {
+      v: 1,
+      kind: "graph-lesson",
+      graph: snapshotGraph(lessonGraphExample("hamilton")),
+      algorithm: "hamilton",
+      mode: "all",
+      options: { hamiltonCycle: true },
+      limit: 5000,
+      delay: 200,
+    },
+  },
+  ...["dijkstra", "prim"].map((algorithm): NamedExample => ({
+    id: `graph-tree-compare-${algorithm}`,
+    name:
+      algorithm === "dijkstra"
+        ? "Vergleich · Baum kürzester Pfade"
+        : "Vergleich · minimaler Spannbaum",
+    group: "Graph Sim · Baumvergleich",
+    example: {
+      v: 1,
+      kind: "graph-lesson",
+      graph: snapshotGraph(treeCompare),
+      algorithm,
+      mode: algorithm === "prim" ? "all" : "source",
+      limit: 2000,
+      delay: 450,
+    },
+  })),
   ...STRING_LESSONS.map((lesson) => ({
     id: `string-${lesson.id}`,
     name: lesson.name,
@@ -286,16 +319,27 @@ export const EXAMPLES: NamedExample[] = [
       v: 1,
       kind: "string",
       algorithm: lesson.id,
-      s: ["kmp", "naive-match"].includes(lesson.id)
-        ? "abaca"
-        : lesson.id === "levenshtein-recursive"
-          ? "rot"
-          : "abcde",
-      t: ["kmp", "naive-match"].includes(lesson.id)
-        ? "ababacababaca"
-        : lesson.id === "levenshtein-recursive"
-          ? "rat"
-          : "ace",
+      s:
+        lesson.id === "anchor-match"
+          ? "blau"
+          : lesson.id === "edit-metric"
+            ? "saal"
+            : ["kmp", "naive-match"].includes(lesson.id)
+              ? "abaca"
+              : lesson.id === "levenshtein-recursive"
+                ? "rot"
+                : "abcde",
+      t:
+        lesson.id === "anchor-match"
+          ? "bald ist der Himmel blau"
+          : lesson.id === "edit-metric"
+            ? "salz"
+            : ["kmp", "naive-match"].includes(lesson.id)
+              ? "ababacababaca"
+              : lesson.id === "levenshtein-recursive"
+                ? "rat"
+                : "ace",
+      ...(lesson.id === "edit-metric" ? { options: { third: "saat" } } : {}),
       limit: 2000,
       delay: 450,
     } as Example,

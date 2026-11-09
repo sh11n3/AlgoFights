@@ -47,6 +47,13 @@ export interface LabResult {
   limited: boolean;
   milliseconds: number;
 }
+export interface LessonOptions {
+  power?: number;
+  colorCount?: number;
+  hamiltonCycle?: boolean;
+  anchor?: number;
+  third?: string;
+}
 export interface LabInput {
   kind: "graph" | "string";
   nodes: Array<{ id: number; label: string; x: number; y: number }>;
@@ -57,6 +64,7 @@ export interface LabInput {
   mode: "source" | "target" | "all";
   s: string;
   t: string;
+  options?: LessonOptions;
 }
 export interface Lesson {
   id: string;
@@ -72,3 +80,7 @@ export interface Lesson {
   java: string;
   pseudocode: string;
 }
+export type LessonEntry = Omit<Lesson, "source" | "java" | "kind"> & {
+  run: Function;
+  kind?: Lesson["kind"];
+};

@@ -285,6 +285,12 @@ onBeforeUnmount(stop);
         <code>Array.from(text)</code>, um nach Unicode-Codepoints zu arbeiten;
         zusammengesetzte Grapheme können weiterhin mehrere Einträge umfassen.
       </p>
+      <p>
+        <code>input.options</code> enthält je nach Verfahren die gewählten
+        Zusatzwerte: <code>power</code>, <code>colorCount</code>,
+        <code>hamiltonCycle</code>, <code>anchor</code> oder <code>third</code>.
+        Felder können fehlen, wenn der Standardwert gilt.
+      </p>
       <pre>
 function run(input, api) {
   const werte = [0, 1, 2];

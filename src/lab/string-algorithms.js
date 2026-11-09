@@ -255,6 +255,113 @@ export const naiveMatch = function run(input, api) {
   return `Kein Treffer (−1); ${comparisons} Zeichenvergleiche.`;
 };
 
+export const anchorMatch = function run(input, api) {
+  const p = Array.from(input.s),
+    t = Array.from(input.t);
+  if (!p.length) {
+    api.emit("Ein leeres Muster passt an Position 0.", {
+      string: { offset: 0 },
+    });
+    return "Treffer an Position 0.";
+  }
+  const counts = new Map();
+  for (const char of t) counts.set(char, (counts.get(char) ?? 0) + 1);
+  const frequency = p.map((char) => counts.get(char) ?? 0);
+  let anchor = input.options?.anchor;
+  if (anchor === undefined) anchor = frequency.indexOf(Math.min(...frequency));
+  if (!Number.isInteger(anchor) || anchor < 0 || anchor >= p.length)
+    throw Error("Die Ankerposition muss im Muster liegen.");
+  const emit = (message, string) =>
+    api.emit(message, {
+      string,
+      arrays: [
+        { name: "Häufigkeit im Text", values: frequency, axis: "position" },
+      ],
+    });
+  emit(
+    `Musterposition ${anchor} („${p[anchor]}“) ist der Anker. Nur passende Textzeichen kommen als Anker infrage.`,
+    { j: anchor },
+  );
+  for (let i = anchor; i + (p.length - 1 - anchor) < t.length; i++) {
+    const offset = i - anchor;
+    emit(`Textposition ${i} am Anker prüfen.`, { i, j: anchor, offset });
+    if (t[i] !== p[anchor]) continue;
+    let matches = true;
+    for (let j = anchor - 1; j >= 0; j--) {
+      emit("Links vom Anker vergleichen.", { i: offset + j, j, offset });
+      if (t[offset + j] !== p[j]) {
+        matches = false;
+        break;
+      }
+    }
+    if (!matches) continue;
+    for (let j = anchor + 1; j < p.length; j++) {
+      emit("Rechts vom Anker vergleichen.", { i: offset + j, j, offset });
+      if (t[offset + j] !== p[j]) {
+        matches = false;
+        break;
+      }
+    }
+    if (matches) {
+      emit(`Treffer an Textposition ${offset}.`, { offset, result: input.s });
+      return `Treffer an Position ${offset}.`;
+    }
+  }
+  return "Kein Treffer (−1).";
+};
+
+export const editMetric = function run(input, api) {
+  const r = Array.from(input.options?.third ?? "saat"),
+    s = Array.from(input.s),
+    t = Array.from(input.t);
+  function distance(a, b) {
+    let previous = Array.from({ length: b.length + 1 }, (_, i) => i);
+    for (let i = 1; i <= a.length; i++) {
+      const row = [i];
+      for (let j = 1; j <= b.length; j++)
+        row[j] = Math.min(
+          previous[j] + 1,
+          row[j - 1] + 1,
+          previous[j - 1] + Number(a[i - 1] !== b[j - 1]),
+        );
+      previous = row;
+    }
+    return previous[b.length];
+  }
+  const rs = distance(r, s),
+    st = distance(s, t),
+    rt = distance(r, t);
+  const low = Math.abs(s.length - t.length),
+    high = Math.max(s.length, t.length);
+  api.emit(
+    "Jede Einfügung und Löschung verändert die Länge um genau eins. Eine Ersetzung ändert sie nicht.",
+    {
+      arrays: [
+        {
+          name: "|s| · |t| · untere Schranke",
+          values: [s.length, t.length, low],
+        },
+      ],
+    },
+  );
+  api.emit(
+    "Die gemeinsamen Positionen lassen sich ersetzen; danach genügt Einfügen oder Löschen des Überhangs.",
+    {
+      arrays: [
+        {
+          name: "untere Schranke · d(s,t) · obere Schranke",
+          values: [low, st, high],
+        },
+      ],
+    },
+  );
+  api.emit(
+    `Die Umwandlungen r → s und s → t lassen sich verketten. Ihr Aufwand ist ${rs + st}, also mindestens d(r,t) = ${rt}.`,
+    { arrays: [{ name: "d(r,s) · d(s,t) · d(r,t)", values: [rs, st, rt] }] },
+  );
+  return `Für diese Eingaben: ${low} ≤ d(s,t) = ${st} ≤ ${high} und d(r,t) = ${rt} ≤ ${rs} + ${st}.`;
+};
+
 export const kmp = function run(input, api) {
   const p = Array.from(input.s),
     t = Array.from(input.t),

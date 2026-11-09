@@ -4,4 +4,6 @@ export const levenshtein: Function,
   substringNaive: Function,
   subsequence: Function,
   naiveMatch: Function,
+  anchorMatch: Function,
+  editMetric: Function,
   kmp: Function;

@@ -129,7 +129,7 @@ const matrixChanged = (name: string, i: number, j: number, value: LabValue) => {
           v-for="(item, i) in state.heap"
           :key="item[0]"
           :title="`Position ${i}; Elternposition ${i ? Math.floor((i - 1) / 2) : 'keine'}`"
-          ><small>{{ i }}</small
+          ><small>{{ i === 0 ? "0 · Wurzel" : i }}</small
           >{{ label(item[0]) }} : {{ format(item[1]) }}</span
         ><span v-if="!state.heap.length">leer</span>
       </div>

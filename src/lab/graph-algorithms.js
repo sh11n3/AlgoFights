@@ -265,6 +265,7 @@ export const bellman = function run(g, api) {
             edge: id,
           });
       }
+      emit(`Ende von Durchlauf ${pass}.`);
       if (!changed) {
         emit(
           "Keine Änderung in diesem Durchlauf: Die endlichen Distanzen sind endgültig.",
@@ -678,6 +679,9 @@ export const kruskal = function run(g, api) {
   const order = g.edges
     .map((_, id) => id)
     .sort((a, b) => g.edges[a].weight - g.edges[b].weight || a - b);
+  const gu = order.map((id) => g.edges[id].from);
+  const gv = order.map((id) => g.edges[id].to);
+  const gw = order.map((id) => g.edges[id].weight);
   let weight = 0;
   const emit = (text, state = {}) =>
     api.emit(text, {
@@ -685,13 +689,12 @@ export const kruskal = function run(g, api) {
       selected,
       rejected,
       arrays: [
+        { name: "gu", values: gu, kind: "nodes", axis: "position" },
+        { name: "gv", values: gv, kind: "nodes", axis: "position" },
+        { name: "gw", values: gw, axis: "position" },
         { name: "r", values: r, kind: "nodes" },
-        { name: "tu", values: tu, kind: "nodes" },
-        { name: "tv", values: tv, kind: "nodes" },
-        {
-          name: "Kantenkosten aufsteigend",
-          values: order.map((id) => g.edges[id].weight),
-        },
+        { name: "tu", values: tu, kind: "nodes", axis: "position" },
+        { name: "tv", values: tv, kind: "nodes", axis: "position" },
       ],
       ...state,
     });
@@ -725,11 +728,15 @@ export const kruskal = function run(g, api) {
 export const prim = function run(g, api) {
   if (g.directed) throw Error("Prim benötigt einen ungerichteten Graphen.");
   const n = g.nodes.length,
-    key = Array(n).fill(Infinity),
+    dis = Array(n).fill(Infinity),
     pre = Array(n).fill(-1),
     col = Array(n).fill(0),
     best = Array(n).fill(-1),
     selected = [],
+    tu = [],
+    tv = [],
+    heap = [],
+    is = Array(n).fill(-1),
     adj = g.nodes.map(() => []);
   let weight = 0,
     trees = 0;
@@ -737,22 +744,62 @@ export const prim = function run(g, api) {
     adj[e.from].push([e.to, e.weight, id]);
     adj[e.to].push([e.from, e.weight, id]);
   });
+  function swap(i, j) {
+    [heap[i], heap[j]] = [heap[j], heap[i]];
+    is[heap[i]] = i;
+    is[heap[j]] = j;
+  }
+  function before(a, b) {
+    return dis[a] < dis[b] || (dis[a] === dis[b] && a < b);
+  }
+  function decrease(v, priority) {
+    dis[v] = priority;
+    let i = is[v];
+    if (i < 0) {
+      i = heap.length;
+      heap.push(v);
+      is[v] = i;
+    }
+    while (i > 0) {
+      const parent = (i - 1) >> 1;
+      if (!before(heap[i], heap[parent])) break;
+      swap(i, parent);
+      i = parent;
+    }
+  }
+  function extractMin() {
+    const u = heap[0],
+      last = heap.pop();
+    is[u] = -1;
+    if (heap.length) {
+      heap[0] = last;
+      is[last] = 0;
+      for (let i = 0; 2 * i + 1 < heap.length;) {
+        let child = 2 * i + 1;
+        if (child + 1 < heap.length && before(heap[child + 1], heap[child]))
+          child++;
+        if (!before(heap[child], heap[i])) break;
+        swap(i, child);
+        i = child;
+      }
+    }
+    return u;
+  }
   const emit = (text, state = {}) =>
     api.emit(text, {
       colors: col,
       selected,
-      heap: g.nodes
-        .filter((v) => col[v.id] !== 2 && key[v.id] < Infinity)
-        .map((v) => [v.id, key[v.id]])
-        .sort((a, b) => a[1] - b[1]),
+      heap: heap.map((v) => [v, dis[v]]),
       arrays: [
-        { name: "key", values: key },
+        { name: "dis", values: dis },
         { name: "pre", values: pre, kind: "nodes" },
+        { name: "tu", values: tu, kind: "nodes", axis: "position" },
+        { name: "tv", values: tv, kind: "nodes", axis: "position" },
       ],
       ...state,
     });
   emit(
-    "key beschreibt die günstigste Anschlusskante, nicht die Weglänge ab Start.",
+    "dis beschreibt die günstigste Anschlusskante. Der Spannwald und der Min-Heap starten leer.",
   );
   for (const root of [
     g.start,
@@ -760,27 +807,25 @@ export const prim = function run(g, api) {
   ]) {
     if (col[root] === 2) continue;
     trees++;
-    key[root] = 0;
+    decrease(root, 0);
     col[root] = 1;
     emit("Neuen Baum beginnen.", { current: root });
-    while (true) {
-      let u = -1;
-      for (let v = 0; v < n; v++)
-        if (col[v] !== 2 && key[v] < Infinity && (u < 0 || key[v] < key[u]))
-          u = v;
-      if (u < 0) break;
+    while (heap.length) {
+      const u = extractMin();
       col[u] = 2;
       if (best[u] >= 0) {
         selected.push(best[u]);
-        weight += key[u];
+        tu.push(pre[u]);
+        tv.push(u);
+        weight += dis[u];
       }
-      emit(`${api.label(u)} über die günstigste Schnittkante aufnehmen.`, {
+      emit(`${api.label(u)} aus der Heap-Wurzel entnehmen und aufnehmen.`, {
         current: u,
         ...(best[u] >= 0 ? { edge: best[u] } : {}),
       });
       for (const [v, w, id] of adj[u])
-        if (col[v] !== 2 && w < key[v]) {
-          key[v] = w;
+        if (col[v] !== 2 && w < dis[v]) {
+          decrease(v, w);
           pre[v] = u;
           best[v] = id;
           col[v] = 1;
@@ -789,9 +834,10 @@ export const prim = function run(g, api) {
             current: v,
           });
         }
+      emit(`Durchlauf für ${api.label(u)} abgeschlossen.`, { current: u });
     }
   }
-  return `${trees === 1 ? "Minimaler Spannbaum" : "Minimaler Spannwald"}: ${selected.length} Kanten, Gesamtgewicht ${weight}. Die offene Liste wird in dieser Lernvariante durch lineare Minimumsuche verwaltet.`;
+  return `${trees === 1 ? "Minimaler Spannbaum" : "Minimaler Spannwald"}: ${selected.length} Kanten, Gesamtgewicht ${weight}.`;
 };
 
 export const trees = function run(g, api) {

@@ -24,7 +24,7 @@ npm run preview # Vorschau des fertigen Builds
 
 Unter **Vorlesung** lässt sich eine lokale PDF öffnen und mit interaktiven Simulationen auf einzelnen Folien ergänzen. Die Beispiele werden über der PDF angezeigt, lassen sich verschieben, skalieren und bei Bedarf ohne Neustart vergrößern. **Präsentieren** öffnet die Folien im Vollbild; Pfeiltasten wechseln die Seiten. Die PDF bleibt unverändert auf dem Rechner. Folienzuordnungen und Simulationseingaben werden lokal gespeichert und lassen sich als JSON-Projekt exportieren. Zum Wiederöffnen oder Weitergeben werden Projektdatei und zugehörige PDF benötigt.
 
-Der Reiter **Beispiele** enthält 39 feste Links für Arena, Straßenkarten, Graph- und String-Verfahren, beispielsweise [`#beispiel/graph-dijkstra`](https://algofights.de/#beispiel/graph-dijkstra) und [`#beispiel/string-kmp`](https://algofights.de/#beispiel/string-kmp). **Beispiel-Link** im Simulator speichert die aktuellen Eingaben im URL-Fragment. Im **Graph Builder** enthält dieser Link den vollständigen gebauten Graphen, Gewichte, Richtungen, Start/Ziel und das ausgewählte Verfahren. Er funktioniert ohne vorherigen Import auf einem anderen Rechner. **In Vorlesung verwenden** übernimmt das Beispiel in die Folienauswahl.
+Der Reiter **Beispiele** enthält feste Links für Arena, Straßenkarten, Graph- und String-Verfahren, beispielsweise [`#beispiel/graph-dijkstra`](https://algofights.de/#beispiel/graph-dijkstra) und [`#beispiel/string-kmp`](https://algofights.de/#beispiel/string-kmp). **Beispiel-Link** im Simulator speichert die aktuellen Eingaben im URL-Fragment. Im **Graph Builder** enthält dieser Link den vollständigen gebauten Graphen, Gewichte, Richtungen, Start/Ziel und das ausgewählte Verfahren. Er funktioniert ohne vorherigen Import auf einem anderen Rechner. **In Vorlesung verwenden** übernimmt das Beispiel in die Folienauswahl.
 
 Links und Vorlesungsprojekte verwenden ausschließlich eingebaute Verfahren und enthalten keinen ausführbaren Benutzercode, keine PDF und keine Zugangsdaten. Ein bestehender Website-Passwortschutz gilt weiterhin. Einzelheiten und Grenzen: [Vorlesungsmodus](docs/vorlesungsmodus.md).
 
@@ -114,7 +114,9 @@ Das Graph-Lehrlabor enthält vollständige BFS/DFS mit Farben und Zeitstempeln, 
 
 String Sim ergänzt naive und dynamische Levenshtein-Distanz, naive und dynamische längste gemeinsame Teilzeichenketten, längste gemeinsame Teilfolgen, naive Mustersuche und KMP samt Verschiebungstabelle. DP-Tabellen zeigen aktuelle Zellen, benötigte Nachbarn und Rekonstruktionswege.
 
-Für 21 Lehrverfahren stehen einzeln editierbare JavaScript-Funktionen sowie Java-17- und Pseudocode-Referenzen bereit. Eine gemeinsame Replay-Schnittstelle erlaubt eigenen Algorithmen beliebige Arrays und Matrizen. Der statische Build enthält alle Daten und Ressourcen. Details, API, Voraussetzungen und Begrenzungen: [Lehrlabor-Handbuch](docs/lehrlabor.md).
+Der Graph Builder übernimmt Adjazenz- und Gewichtungsmatrizen, Labyrinthe, vollständige Graphen, Würfel und den Petersen-Graphen. Zusätzliche Graph-Verfahren decken Quellenentfernung, BFS-Varianten, Matrixpotenzen, längste DAG-Pfade, alle gleich kurzen einfachen Pfade, Färbung, Hamiltonsuchen und Spannbaumaufzählung ab. String Sim enthält auch eine Suche mit Ankerzeichen und die Levenshtein-Metrik.
+
+Für 34 Lehrverfahren stehen einzeln editierbare JavaScript-Funktionen sowie Java-17- und Pseudocode-Referenzen bereit. Eine gemeinsame Replay-Schnittstelle erlaubt eigenen Algorithmen beliebige Arrays und Matrizen. Details zu Eingaben, Darstellungen und Grenzen stehen im [Lehrlabor-Handbuch](docs/lehrlabor.md).
 
 ## Quellstruktur
 

@@ -1,13 +1,10 @@
 import * as graph from "./graph-algorithms.js";
 import * as strings from "./string-algorithms.js";
 import { JAVA } from "./references";
-import type { Lesson } from "./types";
+import { EXERCISE_LESSONS } from "./exercise-catalog";
+import { EXERCISE_JAVA } from "./exercise-references";
+import type { Lesson, LessonEntry as Entry } from "./types";
 
-type Entry = Omit<Lesson, "source" | "java" | "pseudocode" | "kind"> & {
-  run: Function;
-  pseudocode: string;
-  kind?: "graph" | "string";
-};
 const entries: Entry[] = [
   {
     id: "paths",
@@ -132,7 +129,7 @@ const entries: Entry[] = [
       "ks[i] = Schlüssel, vs[i] = Knoten an Heap-Position i",
     ],
     explanation:
-      "Die Heap-Tabelle zeigt den tatsächlichen Arrayaufbau: Eltern stehen vor ihren Kindern und haben keinen größeren Schlüssel. is wird bei jeder Vertauschung angepasst. Da keine negative Kante eine spätere Abkürzung liefern kann, stimmt die kleinste entnommene Schranke mit der optimalen Distanz überein. Teilpfade eines kürzesten Pfads müssen ebenfalls kürzest sein: Ein günstigerer Teilpfad würde den gesamten Pfad verbessern.",
+      "Die Heap-Tabelle zeigt den tatsächlichen Arrayaufbau: Eltern stehen vor ihren Kindern und haben keinen größeren Schlüssel. is wird bei jeder Vertauschung angepasst. Da keine negative Kante eine spätere Abkürzung liefern kann, stimmt die kleinste entnommene Schranke mit der optimalen Distanz überein. Mit A→B: 2, A→C: 4 und C→B: −5 würde ein ungeprüfter Dijkstra B mit 2 abschließen, obwohl über C die Kosten −1 erreichbar sind. Die App meldet deshalb negative Kanten vor dem Start. Bellman–Ford kann dieses Beispiel berechnen.",
     complexity:
       "Pro Quelle O((n+m) log n) Zeit und O(n) Zusatzspeicher. Alle Quellen: diesen Aufwand n-mal. Replays und Ergebnismatrizen werden zusätzlich gespeichert. Die Java-Referenz nutzt statt decreaseKey veraltete Einträge, die bei Entnahme übersprungen werden.",
     pseudocode:
@@ -277,16 +274,16 @@ const entries: Entry[] = [
     prerequisites:
       "Ungerichteter Graph. Für getrennte Komponenten beginnt die Lernvariante jeweils einen weiteren Baum.",
     formulas: [
-      "key(v)=min {w(u,v): u bereits im Baum}",
+      "dis(v)=min {w(u,v): u bereits im Baum}",
       "pre(v)=Ende der aktuell günstigsten Anschlusskante im Baum",
-      "v ← arg min {key(x): x noch offen}",
+      "(tu[i],tv[i]) = i-te aufgenommene Kante",
     ],
     explanation:
-      "key speichert eine einzelne Anschlusskante und keine aufsummierte Weglänge. Die niedrigste offene Priorität bezeichnet eine günstigste Kante über den aktuellen Schnitt. Nach ihrer Aufnahme werden nur mögliche neue Anschlusskanten aktualisiert. Die offene Prioritätsliste ist sichtbar; diese Implementierung sucht ihr Minimum bewusst linear.",
+      "dis speichert die Kosten einer einzelnen Anschlusskante. Die Wurzel des Min-Heaps enthält den nächsten Knoten über die günstigste Kante, die den bisherigen Baum mit dem Rest verbindet. Nach der Entnahme werden seine Nachbarn geprüft und bei günstigeren Kanten die Prioritäten gesenkt. Die Ansicht zeigt den Heap in seiner tatsächlichen Array-Reihenfolge.",
     complexity:
-      "Hier O(n²+m) Zeit und O(n+m) Speicher einschließlich Adjazenzlisten. Mit indiziertem Heap lässt sich die Minimumsuche auf insgesamt O((n+m) log n) reduzieren.",
+      "O((n+m) log(n+1)) Zeit und O(n+m) Speicher mit indiziertem Min-Heap und Adjazenzlisten.",
     pseudocode:
-      "key(Wurzel)←0; übrige key←∞\nsolange eine offene endliche Priorität existiert:\n  u mit kleinster key aufnehmen\n  zugehörige Elternkante in T aufnehmen\n  bessere Anschlusskanten der Nachbarn aktualisieren\nbei Restkomponenten neue Wurzel wählen",
+      "dis(Wurzel)←0; übrige dis←∞\nsolange der Min-Heap nicht leer ist:\n  u mit kleinster Priorität entnehmen\n  Elternkante in tu und tv aufnehmen\n  bei günstigerer Anschlusskante dis/pre ändern und Heap aktualisieren\nbei Restkomponenten neue Wurzel wählen",
   },
   {
     id: "trees",
@@ -458,11 +455,15 @@ const stringEntries: Entry[] = [
 export const LESSONS: Lesson[] = [
   ...entries,
   ...stringEntries.map((e) => ({ ...e, kind: "string" as const })),
+  ...EXERCISE_LESSONS,
 ].map(({ run, ...entry }) => ({
   ...entry,
   kind: entry.kind ?? "graph",
   source: run.toString().replace(/^function[^(]*\(/, "function run("),
-  java: JAVA[entry.id] ?? "",
+  java:
+    JAVA[entry.id === "maze" ? "bfs" : entry.id] ??
+    EXERCISE_JAVA[entry.id] ??
+    "",
   pseudocode: entry.pseudocode,
 }));
 export const GRAPH_LESSONS = LESSONS.filter((item) => item.kind === "graph");

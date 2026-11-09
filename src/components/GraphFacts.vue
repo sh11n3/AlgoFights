@@ -8,10 +8,12 @@ const model = computed(() => {
   const g = props.input,
     n = g.nodes.length,
     out = g.nodes.map(() => [] as number[]),
+    incoming = g.nodes.map(() => [] as number[]),
     inc = Array(n).fill(0),
     W = g.nodes.map((_, u) => g.nodes.map((_, v) => (u === v ? 0 : Infinity)));
   for (const e of g.edges) {
     out[e.from].push(e.to);
+    incoming[e.to].push(e.from);
     inc[e.to]++;
     W[e.from][e.to] = Math.min(W[e.from][e.to], e.weight);
     if (!g.directed && e.from !== e.to) {
@@ -28,6 +30,7 @@ const model = computed(() => {
       for (let v = 0; v < n; v++) reach[u][v] ||= reach[u][z] && reach[z][v];
   return {
     out,
+    incoming,
     inc,
     W,
     reach,
@@ -37,6 +40,32 @@ const model = computed(() => {
         : `{${label(e.from)}, ${label(e.to)}}`,
     ),
   };
+});
+const degreeSum = computed(() =>
+  model.value.out.reduce((sum, neighbors) => sum + neighbors.length, 0),
+);
+const oddDegrees = computed(() =>
+  props.input.nodes
+    .filter(({ id }) => model.value.out[id].length % 2 !== 0)
+    .map(({ label }) => label),
+);
+const cubeDimension = computed(() => {
+  const n = props.input.nodes.length;
+  const d = Math.log2(n);
+  if (
+    props.input.directed ||
+    !Number.isInteger(d) ||
+    d < 2 ||
+    props.input.edges.length !== (d * n) / 2
+  )
+    return;
+  if (
+    props.input.edges.every(({ from, to }) => {
+      const difference = from ^ to;
+      return difference > 0 && (difference & (difference - 1)) === 0;
+    })
+  )
+    return d;
 });
 const checkedPath = computed(() => {
   const names = path.value
@@ -110,6 +139,7 @@ const mode = ref("list");
             <th>v</th>
             <template v-if="mode === 'list'"
               ><th>Nachbarn / Nachfolger</th>
+              <th v-if="input.directed">Vorgänger</th>
               <th>{{ input.directed ? "indeg" : "deg" }}</th>
               <th v-if="input.directed">outdeg</th></template
             >
@@ -126,6 +156,9 @@ const mode = ref("list");
             <th>{{ node.label }}</th>
             <template v-if="mode === 'list'"
               ><td>{{ model.out[node.id].map(label).join(", ") || "∅" }}</td>
+              <td v-if="input.directed">
+                {{ model.incoming[node.id].map(label).join(", ") || "∅" }}
+              </td>
               <td>
                 {{
                   input.directed
@@ -182,5 +215,63 @@ const mode = ref("list");
       eine Äquivalenzrelation. Schwache Komponenten ignorieren die
       Pfeilrichtungen, starke Komponenten verlangen Wege in beiden Richtungen.
     </p>
+    <details class="experiment-options">
+      <summary>Knotengrade, Kantenzahl und Begründungen</summary>
+      <template v-if="!input.directed">
+        <p>
+          Dieser Graph hat Grad-Summe {{ degreeSum }} und
+          {{ input.edges.length }} Kanten. Ungerader Grad bei
+          {{ oddDegrees.length }} Knoten{{
+            oddDegrees.length ? ": " + oddDegrees.join(", ") : ""
+          }}.
+        </p>
+        <p>
+          Jede Kante trägt an ihren beiden Enden je eins zur Grad-Summe bei.
+          Deshalb gilt ∑deg(v) = 2m. Gerade Grade ändern die Parität der Summe
+          nicht. Damit muss die Zahl der ungeraden Grade gerade sein. Sieben
+          Knoten, die alle Grad 3 hätten, wären beispielsweise unmöglich.
+        </p>
+        <p>
+          In Kₙ ist jedes der n(n−1) geordneten Knotenpaare mit verschiedenen
+          Enden verbunden. Jede ungerichtete Kante tritt darin zweimal auf: m =
+          n(n−1)/2. Beim d-dimensionalen Würfel entspricht jeder der d Nachbarn
+          einem einzelnen Bitwechsel. Bei 2ᵈ Knoten folgt m = d·2ᵈ⁻¹.
+        </p>
+        <p v-if="cubeDimension">
+          Binärwörter dieses Würfelgraphen:
+          <code>{{
+            input.nodes
+              .map(
+                ({ id, label }) =>
+                  `${label}=${id.toString(2).padStart(cubeDimension!, "0")}`,
+              )
+              .join(" · ")
+          }}</code>
+        </p>
+      </template>
+      <template v-else>
+        <p>
+          Ausgehende Adjazenzlisten zeigen den Ausgangsgrad direkt als
+          Listenlänge. Für den Eingangsgrad muss man ohne separate
+          Vorgängerlisten alle Listen nach dem Knoten durchsuchen. Das kostet
+          O(n+m), im dichten Fall O(n²). Eine 0/1-Matrix liefert den
+          Ausgangsgrad per Zeilensumme und den Eingangsgrad per Spaltensumme,
+          jeweils in O(n).
+        </p>
+        <p>
+          Hat jeder Knoten eine ausgehende Kante, kann man immer weitergehen. Da
+          es nur endlich viele Knoten gibt, wiederholt sich irgendwann ein
+          Knoten. Der Abschnitt zwischen seinem ersten und zweiten Auftreten ist
+          ein einfacher Zyklus.
+        </p>
+        <p>
+          Eine vollständige DFS startet auch bei isolierten Knoten und schließt
+          sie ab. Ein Knoten mit ein- und ausgehenden Kanten kann trotzdem
+          allein in einem Suchbaum stehen, wenn seine Nachbarn schon besucht
+          sind. Bei beg(v) &lt; beg(u) &lt; end(u) &lt; end(v) liegt v auf der
+          Vorfahrenkette von u. Die Kante u→v ist dann eine Rückwärtskante.
+        </p>
+      </template>
+    </details>
   </section>
 </template>

@@ -13,7 +13,7 @@ public final class Algorithmus {
     return a;
   }
 `;
-const wrap = (code: string) => header + code + "\n}\n";
+export const wrap = (code: string) => header + code + "\n}\n";
 const dfsBody = `
   static int time;
   static void visit(int u, List<List<Edge>> a, int[] col, int[] pre,
@@ -170,13 +170,29 @@ export const JAVA: Record<string, string> = {
     return tree; // forest if the graph is disconnected
   }`),
   prim: wrap(`
+  record Candidate(int node, double cost) {}
   public static int[] prim(int n,List<Edge> edges,int source) {
-    var a=adjacency(n,edges,false); double[] key=new double[n]; Arrays.fill(key,Double.POSITIVE_INFINITY);
-    int[] pre=new int[n]; Arrays.fill(pre,-1); boolean[] done=new boolean[n]; key[source]=0;
-    for(int count=0;count<n;count++) {
-      int u=-1; for(int v=0;v<n;v++)if(!done[v]&&(u<0||key[v]<key[u]))u=v;
-      done[u]=true; // an infinite key begins another tree
-      for(var e:a.get(u))if(!done[e.to()]&&e.weight()<key[e.to()]){key[e.to()]=e.weight();pre[e.to()]=u;}
+    var adj = adjacency(n, edges, false);
+    double[] dis = new double[n]; Arrays.fill(dis, Double.POSITIVE_INFINITY);
+    int[] pre = new int[n]; Arrays.fill(pre, -1);
+    boolean[] done = new boolean[n];
+    var q = new PriorityQueue<Candidate>(Comparator.comparingDouble(Candidate::cost).thenComparingInt(Candidate::node));
+    for (int i = -1; i < n; i++) {
+      int root = i < 0 ? source : i;
+      if (done[root]) continue;
+      dis[root] = 0; q.add(new Candidate(root, 0));
+      while (!q.isEmpty()) {
+        var next = q.remove(); int u = next.node();
+        if (done[u] || next.cost() != dis[u]) continue;
+        done[u] = true;
+        for (var e : adj.get(u)) {
+          int v = e.to();
+          if (!done[v] && e.weight() < dis[v]) {
+            dis[v] = e.weight(); pre[v] = u;
+            q.add(new Candidate(v, dis[v]));
+          }
+        }
+      }
     }
     return pre;
   }`),

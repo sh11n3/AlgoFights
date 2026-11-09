@@ -19,6 +19,12 @@ Die Ansicht umfasst diese Lernbereiche:
 | Spannbäume      | Kruskal und Prim, ausgewählte/verworfene Kanten, Anschlussprioritäten, Vorgänger, Gesamtgewicht und Spannwald bei getrennten Eingaben.                                                                                                |
 | Bäume und XML   | Eltern, Kinder, Geschwister, Blätter, Ebenen, Tiefe/Höhe, Pre-/Postorder, Vorfahrenintervalle und editierbarer XML-Elementbaum mit XPath-Auswahl.                                                                                     |
 
+**Graph aus Matrix, Labyrinth oder Vorlage erzeugen** im Builder akzeptiert Adjazenz- und Gewichtungsmatrizen, erzeugt Kₙ, Qᵈ und den Petersen-Graphen und macht offene Labyrinthseiten zu ungerichteten Kanten. Bei Gewichtungsmatrizen steht `∞` für eine fehlende Kante, `0` außerhalb der Diagonale ist ein gültiges Gewicht. Der Import ordnet Kanten zeilenweise. Über **Nur Suchbaum / Suchwald** lassen sich die Vorgängerkanten während geeigneter Läufe einzeln betrachten.
+
+Die zusätzlichen Experimente umfassen Quellenentfernung, BFS-Zyklenerkennung, das Zählen kürzester ungewichteter Wege, BFS ab jeder Quelle, Adjazenzmatrixpotenzen, längste DAG-Pfade mit negierten Gewichten, alle gleich kurzen einfachen Pfade, Graphfärbung und Hamiltonsuchen. Für exponentielle Suchen gilt das Aufzeichnungslimit. Ein abgebrochener Lauf entscheidet keine Nichtexistenz. Potenzen werden intern exakt mit `BigInt` berechnet. Ihre Einträge zählen Kantenfolgen, die Knoten wiederholen dürfen.
+
+Kruskal zeigt die sortierten `gu/gv/gw`, die Repräsentanten `r` und die Baumkanten `tu/tv`. Prim zeichnet `dis/pre/tu/tv` und einen indizierten Min-Heap auf. **Spannbäume aufzählen** veranschaulicht die Schranke durch Kantenteilmengen an kleinen Graphen. Die Vorlage **Wegbaum und Spannbaum** eignet sich zum Vergleich von Dijkstra und Prim bei gleicher Quelle.
+
 Die bestehende Start-Ziel-Wegsuche bleibt als eigener Modus erhalten. Sie enthält weiterhin A*, Greedy Best-First und bidirektionalen Dijkstra sowie die bisherigen eigenen Wegsuchalgorithmen. Ihre `findRoute(graph)`-Schnittstelle bleibt unverändert. Graphvorlagen und Builder werden von beiden Modi genutzt, ihre eigenen Algorithmen getrennt gespeichert.
 
 ### Eingaben und Notation
@@ -41,7 +47,7 @@ Der Builder erlaubt 32 Knoten, 96 Kanten und ganzzahlige Gewichte von −999 bis
 - Die vollständige DFS prüft im ungerichteten Fall nicht erneut die Elternkante. Das verhindert einen falschen Zyklusnachweis durch bloßes Zurücklaufen.
 - Topologisches Sortieren erfordert einen DAG. Kruskal und Prim benötigen ungerichtete Eingaben; bei getrennten Komponenten wird ein minimaler Spannwald berechnet.
 - Die Union-Find-Lernvariante speichert direkte Repräsentanten: `find` ist konstant, eine Vereinigung kann das gesamte Array ändern. Laufzeitangaben optimierter Elternbaumvarianten gelten dafür nicht.
-- Prim wählt in dieser Implementierung das Minimum linear. Die Anzeige bezeichnet die offenen Prioritäten, nicht den Aufbau eines binären Heaps. Dijkstra zeigt dagegen den wirklichen indizierten Heap.
+- Bei Prim beschreibt `dis` die günstigste Anschlusskante. Bei Dijkstra beschreibt `dis` die aufsummierten Wegkosten ab der Quelle. Beide JavaScript-Läufe zeigen den tatsächlichen Min-Heap. Die Java-Referenzen können veraltete Queue-Einträge bei der Entnahme verwerfen.
 - XML wird ausschließlich lokal mit `DOMParser` gelesen. DTDs/Entities sind ausgeschlossen, höchstens 32 Elemente und 12.000 Eingabezeichen. XPath muss Elemente auswählen. Es werden keine externen XML-Ressourcen geladen.
 
 ## String Sim
@@ -55,6 +61,8 @@ Der Builder erlaubt 32 Knoten, 96 Kanten und ganzzahlige Gewichte von −999 bis
 | Gemeinsame Teilfolge, DP          | Auslassen von Zeichen, diagonale Übereinstimmungen und Rekonstruktion einer optimalen Folge.                                                    |
 | Naive Mustersuche                 | Muster an jeder zulässigen Startposition; einzelne Zeichenvergleiche.                                                                           |
 | Knuth–Morris–Pratt                | Selbstvergleich zum Aufbau der Verschiebungstabelle, anschließend sichere Rücksprünge und Musterverschiebungen ohne zurücklaufenden Textzeiger. |
+| Naive Mustersuche mit Anker       | Vorgegebene Position oder im Text seltenstes Musterzeichen. Kandidaten werden links und rechts des Ankers geprüft. |
+| Levenshtein-Metrik und Schranken  | Drei Texte, paarweise Editierdistanzen, Längenschranken und Dreiecksungleichung mit Begründung. |
 
 `s[i:j]` enthält die Zeichen von i bis j−1. `s[:i]` ist ein Präfix, `s[i:]` ein Suffix, `ε` die leere Zeichenkette. Bei Mustersuche ist die erste Eingabe das Muster p, die zweite der Text t. Die Verschiebungstabelle heißt dort s; das ist eine eigene Variable und keine dritte Texteingabe.
 
@@ -64,7 +72,7 @@ Die DP-Ansichten färben die aktuelle Zelle und deren benötigte Vorgänger unte
 
 ## Eigener Code
 
-Jedes der 21 eingebauten Lehrverfahren lässt sich im Code-Editor als eigene Variante öffnen. Es erscheint ausschließlich seine `run`-Funktion. „Eigenen Algorithmus bauen“ startet mit leerem Code. JavaScript, Java und Pseudocode können unabhängig bearbeitet, mit Namen und eigener mathematischer Erklärung lokal gespeichert sowie als JSON importiert/exportiert werden. Java und Pseudocode sind Referenzen und werden nicht im Browser ausgeführt oder automatisch aus Änderungen am JavaScript erzeugt.
+Jedes der 34 eingebauten Lehrverfahren lässt sich im Code-Editor als eigene Variante öffnen. Es erscheint ausschließlich seine `run`-Funktion. „Eigenen Algorithmus bauen“ startet mit leerem Code. JavaScript, Java und Pseudocode können unabhängig bearbeitet, mit Namen und eigener mathematischer Erklärung lokal gespeichert sowie als JSON importiert/exportiert werden. Java und Pseudocode sind Referenzen und werden nicht im Browser ausgeführt oder automatisch aus Änderungen am JavaScript erzeugt.
 
 ```js
 function run(input, api) {
@@ -81,6 +89,8 @@ function run(input, api) {
 ```
 
 `input` ist eine unveränderliche Kopie. Graphdaten: `nodes` mit `{id,label,x,y}`, `edges` mit `{from,to,weight}`, `directed`, `start`, `target`, `mode`. Eine ungerichtete Kante steht nur einmal in `edges`; eigener Code muss beide Nachbarrichtungen berücksichtigen. Textdaten: `s` und `t`. `api.label(id)` übersetzt interne IDs in die sichtbare Beschriftung.
+
+Einzelne Verfahren erhalten zusätzliche Eingaben unter `input.options`: `power` (Matrixexponent), `colorCount`, `hamiltonCycle`, `anchor` (Musterindex) oder `third` (Text r). Bei fehlenden Feldern gelten die im Simulator angezeigten Standards. Geteilte Beispiele speichern diese Eingaben zusammen mit dem Graphen oder den Texten.
 
 `api.emit(text, state)` zeichnet eine Kopie des aktuellen Zustands auf:
 

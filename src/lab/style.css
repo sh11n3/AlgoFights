@@ -63,6 +63,15 @@
   padding: 15px 18px;
   border-top: 1px solid var(--border);
 }
+.lab-tree-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 16px 10px;
+  color: #a5b3c4;
+  font-size: 12px;
+}
 .lab-scroll {
   overflow: auto;
   max-width: 100%;

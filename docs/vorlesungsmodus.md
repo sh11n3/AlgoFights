@@ -5,7 +5,7 @@ Der Browser zeigt lokale PDF-Folien und legt bedienbare Simulationen darüber. D
 ## Eine Vorlesung vorbereiten
 
 1. **Vorlesung → PDF öffnen** und eine lokale PDF auswählen.
-2. Die gewünschte Folie öffnen. **Vorhandenes Beispiel auswählen** bietet 39 vorbereitete Beispiele aus allen Simulationsbereichen. Alternativ einen selbst erzeugten Beispiel-Link einsetzen.
+2. Die gewünschte Folie öffnen. **Vorhandenes Beispiel auswählen** öffnet den Katalog mit vorbereiteten Beispielen aus allen Simulationsbereichen. Alternativ einen selbst erzeugten Beispiel-Link einsetzen.
 3. **Auf Folie einsetzen** fügt einen Simulationsbereich hinzu. Die Kopfzeile verschiebt ihn, die rechte untere Ecke verändert seine Größe. Position und Größe können auch in Prozent eingegeben werden.
 4. **Berechnen** bereitet den Ablauf vor. Mit den üblichen Wiedergabesteuerungen abspielen, pausieren, spulen oder Einzelschritte untersuchen. **Einstellungen** öffnet die Eingaben des jeweiligen Simulators.
 5. Über das Speichersymbol in der Bereichskopfzeile die aktuellen Eingaben für diese Folie **übernehmen**. Dabei bleibt der laufende Ablauf erhalten. Das Vergrößerungssymbol öffnet denselben Bereich groß; erneutes Betätigen oder Escape führt zurück.
