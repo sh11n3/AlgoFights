@@ -59,7 +59,9 @@ const same = computed(
           class="string-characters"
           :style="
             matching
-              ? { paddingLeft: `${Math.max(0, view.offset ?? 0) * 34}px` }
+              ? {
+                  paddingLeft: `calc(${Math.max(0, view.offset ?? 0)} * var(--string-cell-width, 34px))`,
+                }
               : undefined
           "
         >

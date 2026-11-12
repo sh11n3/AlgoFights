@@ -5,11 +5,13 @@ export interface Rectangle {
   width: number;
   height: number;
 }
+export type SlideAppearance = "inline-light" | "inline-dark";
 export interface LectureWidget {
   id: string;
   title: string;
   rect: Rectangle;
   example: Example;
+  appearance?: SlideAppearance;
 }
 export interface PdfIdentity {
   name: string;
@@ -121,6 +123,9 @@ export function readProject(value: unknown): LectureProject {
           height: r.height as number,
         },
         example: readExample(w.example),
+        ...(w.appearance === "inline-light" || w.appearance === "inline-dark"
+          ? { appearance: w.appearance }
+          : {}),
       };
     });
   }

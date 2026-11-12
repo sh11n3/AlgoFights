@@ -30,6 +30,7 @@
 .share-example-panel input,
 .example-catalog input,
 .lecture-sidebar input,
+.lecture-sidebar select,
 .lecture-password input {
   width: 100%;
   min-width: 0;
@@ -475,6 +476,121 @@
   min-height: 0;
   overflow: auto;
   overscroll-behavior: contain;
+}
+.lecture-widget:not(.lecture-widget-expanded) .example-player-compact {
+  --slide-figure-height: max(42px, 62cqh);
+}
+.lecture-widget:not(.lecture-widget-expanded)
+  .example-player-compact
+  .example-player-content {
+  container-type: size;
+}
+.lecture-widget:not(.lecture-widget-expanded)
+  .example-player-compact
+  .example-player-content
+  :is(.graph-board, .sim-map canvas) {
+  height: var(--slide-figure-height);
+  min-height: 0;
+}
+.lecture-widget
+  .example-player-compact
+  .example-player-content
+  .arena-example-canvas {
+  width: min(100%, var(--slide-figure-height));
+}
+.lecture-widget .example-player-compact .example-player-content .string-board {
+  --string-cell-width: clamp(19px, min(5cqw, 14cqh), 46px);
+  --string-cell-height: calc(var(--string-cell-width) * 1.25);
+  --string-cell-font: calc(var(--string-cell-width) * 0.5);
+  padding: clamp(4px, 3cqh, 24px);
+  min-height: min(220px, 45cqh);
+}
+.lecture-widget-inline {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+}
+.lecture-widget-inline > .example-player-compact,
+.lecture-widget-inline
+  .example-player-compact
+  :is(
+    .example-player-toolbar,
+    .graph-readout,
+    .graph-board,
+    .graph-search-arrays,
+    .graph-legend,
+    .lab-visual-panel,
+    .sim-map-panel,
+    .map-help,
+    .string-board,
+    .graph-playback,
+    .playback-controls,
+    .lab-step-message
+  ) {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+}
+.lecture-presenting .lecture-widget-inline {
+  border: 0;
+}
+.lecture-presenting
+  .lecture-widget-inline
+  .example-player-compact
+  :is(.example-player-toolbar, .example-player-content) {
+  padding: 0;
+}
+.lecture-widget-inline-light > .example-player-compact {
+  color: #1c2c40;
+}
+.lecture-widget-inline-light
+  .example-player-compact
+  :is(
+    .graph-readout span,
+    .graph-readout strong,
+    .graph-legend,
+    .graph-frame,
+    .playback-time,
+    .lab-step-message > span,
+    .lab-step-message p,
+    .live-state-heading,
+    .search-array-heading,
+    .search-array-heading > span,
+    .arena-example-meta,
+    .arena-example-scores,
+    .map-help,
+    .lab-caption,
+    .string-line > b,
+    .string-characters small,
+    .string-edits,
+    .string-result code,
+    .example-empty
+  ) {
+  color: #304660;
+}
+.lecture-widget-inline-light
+  .example-player-compact
+  :is(.example-player-toolbar, .graph-playback, .playback-controls)
+  .icon-button {
+  color: #304660;
+  background: #edf2f8;
+}
+.lecture-widget-inline-light .example-player-compact .graph-weight {
+  fill: #304660;
+  stroke: #f5f8fc;
+}
+.lecture-widget-inline-light .example-player-compact .graph-weight.on-route {
+  fill: #226846;
+}
+@container (max-height: 190px) {
+  .lecture-widget
+    .example-player-compact
+    .example-player-content
+    :is(.graph-readout, .graph-playback, .playback-controls, .graph-legend) {
+    padding: 4px 6px;
+    min-height: 0;
+    gap: 4px;
+  }
 }
 .lecture-widget .share-example-panel {
   width: min(400px, 70vw);

@@ -6,14 +6,20 @@ import ShareExample from "./ShareExample.vue";
 const LessonLab = defineAsyncComponent(() => import("./LessonLab.vue"));
 const AlgoSim = defineAsyncComponent(() => import("./AlgoSim.vue"));
 const ArenaExample = defineAsyncComponent(() => import("./ArenaExample.vue"));
-const props = defineProps<{ example: Example; compact?: boolean }>();
+const props = defineProps<{
+  example: Example;
+  compact?: boolean;
+  slideControls?: boolean;
+}>();
 type Player = { run: () => unknown; getExample: () => Example | null };
 const player = ref<Player>(),
   settings = ref(false),
   revision = ref(0);
 const clean = computed(() => readExample(props.example));
 const initial = shallowRef(readExample(props.example));
-const compact = computed(() => !!props.compact && !settings.value);
+const compact = computed(
+  () => !!props.compact && (!settings.value || props.slideControls),
+);
 function getExample() {
   try {
     return player.value?.getExample() ?? (player.value ? null : clean.value);
@@ -40,7 +46,7 @@ defineExpose({ getExample, run: () => player.value?.run() });
     :class="{ 'example-player-compact': compact }"
   >
     <div class="example-player-toolbar">
-      <strong>{{ exampleTitle(clean) }}</strong>
+      <strong v-if="!slideControls">{{ exampleTitle(clean) }}</strong>
       <div>
         <button
           v-if="compact || initial.kind === 'arena'"
@@ -50,7 +56,7 @@ defineExpose({ getExample, run: () => player.value?.run() });
         >
           <Play :size="14" /> Berechnen</button
         ><button
-          v-if="compact || props.compact"
+          v-if="!slideControls && props.compact"
           class="secondary-button"
           :aria-pressed="settings"
           @click="settings = !settings"
@@ -67,9 +73,10 @@ defineExpose({ getExample, run: () => player.value?.run() });
         >
           <RotateCcw :size="15" /></button
         ><ShareExample
-          v-if="compact || initial.kind === 'arena'"
+          v-if="!slideControls && (compact || initial.kind === 'arena')"
           :example="shared"
         />
+        <slot name="actions" />
       </div>
     </div>
     <div class="example-player-content" :key="revision">

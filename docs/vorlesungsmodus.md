@@ -13,6 +13,8 @@ Der Browser zeigt lokale PDF-Folien und legt bedienbare Simulationen darüber. D
 
 **Präsentieren** blendet die Vorbereitung aus und fordert Vollbild an. Ist Vollbild nicht verfügbar, bleibt eine Ansicht über die gesamte Browserfläche. Pfeile und Bild auf/ab wechseln Folien, wenn kein Bedienelement der Simulation den Fokus hat. Beim Folienwechsel beginnt deren Simulation beim nächsten Öffnen wieder am Anfang. Escape beendet die Präsentationsansicht.
 
+Unter **Simulationsbereich → Darstellung** lässt sich pro Beispiel ein Fensterrahmen oder eine nahtlose Ansicht für helle beziehungsweise dunkle Folien wählen. Neue Beispiele starten mit der Einstellung für helle Folien. Nahtlose Beispiele zeigen beim Präsentieren die Visualisierung und ihre Bedienelemente direkt über der Folie. Position, Fläche und Größe der Zeichenfläche passen sich beim Wechsel zwischen Fenster und Vollbild an. Über das Vergrößerungssymbol lässt sich der vollständige Simulator öffnen.
+
 Zum Weitergeben PDF und JSON-Projekt gemeinsam bereitstellen. Eine SHA-256-Prüfsumme verhindert, dass Zuordnungen versehentlich auf einer anderen PDF erscheinen. Bei einer geänderten PDF kann bewusst eine neue Vorlesung begonnen werden; die bisherigen Zuordnungen werden erst nach Bestätigung ersetzt.
 
 ## Feste und eigene Beispiele

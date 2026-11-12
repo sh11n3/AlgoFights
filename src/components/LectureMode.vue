@@ -89,12 +89,19 @@ const totalWidgets = computed(() =>
 const active = computed(() =>
   widgets.value.find((w) => w.id === selected.value),
 );
+const appearance = computed({
+  get: () => active.value?.appearance ?? "framed",
+  set(value) {
+    if (active.value)
+      active.value.appearance = value === "framed" ? undefined : value;
+  },
+});
 const slideSize = computed(() => {
   const width = presenting.value
     ? Math.min(available.value.width, available.value.height * ratio.value)
     : available.value.width;
   return {
-    width: `${Math.max(100, width)}px`,
+    width: `${Math.max(1, width)}px`,
     aspectRatio: String(ratio.value),
   };
 });
@@ -169,6 +176,7 @@ function addWidget() {
     title: exampleTitle(chosen.value).slice(0, 100),
     example: readExample(chosen.value),
     rect: { x: 0.08, y: 0.1, width: 0.84, height: 0.8 },
+    appearance: "inline-light",
   };
   project.value.slides[String(page.value)] = [...widgets.value, widget];
   selected.value = widget.id;
@@ -426,13 +434,19 @@ function fullscreenChanged() {
   }
 }
 function measure() {
-  if (viewer.value) {
-    const bounds = viewer.value.getBoundingClientRect();
-    available.value = {
-      width: Math.max(100, bounds.width - 24),
-      height: Math.max(100, bounds.height - 24),
-    };
-  }
+  const element = viewer.value;
+  if (!element) return;
+  const padding = getComputedStyle(element);
+  available.value = {
+    width:
+      element.clientWidth -
+      parseFloat(padding.paddingLeft) -
+      parseFloat(padding.paddingRight),
+    height:
+      element.clientHeight -
+      parseFloat(padding.paddingTop) -
+      parseFloat(padding.paddingBottom),
+  };
 }
 function key(event: KeyboardEvent) {
   if (event.key === "Escape" && enlarge.value) {
@@ -624,6 +638,14 @@ onBeforeUnmount(() => {
             ><div class="lecture-widget-properties">
               <h2>Simulationsbereich</h2>
               <label
+                >Darstellung
+                <select v-model="appearance">
+                  <option value="inline-light">Nahtlos · helle Folie</option>
+                  <option value="inline-dark">Nahtlos · dunkle Folie</option>
+                  <option value="framed">Mit Fensterrahmen</option>
+                </select>
+              </label>
+              <label
                 >Beschriftung<input v-model="active.title" maxlength="100"
               /></label>
               <div class="lecture-rectangle">
@@ -652,7 +674,8 @@ onBeforeUnmount(() => {
               Auf der Folie den Bereich über seine Kopfzeile verschieben oder an
               der rechten unteren Ecke vergrößern. „Einstellungen“ öffnet die
               normale Bedienung des Simulators. „Übernehmen“ speichert dessen
-              aktuelle Eingaben für diese Folie.
+              aktuelle Eingaben für diese Folie. „Nahtlos“ blendet in der
+              Präsentation die Kopfzeile und den Fensterrahmen aus.
             </p>
             <p>
               Im Präsentationsmodus: Pfeiltasten oder Bild auf/ab wechseln
@@ -721,6 +744,10 @@ onBeforeUnmount(() => {
                 'lecture-widget-selected':
                   selected === widget.id && !presenting,
                 'lecture-widget-expanded': enlarge === widget.id,
+                'lecture-widget-inline':
+                  widget.appearance && enlarge !== widget.id,
+                'lecture-widget-inline-light':
+                  widget.appearance === 'inline-light' && enlarge !== widget.id,
               }"
               :style="{
                 left: `${widget.rect.x * 100}%`,
@@ -731,6 +758,9 @@ onBeforeUnmount(() => {
               @pointerdown="selected = widget.id"
             >
               <header
+                v-if="
+                  !presenting || !widget.appearance || enlarge === widget.id
+                "
                 class="lecture-widget-handle"
                 :class="{ 'lecture-widget-draggable': !presenting }"
                 @pointerdown.self.prevent="beginDrag(widget, $event)"
@@ -784,7 +814,26 @@ onBeforeUnmount(() => {
                 "
                 :example="widget.example"
                 :compact="enlarge !== widget.id"
-              />
+                :slide-controls="
+                  presenting && !!widget.appearance && enlarge !== widget.id
+                "
+              >
+                <template
+                  v-if="
+                    presenting && widget.appearance && enlarge !== widget.id
+                  "
+                  #actions
+                >
+                  <button
+                    class="icon-button"
+                    aria-label="Simulation vergrößern"
+                    title="Simulation vergrößern"
+                    @click="enlarge = widget.id"
+                  >
+                    <Maximize2 :size="13" />
+                  </button>
+                </template>
+              </ExamplePlayer>
               <button
                 v-if="!presenting && enlarge !== widget.id"
                 class="lecture-resize"
