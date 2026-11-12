@@ -508,13 +508,13 @@
 .search-array-scroll tr > :first-child {
   position: sticky;
   left: 0;
-  background: #10151d;
+  background: var(--lab-state-heading-bg, #10151d);
   text-align: left;
   padding-right: 8px;
   z-index: 1;
 }
 .search-array-scroll thead th {
-  color: #aebdcd;
+  color: var(--lab-state-muted, #aebdcd);
   font-size: 11px;
   padding: 1px 4px;
 }
@@ -524,27 +524,27 @@
 }
 .search-array-scroll .array-bracket {
   padding: 0 2px;
-  color: #bdcbe0;
+  color: var(--lab-state-muted, #bdcbe0);
 }
 .array-entry {
   position: relative;
   min-width: 28px;
   padding: 3px 6px;
-  color: #e2ebf8;
+  color: var(--lab-state-ink, #e2ebf8);
 }
 .array-entry + .array-entry::before {
   position: absolute;
   left: -3px;
-  color: #7d8da1;
+  color: var(--lab-state-muted, #7d8da1);
   content: "|";
 }
 .array-entry.array-changed {
-  color: #bcf5ff;
-  background: #153341;
+  color: var(--lab-state-changed-ink, #bcf5ff);
+  background: var(--lab-state-changed-bg, #153341);
   font-weight: 650;
 }
 .search-array-note {
-  color: #aebdcd;
+  color: var(--lab-state-muted, #aebdcd);
   font-size: 11px;
   line-height: 1.6;
   margin-top: 5px;
@@ -555,7 +555,7 @@
   white-space: nowrap;
 }
 .search-array-order code {
-  color: #d2e0f0;
+  color: var(--lab-state-ink, #d2e0f0);
   font: 11px var(--mono);
 }
 .graph-playback input {

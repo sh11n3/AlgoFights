@@ -540,8 +540,33 @@
   :is(.example-player-toolbar, .example-player-content) {
   padding: 0;
 }
+.lecture-widget-inline-light {
+  --slide-ink: #172b41;
+  --slide-muted: #41556d;
+  --slide-surface: #f1f5f9;
+  --slide-line: #b8c6d6;
+  --slide-hover: #dbe7f3;
+}
+.lecture-widget-inline-light .lecture-widget-handle {
+  color: var(--slide-ink);
+  background: var(--slide-surface);
+  border-color: var(--slide-line);
+}
 .lecture-widget-inline-light > .example-player-compact {
-  color: #1c2c40;
+  --border: var(--slide-line);
+  --lab-state-heading-bg: var(--slide-surface);
+  --lab-state-line: var(--slide-line);
+  --lab-state-ink: var(--slide-ink);
+  --lab-state-muted: var(--slide-muted);
+  --lab-state-changed-bg: #d9eff8;
+  --lab-state-changed-ink: #104864;
+  --lab-state-source-bg: #ede8f8;
+  --lab-state-source-ink: #47306d;
+  --lab-state-source-line: #8e78b1;
+  --lab-state-current-bg: #c8e8f6;
+  --lab-state-current-ink: #103e59;
+  --lab-state-current-line: #3e7b9a;
+  color: var(--slide-ink);
 }
 .lecture-widget-inline-light
   .example-player-compact
@@ -566,21 +591,148 @@
     .string-result code,
     .example-empty
   ) {
-  color: #304660;
+  color: var(--slide-muted);
+}
+.lecture-widget-inline-light
+  :is(.example-player-compact, .lecture-widget-handle)
+  :is(.icon-button, .secondary-button, .play-control),
+.lecture-widget-inline-light .lecture-resize {
+  color: var(--slide-ink);
+  background: var(--slide-surface);
+  border: 1px solid var(--slide-line);
+}
+.lecture-widget-inline-light
+  :is(.example-player-compact, .lecture-widget-handle)
+  :is(.icon-button, .secondary-button, .play-control):hover:not(:disabled) {
+  background: var(--slide-hover);
+}
+.lecture-widget-inline-light .example-player-compact .share-example-panel {
+  background: #fff;
+  color: var(--slide-ink);
+  border-color: var(--slide-line);
 }
 .lecture-widget-inline-light
   .example-player-compact
-  :is(.example-player-toolbar, .graph-playback, .playback-controls)
-  .icon-button {
-  color: #304660;
-  background: #edf2f8;
+  .share-example-panel
+  :is(label, input, .graph-field-help) {
+  color: var(--slide-ink);
+}
+.lecture-widget-inline-light
+  .example-player-compact
+  .share-example-panel
+  input {
+  background: var(--slide-surface);
+  border-color: var(--slide-line);
+}
+.lecture-widget-inline-light .example-player-compact .graph-sim {
+  --graph-bg: #fff;
+  --graph-search: #16698e;
+  --graph-backward: #66519f;
+  --graph-route: #226846;
+  --graph-start: #08748a;
+  --graph-target: #925614;
+}
+.lecture-widget-inline-light .example-player-compact .graph-edge {
+  stroke: #667a91;
+}
+.lecture-widget-inline-light
+  .example-player-compact
+  .graph-edge:is(.visited, .lab-edge-current) {
+  stroke: var(--graph-search);
+}
+.lecture-widget-inline-light .example-player-compact .graph-edge.backward {
+  stroke: var(--graph-backward);
+}
+.lecture-widget-inline-light
+  .example-player-compact
+  .graph-edge.lab-edge-selected {
+  stroke: var(--graph-route);
+}
+.lecture-widget-inline-light
+  .example-player-compact
+  .graph-edge.lab-edge-rejected {
+  stroke: #9e4456;
+}
+.lecture-widget-inline-light .example-player-compact .graph-node-body {
+  fill: var(--slide-surface);
+}
+.lecture-widget-inline-light
+  .example-player-compact
+  .graph-node.lab-node-closed
+  .graph-node-body {
+  fill: #e2e9f1;
+}
+.lecture-widget-inline-light
+  .example-player-compact
+  .graph-node:is(.visited, .lab-node-open)
+  .graph-node-body {
+  fill: #d9eff8;
+  stroke: var(--graph-search);
+}
+.lecture-widget-inline-light
+  .example-player-compact
+  .graph-node.backward
+  .graph-node-body {
+  fill: #ede8f8;
+  stroke: var(--graph-backward);
+}
+.lecture-widget-inline-light
+  .example-player-compact
+  .graph-node.lab-node-group
+  .graph-node-body {
+  fill: color-mix(in srgb, var(--component-color) 24%, #fff);
+  stroke: color-mix(in srgb, var(--component-color) 55%, #27364a);
+}
+.lecture-widget-inline-light
+  .example-player-compact
+  .graph-node.start
+  .graph-node-body {
+  stroke: var(--graph-start);
+}
+.lecture-widget-inline-light
+  .example-player-compact
+  .graph-node.target
+  .graph-node-body {
+  stroke: var(--graph-target);
+}
+.lecture-widget-inline-light
+  .example-player-compact
+  .graph-node.lab-node-marked
+  .graph-node-body {
+  stroke: #925614;
+}
+.lecture-widget-inline-light .example-player-compact .graph-node text {
+  fill: var(--slide-ink);
 }
 .lecture-widget-inline-light .example-player-compact .graph-weight {
-  fill: #304660;
-  stroke: #f5f8fc;
+  fill: var(--slide-ink);
 }
 .lecture-widget-inline-light .example-player-compact .graph-weight.on-route {
-  fill: #226846;
+  fill: var(--graph-route);
+}
+.lecture-widget-inline-light .example-player-compact .string-characters > span {
+  background: var(--slide-surface);
+  color: var(--slide-ink);
+  border-color: var(--slide-line);
+}
+.lecture-widget-inline-light
+  .example-player-compact
+  .string-characters
+  .char-active {
+  background: #fae4e6;
+  color: #722e41;
+  border-color: #a86778;
+}
+.lecture-widget-inline-light
+  .example-player-compact
+  .string-characters
+  :is(.char-equal, .char-result) {
+  background: #dcf1e4;
+  color: #21543a;
+  border-color: #629575;
+}
+.lecture-widget-inline-light .example-player-compact [role="alert"] {
+  color: #8b2940;
 }
 @container (max-height: 190px) {
   .lecture-widget

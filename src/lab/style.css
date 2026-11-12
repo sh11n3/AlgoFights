@@ -86,7 +86,7 @@
   position: sticky;
   left: 0;
   z-index: 1;
-  background: #10151d;
+  background: var(--lab-state-heading-bg, #10151d);
   text-align: left;
   padding: 5px 12px 5px 0;
   white-space: nowrap;
@@ -96,20 +96,20 @@
 .lab-array-table td {
   min-width: 34px;
   padding: 4px 7px;
-  border-left: 1px solid #26313e;
+  border-left: 1px solid var(--lab-state-line, #26313e);
   transition:
     background 0.18s,
     color 0.18s;
 }
 .lab-array-indices td,
 .lab-array-indices th {
-  color: #8395ab;
+  color: var(--lab-state-muted, #8395ab);
   font-size: 10px;
   padding-block: 1px;
 }
 .lab-changed {
-  background: #193443 !important;
-  color: #c3f0fc !important;
+  background: var(--lab-state-changed-bg, #193443) !important;
+  color: var(--lab-state-changed-ink, #c3f0fc) !important;
 }
 .lab-sequence {
   display: flex;
@@ -121,13 +121,13 @@
 .lab-sequence b,
 .lab-heap > b {
   font-size: 11px;
-  color: #9daec2;
+  color: var(--lab-state-muted, #9daec2);
   font-weight: 500;
   white-space: nowrap;
 }
 .lab-sequence code {
   white-space: nowrap;
-  color: #e0eaf7;
+  color: var(--lab-state-ink, #e0eaf7);
   font-size: 12px;
 }
 .lab-heap {
@@ -141,13 +141,13 @@
 }
 .lab-heap-items > span {
   padding: 7px 10px;
-  background: #192331;
-  border: 1px solid #354458;
+  background: var(--lab-state-heading-bg, #192331);
+  border: 1px solid var(--lab-state-line, #354458);
   border-radius: 3px;
   font: 12px var(--mono);
 }
 .lab-heap-items small {
-  color: #8b9eb6;
+  color: var(--lab-state-muted, #8b9eb6);
   margin-right: 9px;
 }
 .lab-matrices {
@@ -180,17 +180,17 @@
   min-width: 35px;
   height: 32px;
   padding: 6px 8px;
-  border-right: 1px solid #293544;
-  border-bottom: 1px solid #293544;
+  border-right: 1px solid var(--lab-state-line, #293544);
+  border-bottom: 1px solid var(--lab-state-line, #293544);
   white-space: nowrap;
   transition:
     background 0.18s,
     color 0.18s;
 }
 .lab-matrix th {
-  background: #18212d;
+  background: var(--lab-state-heading-bg, #18212d);
   font-weight: 500;
-  color: #aebdd1;
+  color: var(--lab-state-muted, #aebdd1);
 }
 .lab-matrix thead th {
   position: sticky;
@@ -203,14 +203,14 @@
   z-index: 1;
 }
 .lab-matrix .lab-source-cell {
-  background: #252d40;
-  color: #d3dcf7;
-  box-shadow: inset 0 0 0 1px #69799b;
+  background: var(--lab-state-source-bg, #252d40);
+  color: var(--lab-state-source-ink, #d3dcf7);
+  box-shadow: inset 0 0 0 1px var(--lab-state-source-line, #69799b);
 }
 .lab-matrix .lab-current-cell {
-  background: #274b57 !important;
-  color: #f2ffff !important;
-  box-shadow: inset 0 0 0 2px #91d2e1;
+  background: var(--lab-state-current-bg, #274b57) !important;
+  color: var(--lab-state-current-ink, #f2ffff) !important;
+  box-shadow: inset 0 0 0 2px var(--lab-state-current-line, #91d2e1);
 }
 .lab-caption {
   font-size: 11px;
