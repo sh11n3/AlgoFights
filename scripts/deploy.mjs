@@ -1,4 +1,4 @@
-/** Uploads the static build without deleting remote content; index.html is uploaded last. */
+/** Replaces each file after upload; index.html switches to the new build last. */
 import SftpClient from "ssh2-sftp-client";
 import { access, readdir, readFile } from "node:fs/promises";
 import { resolve, join, posix } from "node:path";
@@ -48,9 +48,14 @@ try {
       posix.dirname(target),
       `.${posix.basename(target)}.next`,
     );
-    await sftp.put(content, temporary);
-    await sftp.chmod(temporary, mode);
-    await sftp.posixRename(temporary, target);
+    try {
+      await sftp.put(content, temporary);
+      await sftp.chmod(temporary, mode);
+      await sftp.posixRename(temporary, target);
+    } catch (error) {
+      await sftp.delete(temporary, true).catch(() => {});
+      throw error;
+    }
   }
 
   const accessConfig = posix.join(remote, ".htaccess");
@@ -175,11 +180,8 @@ Require valid-user
     const target = posix.join(remote, file);
     await sftp.mkdir(posix.dirname(target), true);
     const content = await readFile(join(directory, file));
-    if (file === "index.html") {
-      const temporary = posix.join(remote, ".algofights-index.next");
-      await sftp.put(content, temporary);
-      await sftp.posixRename(temporary, target);
-    } else await sftp.put(content, target);
+    // A previous build may still reference the same asset while this one uploads.
+    await replaceFile(target, content);
     console.log(`Hochgeladen: ${file}`);
   }
   console.log(`Deployment erfolgreich: ${files.length} Dateien.`);

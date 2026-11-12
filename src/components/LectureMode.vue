@@ -21,7 +21,7 @@ import {
   Save,
 } from "lucide-vue-next";
 import type { PDFDocumentProxy, PDFDocumentLoadingTask } from "pdfjs-dist";
-import workerUrl from "pdfjs-dist/build/pdf.worker.min.mjs?url";
+import workerUrl from "pdfjs-dist/legacy/build/pdf.worker.min.mjs?url";
 import PdfSlide from "./PdfSlide.vue";
 import ExamplePlayer from "./ExamplePlayer.vue";
 import ExampleCatalog from "./ExampleCatalog.vue";
@@ -286,7 +286,15 @@ async function openPdf(event: Event) {
     const sha256 = Array.from(new Uint8Array(digest), (v) =>
       v.toString(16).padStart(2, "0"),
     ).join("");
-    const lib = await import("pdfjs-dist");
+    const lib = await import("pdfjs-dist/legacy/build/pdf.mjs").catch(
+      (cause: unknown) => {
+        const details = cause instanceof Error ? cause.message : String(cause);
+        throw Error(
+          `Die PDF-Anzeige konnte nicht geladen werden. Lade die Seite neu und öffne die PDF erneut. (${details})`,
+          { cause },
+        );
+      },
+    );
     if (version !== loadVersion) return;
     lib.GlobalWorkerOptions.workerSrc = workerUrl;
     const base = new URL(
@@ -343,7 +351,10 @@ async function openPdf(event: Event) {
     measure();
   } catch (cause) {
     if (version === loadVersion) {
-      error.value = cause instanceof Error ? cause.message : String(cause);
+      const message = cause instanceof Error ? cause.message : String(cause);
+      error.value = message.startsWith("Setting up fake worker failed:")
+        ? `Die PDF-Anzeige konnte nicht gestartet werden. Lade die Seite neu und öffne die PDF erneut. (${message})`
+        : message;
       await disposePdf().catch(() => {});
     }
   } finally {
