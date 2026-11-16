@@ -71,36 +71,45 @@
   overflow: auto;
   margin-top: 18px;
 }
-.example-catalog-list h3 {
-  font-size: 12px;
-  color: #929fae;
-  margin: 20px 0 8px;
+.example-catalog-list > section + section {
+  margin-top: 22px;
+}
+.catalog-simulator {
+  margin: 0 0 8px;
+  font-size: 16px;
+  font-weight: 600;
+}
+.catalog-topics {
+  display: grid;
+  gap: 14px 24px;
+}
+.catalog-topic-heading {
+  margin: 0 0 3px;
+  color: #aab7c7;
+  font-size: 13px;
   font-weight: 500;
 }
-.example-catalog-list section:first-child h3 {
-  margin-top: 0;
+.catalog-topic ul {
+  padding: 0;
+  margin: 0;
+  list-style: none;
 }
 .example-catalog-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
   border-bottom: 1px solid #272e36;
 }
-.example-catalog-row > :first-child {
-  flex: 1;
+.example-catalog-row > :is(a, button) {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-height: 44px;
   text-align: left;
-  padding: 11px 2px;
+  padding: 8px 4px;
   color: #e0e5eb;
   background: none;
   border: 0;
   font: inherit;
   font-size: 13px;
   cursor: pointer;
-  text-decoration: none;
-}
-.example-catalog-row > :last-child {
-  padding: 8px;
-  color: #a7b5c5;
   text-decoration: none;
 }
 .example-catalog-row:hover {

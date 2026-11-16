@@ -120,7 +120,10 @@
   background: #03060bd4;
 }
 .experiment-layout {
-  grid-template-areas: "visual settings";
+  grid-template-areas:
+    "visual settings"
+    "visual tools";
+  grid-template-rows: auto 1fr;
 }
 .experiment-layout > .experiment-visual {
   grid-area: visual;
@@ -128,6 +131,10 @@
 }
 .experiment-layout > .experiment-settings {
   grid-area: settings;
+}
+.experiment-layout > .experiment-tools {
+  grid-area: tools;
+  min-width: 0;
 }
 .graph-layout.experiment-layout,
 .sim-layout.experiment-layout {
@@ -137,39 +144,31 @@
   min-width: 0;
   padding: 16px;
 }
-.experiment-settings h2 {
-  margin: 0;
-  font-size: 14px;
-}
-.experiment-settings label {
-  margin: 12px 0 0;
+.experiment-fields label,
+.experiment-tools label {
+  display: block;
+  min-width: 0;
+  color: #b7c4d5;
   font-size: 12px;
 }
-.experiment-settings label :is(input, select) {
+.experiment-fields > * + *,
+.experiment-tools label {
+  margin-top: 12px;
+}
+.experiment-fields label :is(input, select),
+.experiment-tools label :is(input, select) {
+  display: block;
+  width: 100%;
   margin-top: 5px;
 }
-.experiment-settings :is(select, input:not([type="range"])) {
+.experiment-fields :is(select, input:not([type="range"])),
+.experiment-tools :is(select, input:not([type="range"])) {
   min-height: 40px;
   font-size: 13px;
 }
-.experiment-settings .graph-field-help {
+.experiment-tools .graph-field-help {
   font-size: 12px;
-}
-.experiment-settings .endpoint-actions {
-  margin-top: 12px;
-}
-.experiment-settings .endpoint-name {
-  margin-top: 6px;
-  font-size: 12px;
-  color: #a8b4c4;
-}
-.experiment-settings .street-selection {
-  margin-top: 10px;
-  font-size: 12px;
-}
-.experiment-settings .endpoint-actions button:not(.icon-button) {
-  min-height: 36px;
-  font-size: 12px;
+  line-height: 1.55;
 }
 .experiment-inputs {
   display: grid;
@@ -179,17 +178,16 @@
 .lesson-lab .experiment-settings .graph-endpoints {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
-.experiment-actions {
+.experiment-actions,
+.experiment-tool-actions {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  margin-top: 16px;
 }
-.experiment-settings .experiment-actions > button {
+.experiment-actions > button {
   flex: 1 1 auto;
   min-height: 40px;
   margin: 0;
-  width: auto;
 }
 .experiment-actions .primary-button {
   white-space: nowrap;
@@ -213,11 +211,17 @@
 .experiment-reference[open] > summary {
   margin-bottom: 12px;
 }
-.experiment-settings .experiment-options > .graph-edit-button {
+.experiment-tools .experiment-options > .graph-edit-button {
   margin-top: 12px;
 }
-.experiment-settings .experiment-options .graph-field-help {
-  line-height: 1.55;
+.experiment-visual .graph-pick-toolbar {
+  flex-wrap: wrap;
+  margin: 0;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+}
+.graph-pick-toolbar button {
+  min-height: 36px;
 }
 .editor-layout.editor-workspace {
   display: block;
@@ -350,13 +354,12 @@
 .examples-page .example-catalog-list {
   max-height: none;
   overflow: visible;
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 20px 26px;
 }
-.examples-page .example-catalog-list h3 {
-  margin: 0 0 4px;
-  font-size: 13px;
+.examples-page .catalog-topics {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.examples-page .catalog-topic:only-child {
+  grid-column: 1 / -1;
 }
 .example-catalog-count {
   color: #aab7c7;
@@ -432,9 +435,30 @@
 @media (max-width: 900px) {
   .graph-layout.experiment-layout,
   .sim-layout.experiment-layout {
-    grid-template-areas: "settings" "visual";
+    grid-template-areas: "settings" "visual" "tools";
+    grid-template-rows: auto;
     grid-template-columns: minmax(0, 1fr);
     gap: 12px;
+  }
+  .experiment-fields {
+    display: grid;
+    grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+    align-items: end;
+    gap: 10px 8px;
+  }
+  .experiment-settings .experiment-fields > *,
+  .experiment-settings .experiment-fields label {
+    margin: 0;
+  }
+  .experiment-fields > .experiment-inputs,
+  .experiment-fields > .graph-endpoints:has(> label:nth-child(2)) {
+    grid-column: 1 / -1;
+  }
+  .lesson-lab .experiment-settings .graph-endpoints:has(> label:only-child) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .graph-pick-toolbar button {
+    min-height: 44px;
   }
   .arena-mobile-actions {
     display: flex;
@@ -488,7 +512,7 @@
     padding: 14px;
     margin: 0 auto;
   }
-  .examples-page .example-catalog-list {
+  .examples-page .catalog-topics {
     grid-template-columns: minmax(0, 1fr);
   }
   .arena-toolbar {

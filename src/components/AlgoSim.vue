@@ -571,15 +571,11 @@ onBeforeUnmount(() => {
     aria-label="Algo Sim – Wegsuche auf echten Straßen"
   >
     <div class="sim-heading">
-      <div>
-        <h1>Algo Sim</h1>
-        <p>Wegsuche auf realen Straßen von OpenStreetMap.</p>
-      </div>
+      <h1>Algo Sim</h1>
       <div class="graph-heading-actions">
         <button class="secondary-button" @click="openEditor">
           <CodeXml :size="16" /> Code-Editor
         </button>
-        <ShareExample :example="shared" />
       </div>
     </div>
     <div v-if="error" class="error-banner" role="alert">
@@ -594,47 +590,61 @@ onBeforeUnmount(() => {
         class="sim-settings panel experiment-settings"
         aria-label="Straßensuche einstellen"
       >
-        <h2>Suche einstellen</h2>
-        <label
-          >Stadt<select v-model="city">
-            <option v-for="item in CITIES" :key="item.id" :value="item.id">
-              {{ item.name }}
-            </option>
-          </select></label
-        >
-        <label
-          >Algorithmus<select v-model="algorithm">
-            <optgroup label="Eingebaute Algorithmen">
-              <option
-                v-for="(info, key) in ROUTE_ALGORITHMS"
-                :key="key"
-                :value="key"
-              >
-                {{ info.name }}
+        <div class="experiment-fields">
+          <label
+            >Stadt<select v-model="city">
+              <option v-for="item in CITIES" :key="item.id" :value="item.id">
+                {{ item.name }}
               </option>
-            </optgroup>
-            <optgroup v-if="customStrategies.length" label="Eigene Algorithmen">
-              <option v-for="s in customStrategies" :key="s.id" :value="s.id">
-                {{ s.name }}
-              </option>
-            </optgroup>
-            <option value="new">Eigenen Algorithmus bauen</option>
-          </select></label
+            </select></label
+          >
+          <label
+            >Algorithmus<select v-model="algorithm">
+              <optgroup label="Eingebaute Algorithmen">
+                <option
+                  v-for="(info, key) in ROUTE_ALGORITHMS"
+                  :key="key"
+                  :value="key"
+                >
+                  {{ info.name }}
+                </option>
+              </optgroup>
+              <optgroup v-if="customStrategies.length" label="Eigene Algorithmen">
+                <option v-for="s in customStrategies" :key="s.id" :value="s.id">
+                  {{ s.name }}
+                </option>
+              </optgroup>
+              <option value="new">Eigenen Algorithmus bauen</option>
+            </select></label
+          >
+        </div>
+      </aside>
+      <div ref="visualPanel" class="sim-map-panel panel experiment-visual">
+        <div
+          v-if="!compact"
+          class="map-endpoints"
+          role="group"
+          aria-label="Start und Ziel"
         >
-        <div class="endpoint-actions">
           <button
-            :class="{ selected: selecting === 'start' }"
+            class="map-endpoint"
+            :title="pointName(start)"
             :aria-pressed="selecting === 'start'"
             @click="selecting = 'start'"
           >
-            Start wählen</button
-          ><button
-            :class="{ selected: selecting === 'target' }"
+            <span class="start-key">Start</span>
+            <span class="map-endpoint-name">{{ pointName(start) }}</span>
+          </button>
+          <button
+            class="map-endpoint"
+            :title="pointName(target)"
             :aria-pressed="selecting === 'target'"
             @click="selecting = 'target'"
           >
-            Ziel wählen</button
-          ><button
+            <span class="target-key">Ziel</span>
+            <span class="map-endpoint-name">{{ pointName(target) }}</span>
+          </button>
+          <button
             class="icon-button"
             :disabled="!graph"
             aria-label="Start und Ziel tauschen"
@@ -643,75 +653,10 @@ onBeforeUnmount(() => {
             <ArrowLeftRight :size="16" />
           </button>
         </div>
-        <p class="endpoint-name">
-          <span class="start-key">S</span>{{ pointName(start) }}
-        </p>
-        <p class="endpoint-name">
-          <span class="target-key">Z</span>{{ pointName(target) }}
-        </p>
-        <details v-if="graph" class="street-selection">
-          <summary>Punkte über Straßennamen wählen</summary>
-          <label
-            >Startstraße<select
-              :value="start"
-              @change="choose('start', $event)"
-            >
-              <option :value="start">{{ pointName(start) }}</option>
-              <option v-for="p in graph.places" :key="p.name" :value="p.node">
-                {{ p.name }}
-              </option>
-            </select></label
-          ><label
-            >Zielstraße<select
-              :value="target"
-              @change="choose('target', $event)"
-            >
-              <option :value="target">{{ pointName(target) }}</option>
-              <option v-for="p in graph.places" :key="p.name" :value="p.node">
-                {{ p.name }}
-              </option>
-            </select></label
-          >
-        </details>
-        <div class="experiment-actions">
-          <button
-            class="primary-button"
-            :disabled="!graph || computing || loading || algorithm === 'new'"
-            @click="runFromSettings"
-          >
-            <LoaderCircle v-if="computing" class="spin" :size="16" /><Play
-              v-else
-              :size="16"
-            />
-            Suche starten
-          </button>
-          <button
-            v-if="computing"
-            class="secondary-button"
-            @click="cancelSearch"
-          >
-            Berechnung abbrechen
-          </button>
-        </div>
-        <details class="experiment-options">
-          <summary>Weitere Einstellungen</summary>
-          <p class="graph-field-help">{{ cityInfo.description }}</p>
-          <label
-            >Wiedergabedauer <span>{{ duration }} s</span
-            ><input
-              v-model.number="duration"
-              type="range"
-              min="4"
-              max="60"
-              :style="{ '--progress': `${((duration - 4) / 56) * 100}%` }"
-          /></label>
-        </details>
-      </aside>
-      <div ref="visualPanel" class="sim-map-panel panel experiment-visual">
         <div class="sim-map">
           <canvas
             ref="canvas"
-            aria-label="Straßenkarte. Klicken setzt abwechselnd Start und Ziel. Ziehen verschiebt die Ansicht. Alternativ Straßen unten auswählen."
+            aria-label="Straßenkarte. Klicken setzt abwechselnd Start und Ziel. Ziehen verschiebt die Ansicht. Start und Ziel lassen sich auch über Straßennamen wählen."
             tabindex="0"
             @pointerdown="down"
             @pointermove="move"
@@ -778,6 +723,52 @@ onBeforeUnmount(() => {
             >© OpenStreetMap-Mitwirkende · ODbL</a
           >
         </div>
+        <div v-if="!compact" class="map-run-controls">
+          <div class="experiment-actions">
+            <button
+              class="primary-button"
+              :disabled="!graph || computing || loading || algorithm === 'new'"
+              @click="runFromSettings"
+            >
+              <LoaderCircle v-if="computing" class="spin" :size="16" /><Play
+                v-else
+                :size="16"
+              />
+              Suche starten
+            </button>
+            <button
+              v-if="computing"
+              class="secondary-button"
+              @click="cancelSearch"
+            >
+              Berechnung abbrechen
+            </button>
+          </div>
+          <details v-if="graph" class="street-selection">
+            <summary>Punkte über Straßennamen wählen</summary>
+            <label
+              >Startstraße<select
+                :value="start"
+                @change="choose('start', $event)"
+              >
+                <option :value="start">{{ pointName(start) }}</option>
+                <option v-for="p in graph.places" :key="p.name" :value="p.node">
+                  {{ p.name }}
+                </option>
+              </select></label
+            ><label
+              >Zielstraße<select
+                :value="target"
+                @change="choose('target', $event)"
+              >
+                <option :value="target">{{ pointName(target) }}</option>
+                <option v-for="p in graph.places" :key="p.name" :value="p.node">
+                  {{ p.name }}
+                </option>
+              </select></label
+            >
+          </details>
+        </div>
         <div class="playback-controls">
           <button
             class="play-control"
@@ -825,6 +816,24 @@ onBeforeUnmount(() => {
             `Klicken: ${selecting === "start" ? "Start" : "Ziel"} setzen · Ziehen: verschieben · Mausrad / + / −: zoomen`
           }}
         </div>
+      </div>
+      <div v-if="!compact" class="experiment-tools">
+        <div class="experiment-tool-actions">
+          <ShareExample :example="shared" />
+        </div>
+        <details class="experiment-options">
+          <summary>Weitere Einstellungen</summary>
+          <p class="graph-field-help">{{ cityInfo.description }}</p>
+          <label
+            >Wiedergabedauer <span>{{ duration }} s</span
+            ><input
+              v-model.number="duration"
+              type="range"
+              min="4"
+              max="60"
+              :style="{ '--progress': `${((duration - 4) / 56) * 100}%` }"
+          /></label>
+        </details>
       </div>
     </div>
     <section

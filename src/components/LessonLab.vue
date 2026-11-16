@@ -168,12 +168,16 @@ const result = shallowRef<LabResult>(),
   editorOpen = ref(false),
   editorHost = ref<HTMLElement>(),
   visualPanel = ref<HTMLElement>(),
+  pageHeading = ref<HTMLHeadingElement>(),
   editorBlank = ref(false);
 const routeResult = shallowRef<GraphRouteResult>();
 const notationOpen = ref(false);
 const runName = ref(""),
   runSource = ref("");
 const builder = shallowRef<GraphLayout>();
+watch(() => Boolean(builder.value), () => pageHeading.value?.focus(), {
+  flush: "post",
+});
 const builderTool = ref<"maze">();
 const treeOnly = ref(false);
 let controller: AbortController | undefined;
@@ -770,7 +774,7 @@ function queryXml() {
     xmlSelected.value = [];
   }
 }
-function example() {
+async function example() {
   if (isGraph) {
     xmlMode.value = false;
     const value = isRoute.value
@@ -781,9 +785,7 @@ function example() {
     target.value = value.target;
     weighted.value = value.weighted ?? true;
     directed.value = value.directed ?? false;
-    return;
-  }
-  if (lesson.value.id === "anchor-match") {
+  } else if (lesson.value.id === "anchor-match") {
     s.value = "blau";
     t.value = "bald ist der Himmel blau";
     options.value.anchor = undefined;
@@ -800,6 +802,10 @@ function example() {
   } else {
     s.value = "garten";
     t.value = "karten";
+  }
+  if (matchMedia("(max-width: 900px)").matches) {
+    await nextTick();
+    visualPanel.value?.scrollIntoView({ block: "start" });
   }
 }
 function exportResult() {
@@ -994,29 +1000,16 @@ onBeforeUnmount(cancel);
   >
     <header class="graph-heading">
       <div>
-        <h1>
+        <h1 ref="pageHeading" tabindex="-1">
           {{ builder ? "Graph Builder" : isGraph ? "Graph Sim" : "String Sim" }}
         </h1>
-        <p>
-          {{
-            isGraph
-              ? "Graphen traversieren, Wege finden und Strukturen untersuchen."
-              : "Zeichenketten vergleichen und Suchschritte verfolgen."
-          }}
-        </p>
       </div>
       <div v-if="!builder" class="graph-heading-actions">
-        <ShareExample
-          :example="shared"
-          reason="Eigener Programmcode wird nicht über Links geteilt."
-        />
         <button
           class="secondary-button"
           @click="openEditor(selected === 'new' || selected === NEW_ROUTE)"
         >
-          <CodeXml :size="17" /> Code-Editor</button
-        ><button v-if="isGraph" class="secondary-button" @click="build(false)">
-          <Network :size="17" /> Graph Builder
+          <CodeXml :size="17" /> Code-Editor
         </button>
       </div>
       <button v-else class="secondary-button" @click="builder = undefined">
@@ -1039,277 +1032,171 @@ onBeforeUnmount(cancel);
         class="panel graph-settings experiment-settings"
         aria-label="Experiment einstellen"
       >
-        <h2>Experiment einstellen</h2>
-        <label
-          >Algorithmus<select v-model="selected">
-            <optgroup
-              v-for="category in categories"
-              :key="category"
-              :label="category"
-            >
-              <option
-                v-for="item in lessons.filter((l) => l.category === category)"
-                :key="item.id"
-                :value="item.id"
-              >
-                {{ item.name }}
-              </option>
-            </optgroup>
-            <optgroup v-if="isGraph" label="Start–Ziel-Wegsuche">
-              <option
-                v-for="item in routeChoices"
-                :key="item.id"
-                :value="item.id"
-              >
-                {{ item.name }}
-              </option>
-            </optgroup>
-            <optgroup v-if="own.length" label="Eigene Varianten">
-              <option v-for="item in own" :key="item.id" :value="item.id">
-                {{ item.name }}
-              </option>
-            </optgroup>
-            <optgroup v-if="ownRoutes.length" label="Eigene Wegsuche">
-              <option v-for="item in ownRoutes" :key="item.id" :value="item.id">
-                {{ item.name }}
-              </option>
-            </optgroup>
-            <option value="new">Eigenen Algorithmus bauen</option>
-            <option v-if="isGraph" :value="NEW_ROUTE">
-              Eigene Wegsuche bauen
-            </option>
-          </select></label
-        >
-        <template v-if="isGraph">
+        <div class="experiment-fields">
           <label
-            >Graph<select v-model="presetId" @change="xmlMode = false">
-              <option v-if="xmlMode" :value="presetId">XML-Elementbaum</option>
-              <optgroup label="Vorlagen">
-                <option v-for="item in presets" :key="item.id" :value="item.id">
-                  {{ item.name }}
-                </option>
-              </optgroup>
+            >Algorithmus<select v-model="selected">
               <optgroup
-                v-if="layouts.length || linkedGraph"
-                label="Eigene und geteilte Graphen"
+                v-for="category in categories"
+                :key="category"
+                :label="category"
               >
                 <option
-                  v-for="item in [
-                    ...layouts,
-                    ...(linkedGraph ? [linkedGraph] : []),
-                  ]"
+                  v-for="item in lessons.filter((l) => l.category === category)"
                   :key="item.id"
                   :value="item.id"
                 >
                   {{ item.name }}
                 </option>
               </optgroup>
+              <optgroup v-if="isGraph" label="Start–Ziel-Wegsuche">
+                <option
+                  v-for="item in routeChoices"
+                  :key="item.id"
+                  :value="item.id"
+                >
+                  {{ item.name }}
+                </option>
+              </optgroup>
+              <optgroup v-if="own.length" label="Eigene Varianten">
+                <option v-for="item in own" :key="item.id" :value="item.id">
+                  {{ item.name }}
+                </option>
+              </optgroup>
+              <optgroup v-if="ownRoutes.length" label="Eigene Wegsuche">
+                <option v-for="item in ownRoutes" :key="item.id" :value="item.id">
+                  {{ item.name }}
+                </option>
+              </optgroup>
+              <option value="new">Eigenen Algorithmus bauen</option>
+              <option v-if="isGraph" :value="NEW_ROUTE">
+                Eigene Wegsuche bauen
+              </option>
             </select></label
           >
-          <div class="graph-endpoints" v-if="hasSource || hasTarget">
-            <label v-if="hasSource"
-              >{{
-                isRoute ? "Start" : lesson.id === "trees" ? "Wurzel" : "Quelle"
-              }}<select v-model="start">
-                <option
-                  v-for="node in input.nodes"
-                  :key="node.id"
-                  :value="node.id"
-                >
-                  {{ node.label }}
-                </option>
-              </select></label
-            >
-            <label v-if="hasTarget"
-              >Ziel<select v-model="target">
-                <option
-                  v-for="node in input.nodes"
-                  :key="node.id"
-                  :value="node.id"
-                >
-                  {{ node.label }}
-                </option>
-              </select></label
-            >
-          </div>
-          <div
-            v-if="isRoute"
-            class="graph-toggles endpoint-actions"
-            role="group"
-            aria-label="Knotenauswahl im Graphen"
-          >
-            <button
-              :aria-pressed="clickEndpoint === 'start'"
-              @click="clickEndpoint = 'start'"
-            >
-              Start setzen
-            </button>
-            <button
-              :aria-pressed="clickEndpoint === 'target'"
-              @click="clickEndpoint = 'target'"
-            >
-              Ziel setzen
-            </button>
-            <button
-              class="icon-button"
-              aria-label="Start und Ziel tauschen"
-              title="Start und Ziel tauschen"
-              @click="swapEndpoints"
-            >
-              <ArrowLeftRight :size="16" />
-            </button>
-          </div>
-        </template>
-        <div v-else class="experiment-inputs">
-          <label
-            >{{ matching ? "Muster p" : "Zeichenkette s"
-            }}<input v-model="s" maxlength="48" spellcheck="false"
-          /></label>
-          <label
-            >{{ matching ? "Text t" : "Zeichenkette t"
-            }}<input v-model="t" maxlength="48" spellcheck="false"
-          /></label>
-        </div>
-        <label v-if="lesson.id === 'matrix-powers'"
-          >Potenzen bis k<select v-model="options.power">
-            <option :value="undefined">
-              Standard: {{ Math.max(1, input.nodes.length - 1) }}
-            </option>
-            <option v-for="k in 32" :key="k" :value="k">{{ k }}</option>
-          </select></label
-        >
-        <label v-if="lesson.id === 'coloring'"
-          >Verfügbare Farben<select
-            :value="options.colorCount ?? 3"
-            @change="
-              options.colorCount = Number(
-                ($event.target as HTMLSelectElement).value,
-              )
-            "
-          >
-            <option v-for="k in 8" :key="k" :value="k">{{ k }}</option>
-          </select></label
-        >
-        <label v-if="lesson.id === 'hamilton'"
-          >Gesucht<select
-            :value="options.hamiltonCycle ? 'cycle' : 'path'"
-            @change="
-              options.hamiltonCycle =
-                ($event.target as HTMLSelectElement).value === 'cycle'
-            "
-          >
-            <option value="path">Hamiltonpfad</option>
-            <option value="cycle">Hamiltonkreis</option>
-          </select></label
-        >
-        <label v-if="lesson.id === 'anchor-match'"
-          >Anker im Muster<select v-model="options.anchor">
-            <option :value="undefined">Automatisch: seltenstes Zeichen</option>
-            <option v-for="(char, i) in pattern" :key="i" :value="i">
-              {{ i }} · {{ char === " " ? "␣" : char }}
-            </option>
-          </select></label
-        >
-        <label v-if="lesson.id === 'edit-metric'"
-          >Dritte Zeichenkette r<input
-            :value="options.third ?? 'saat'"
-            @input="options.third = ($event.target as HTMLInputElement).value"
-            maxlength="48"
-            spellcheck="false"
-        /></label>
-        <div class="experiment-actions">
-          <button v-if="busy" class="secondary-button" @click="cancel">
-            <Square :size="15" /> Abbrechen
-          </button>
-          <button
-            v-else
-            class="primary-button"
-            :disabled="selected === 'new' || selected === NEW_ROUTE"
-            @click="run()"
-          >
-            <Play :size="16" /> Berechnen
-          </button>
-          <button class="secondary-button" @click="example">
-            Beispiel laden
-          </button>
-          <button
-            v-if="lesson.id === 'maze'"
-            class="secondary-button"
-            @click="build(false, 'maze')"
-          >
-            Labyrinth bauen
-          </button>
-        </div>
-        <details class="experiment-options">
-          <summary>Weitere Einstellungen</summary>
           <template v-if="isGraph">
-            <p class="graph-field-help">{{ effective.description }}</p>
-            <div
-              class="graph-toggles"
-              role="group"
-              aria-label="Kanteneigenschaften"
-            >
-              <button
-                :disabled="xmlMode"
-                :aria-pressed="weighted"
-                @click="weighted = !weighted"
-              >
-                Gewichtet
-              </button>
-              <button
-                :disabled="xmlMode"
-                :aria-pressed="directed"
-                @click="directed = !directed"
-              >
-                Gerichtet
-              </button>
-            </div>
             <label
-              v-if="
-                !isRoute &&
-                ['bfs', 'dfs', 'bellman', 'dijkstra'].includes(lesson.id)
-              "
-              >Suchumfang<select v-model="mode">
-                <option value="source">Ab einer Quelle</option>
-                <option value="target">Zum Ziel (Gᵀ)</option>
-                <option value="all">Gesamter Graph</option>
+              >Graph<select v-model="presetId" @change="xmlMode = false">
+                <option v-if="xmlMode" :value="presetId">XML-Elementbaum</option>
+                <optgroup label="Vorlagen">
+                  <option v-for="item in presets" :key="item.id" :value="item.id">
+                    {{ item.name }}
+                  </option>
+                </optgroup>
+                <optgroup
+                  v-if="layouts.length || linkedGraph"
+                  label="Eigene und geteilte Graphen"
+                >
+                  <option
+                    v-for="item in [
+                      ...layouts,
+                      ...(linkedGraph ? [linkedGraph] : []),
+                    ]"
+                    :key="item.id"
+                    :value="item.id"
+                  >
+                    {{ item.name }}
+                  </option>
+                </optgroup>
               </select></label
             >
-            <p v-if="!directed" class="graph-field-help">
-              Gegenkanten teilen sich das kleinere Gewicht. Schlingen werden
-              ausgeblendet.
-            </p>
-            <button
-              class="secondary-button graph-edit-button"
-              @click="build(true)"
-            >
-              <Network :size="14" /> Graph bearbeiten
-            </button>
+            <div class="graph-endpoints" v-if="hasSource || hasTarget">
+              <label v-if="hasSource"
+                >{{
+                  isRoute ? "Start" : lesson.id === "trees" ? "Wurzel" : "Quelle"
+                }}<select v-model="start">
+                  <option
+                    v-for="node in input.nodes"
+                    :key="node.id"
+                    :value="node.id"
+                  >
+                    {{ node.label }}
+                  </option>
+                </select></label
+              >
+              <label v-if="hasTarget"
+                >Ziel<select v-model="target">
+                  <option
+                    v-for="node in input.nodes"
+                    :key="node.id"
+                    :value="node.id"
+                  >
+                    {{ node.label }}
+                  </option>
+                </select></label
+              >
+            </div>
           </template>
-          <p v-else class="graph-field-help">
-            Leere Texte sind erlaubt. Positionen zählen Unicode-Codepoints ab 0.
-          </p>
-          <div class="experiment-inputs">
+          <div v-else class="experiment-inputs">
             <label
-              >Schrittlimit<input
-                v-model.number="stepLimit"
-                type="number"
-                min="1"
-                :max="maxLimit"
-                @blur="stepLimit = boundedLimit()"
+              >{{ matching ? "Muster p" : "Zeichenkette s"
+              }}<input v-model="s" maxlength="48" spellcheck="false"
             /></label>
             <label
-              >Tempo<select v-model.number="delay">
-                <option v-if="![850, 450, 120].includes(delay)" :value="delay">
-                  {{ delay }} ms / Schritt
-                </option>
-                <option :value="850">Langsam</option>
-                <option :value="450">Normal</option>
-                <option :value="120">Schnell</option>
-              </select></label
-            >
+              >{{ matching ? "Text t" : "Zeichenkette t"
+              }}<input v-model="t" maxlength="48" spellcheck="false"
+            /></label>
           </div>
-        </details>
+          <label v-if="lesson.id === 'matrix-powers'"
+            >Potenzen bis k<select v-model="options.power">
+              <option :value="undefined">
+                Standard: {{ Math.max(1, input.nodes.length - 1) }}
+              </option>
+              <option v-for="k in 32" :key="k" :value="k">{{ k }}</option>
+            </select></label
+          >
+          <label v-if="lesson.id === 'coloring'"
+            >Verfügbare Farben<select
+              :value="options.colorCount ?? 3"
+              @change="
+                options.colorCount = Number(
+                  ($event.target as HTMLSelectElement).value,
+                )
+              "
+            >
+              <option v-for="k in 8" :key="k" :value="k">{{ k }}</option>
+            </select></label
+          >
+          <label v-if="lesson.id === 'hamilton'"
+            >Gesucht<select
+              :value="options.hamiltonCycle ? 'cycle' : 'path'"
+              @change="
+                options.hamiltonCycle =
+                  ($event.target as HTMLSelectElement).value === 'cycle'
+              "
+            >
+              <option value="path">Hamiltonpfad</option>
+              <option value="cycle">Hamiltonkreis</option>
+            </select></label
+          >
+          <label v-if="lesson.id === 'anchor-match'"
+            >Anker im Muster<select v-model="options.anchor">
+              <option :value="undefined">Automatisch: seltenstes Zeichen</option>
+              <option v-for="(char, i) in pattern" :key="i" :value="i">
+                {{ i }} · {{ char === " " ? "␣" : char }}
+              </option>
+            </select></label
+          >
+          <label v-if="lesson.id === 'edit-metric'"
+            >Dritte Zeichenkette r<input
+              :value="options.third ?? 'saat'"
+              @input="options.third = ($event.target as HTMLInputElement).value"
+              maxlength="48"
+              spellcheck="false"
+          /></label>
+          <div class="experiment-actions">
+            <button v-if="busy" class="secondary-button" @click="cancel">
+              <Square :size="15" /> Abbrechen
+            </button>
+            <button
+              v-else
+              class="primary-button"
+              :disabled="selected === 'new' || selected === NEW_ROUTE"
+              @click="run()"
+            >
+              <Play :size="16" /> Berechnen
+            </button>
+          </div>
+        </div>
       </aside>
       <section
         ref="visualPanel"
@@ -1337,6 +1224,33 @@ onBeforeUnmount(cancel);
             <span>Berechnung</span
             ><strong>{{ result.milliseconds.toFixed(1) }} ms</strong>
           </div>
+        </div>
+        <div
+          v-if="isRoute && !compact"
+          class="graph-toggles graph-pick-toolbar"
+          role="group"
+          aria-label="Knotenauswahl im Graphen"
+        >
+          <button
+            :aria-pressed="clickEndpoint === 'start'"
+            @click="clickEndpoint = 'start'"
+          >
+            Start setzen
+          </button>
+          <button
+            :aria-pressed="clickEndpoint === 'target'"
+            @click="clickEndpoint = 'target'"
+          >
+            Ziel setzen
+          </button>
+          <button
+            class="icon-button"
+            aria-label="Start und Ziel tauschen"
+            title="Start und Ziel tauschen"
+            @click="swapEndpoints"
+          >
+            <ArrowLeftRight :size="16" />
+          </button>
         </div>
         <GraphBoard
           v-if="isGraph"
@@ -1456,6 +1370,101 @@ onBeforeUnmount(cancel);
           </button>
         </div>
       </section>
+      <div v-if="!compact" class="experiment-tools">
+        <div class="experiment-tool-actions">
+          <button class="secondary-button" @click="example">
+            Beispiel laden
+          </button>
+          <button
+            v-if="lesson.id === 'maze'"
+            class="secondary-button"
+            @click="build(false, 'maze')"
+          >
+            Labyrinth bauen
+          </button>
+          <button
+            v-if="isGraph"
+            class="secondary-button"
+            @click="build(false)"
+          >
+            <Network :size="17" /> Graph Builder
+          </button>
+          <ShareExample
+            :example="shared"
+            reason="Eigener Programmcode wird nicht über Links geteilt."
+          />
+        </div>
+        <details class="experiment-options">
+          <summary>Weitere Einstellungen</summary>
+          <template v-if="isGraph">
+            <p class="graph-field-help">{{ effective.description }}</p>
+            <div
+              class="graph-toggles"
+              role="group"
+              aria-label="Kanteneigenschaften"
+            >
+              <button
+                :disabled="xmlMode"
+                :aria-pressed="weighted"
+                @click="weighted = !weighted"
+              >
+                Gewichtet
+              </button>
+              <button
+                :disabled="xmlMode"
+                :aria-pressed="directed"
+                @click="directed = !directed"
+              >
+                Gerichtet
+              </button>
+            </div>
+            <label
+              v-if="
+                !isRoute &&
+                ['bfs', 'dfs', 'bellman', 'dijkstra'].includes(lesson.id)
+              "
+              >Suchumfang<select v-model="mode">
+                <option value="source">Ab einer Quelle</option>
+                <option value="target">Zum Ziel (Gᵀ)</option>
+                <option value="all">Gesamter Graph</option>
+              </select></label
+            >
+            <p v-if="!directed" class="graph-field-help">
+              Gegenkanten teilen sich das kleinere Gewicht. Schlingen werden
+              ausgeblendet.
+            </p>
+            <button
+              class="secondary-button graph-edit-button"
+              @click="build(true)"
+            >
+              <Network :size="14" /> Graph bearbeiten
+            </button>
+          </template>
+          <p v-else class="graph-field-help">
+            Leere Texte sind erlaubt. Positionen zählen Unicode-Codepoints ab 0.
+          </p>
+          <div class="experiment-inputs">
+            <label
+              >Schrittlimit<input
+                v-model.number="stepLimit"
+                type="number"
+                min="1"
+                :max="maxLimit"
+                @blur="stepLimit = boundedLimit()"
+            /></label>
+            <label
+              >Tempo<select v-model.number="delay">
+                <option v-if="![850, 450, 120].includes(delay)" :value="delay">
+                  {{ delay }} ms / Schritt
+                </option>
+                <option :value="850">Langsam</option>
+                <option :value="450">Normal</option>
+                <option :value="120">Schnell</option>
+              </select></label
+            >
+          </div>
+        </details>
+      </div>
     </div>
     <p v-if="notice" role="status" class="lab-notice">{{ notice }}</p>
     <template v-if="!builder">

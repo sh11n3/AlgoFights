@@ -252,9 +252,16 @@ export function readExample(value: unknown): Example {
 export interface NamedExample {
   id: string;
   name: string;
-  group: string;
+  topic?: string;
   example: Example;
 }
+export const SIMULATOR_NAMES: Record<Example["kind"], string> = {
+  arena: "Arena",
+  city: "Algo Sim",
+  "graph-lesson": "Graph Sim",
+  "graph-route": "Graph Sim",
+  string: "String Sim",
+};
 const treeCompare = GRAPH_PRESETS.find(
   (preset) => preset.id === "lesson-tree-compare",
 )!;
@@ -264,7 +271,7 @@ export const EXAMPLES: NamedExample[] = [
     return {
       id: `graph-${lesson.id}`,
       name: lesson.name,
-      group: `Graph Sim · ${lesson.category}`,
+      topic: lesson.category,
       example: {
         v: 1,
         kind: "graph-lesson",
@@ -282,7 +289,7 @@ export const EXAMPLES: NamedExample[] = [
   {
     id: "graph-hamilton-cycle",
     name: "Petersen-Graph · Hamiltonkreis prüfen",
-    group: "Graph Sim · Färbung & Hamilton",
+    topic: "Färbung & Hamilton",
     example: {
       v: 1,
       kind: "graph-lesson",
@@ -300,7 +307,7 @@ export const EXAMPLES: NamedExample[] = [
       algorithm === "dijkstra"
         ? "Vergleich · Baum kürzester Pfade"
         : "Vergleich · minimaler Spannbaum",
-    group: "Graph Sim · Baumvergleich",
+    topic: "Baumvergleich",
     example: {
       v: 1,
       kind: "graph-lesson",
@@ -314,7 +321,7 @@ export const EXAMPLES: NamedExample[] = [
   ...STRING_LESSONS.map((lesson) => ({
     id: `string-${lesson.id}`,
     name: lesson.name,
-    group: `String Sim · ${lesson.category}`,
+    topic: lesson.category,
     example: {
       v: 1,
       kind: "string",
@@ -347,7 +354,7 @@ export const EXAMPLES: NamedExample[] = [
   ...Object.entries(ROUTE_ALGORITHMS).map(([id, info]) => ({
     id: `weg-${id}`,
     name: info.name,
-    group: "Graph Sim · Start–Ziel-Wegsuche",
+    topic: "Start–Ziel-Wegsuche",
     example: {
       v: 1,
       kind: "graph-route",
@@ -360,7 +367,6 @@ export const EXAMPLES: NamedExample[] = [
   ...CITIES.map((city) => ({
     id: `stadt-${city.id}`,
     name: city.name,
-    group: "Algo Sim · Städte",
     example: {
       v: 1,
       kind: "city",
@@ -374,7 +380,6 @@ export const EXAMPLES: NamedExample[] = [
   ...Object.entries(SHAPES).map(([shape, name]) => ({
     id: `arena-${shape}`,
     name,
-    group: "Arena",
     example: {
       v: 1,
       kind: "arena",
