@@ -54,6 +54,63 @@
 :fullscreen .arena-editor-button {
   display: none;
 }
+.arena-panel,
+.results-section {
+  --arena-secondary-ink: #a6b4c6;
+}
+.arena-panel :is(.arena-state, .arena-toolbar-right, .arena-footer),
+.arena-panel .playback-time > span,
+.arena-panel .frame-counter span,
+.results-section :is(.score-value > span, .score-card-bottom, .rank) {
+  font-size: 12px;
+  color: var(--arena-secondary-ink);
+}
+.results-section .score-card-bottom .player-status {
+  font-size: inherit;
+}
+.arena-panel .arena-stage {
+  padding-bottom: 40px;
+}
+.arena-panel .stage-seed {
+  right: 18px;
+  bottom: 4px;
+  gap: 8px;
+  color: var(--arena-secondary-ink);
+  font-size: 12px;
+  letter-spacing: normal;
+  max-width: calc(100% - 36px);
+}
+.arena-panel .stage-seed b {
+  color: inherit;
+}
+.arena-panel .stage-seed button,
+.arena-panel .restart-button {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 4px;
+  color: var(--arena-secondary-ink);
+}
+.arena-panel :is(.stage-seed button, .restart-button):hover:not(:disabled) {
+  background: #ffffff12;
+  color: #e9edf4;
+}
+.arena-panel .stage-seed button svg {
+  width: 15px;
+  height: 15px;
+}
+.arena-panel :is(.playback-time, .frame-counter) {
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.arena-panel .timeline input {
+  height: 24px;
+  background-size: 100% 3px;
+  background-position: center;
+  background-repeat: no-repeat;
+}
 .rules-modal {
   width: min(570px, calc(100vw - 28px));
   max-height: calc(100dvh - 32px);
@@ -447,6 +504,46 @@
   }
   .arena-toolbar-right > span {
     display: none;
+  }
+  .arena-panel .arena-stage {
+    padding-bottom: 52px;
+  }
+  .arena-panel .stage-seed {
+    right: 12px;
+    max-width: calc(100% - 24px);
+  }
+  .arena-panel :is(.stage-seed button, .play-control, .restart-button) {
+    width: 44px;
+    height: 44px;
+  }
+  .arena-panel .playback-controls {
+    display: grid;
+    grid-template-columns: 44px 44px minmax(0, 1fr);
+    height: auto;
+    min-height: 64px;
+    padding-block: 8px;
+    gap: 2px 6px;
+  }
+  .arena-panel :is(.play-control, .restart-button) {
+    grid-row: 1;
+  }
+  .arena-panel .timeline {
+    grid-column: 3;
+    grid-row: 1;
+  }
+  .arena-panel :is(.playback-time, .frame-counter) {
+    grid-row: 2;
+    min-width: 0;
+  }
+  .arena-panel .playback-time {
+    grid-column: 1 / 3;
+  }
+  .arena-panel .frame-counter {
+    grid-column: 3;
+  }
+  .arena-panel .arena-footer {
+    flex-wrap: wrap;
+    gap: 5px 12px;
   }
 }
 @media (max-width: 380px) {
